@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Sun, Wind, Calendar, Play, ChevronRight, MapPin, Zap, Loader, Search } from 'lucide-react';
 
@@ -163,7 +164,7 @@ export default function WeatherSpectrum() {
                 <h1 className="text-xl font-bold tracking-tight text-stone-900">
                   The Weather Spectrum
                 </h1>
-                <p className="text-xs text-stone-500 italic">No hype. Just accurate weather.</p>
+                <p className="text-xs text-stone-500 italic">Accurate forecasts. No Hype.</p>
               </div>
             </div>
             <nav className="hidden md:flex gap-8 text-sm font-semibold text-stone-600">
@@ -229,7 +230,7 @@ export default function WeatherSpectrum() {
               </div>
 
               <p className="text-xl text-stone-600 mb-10 leading-relaxed max-w-xl">
-                Expert forcasts. Live coverage. 
+                Expert meteorologist forcasts without the hype. 
               </p>
               
               <button className="group bg-gradient-to-r from-orange-600 to-amber-600 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]">
@@ -242,16 +243,18 @@ export default function WeatherSpectrum() {
             <div className="relative group cursor-pointer">
               <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-500 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity" />
               <div className="relative aspect-video bg-gradient-to-br from-stone-800 to-stone-900 rounded-3xl overflow-hidden shadow-2xl border border-stone-200">
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="w-20 h-20 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center mb-6 mx-auto group-hover:bg-white/20 transition-all group-hover:scale-110 border border-white/20">
-                      <Play className="w-10 h-10 text-white" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">The Storm Serenader</h3>
-                    <p className="text-orange-300 font-medium">Latest: Trumpet at a Supercell</p>
-                  </div>
-                </div>
-              </div>
+              <iframe 
+                width="100%" 
+                height="100%" 
+                src="https://www.youtube.com/embed/zthzgcGwJ6U?si=LPcL3RSbav6sj64o" 
+                title="YouTube video player" 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                referrerPolicy="strict-origin-when-cross-origin" 
+                allowFullScreen
+                className="absolute inset-0"
+              />
+            </div>
             </div>
           </div>
         </section>
@@ -312,8 +315,8 @@ export default function WeatherSpectrum() {
           <div className="relative overflow-hidden rounded-3xl">
             <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 opacity-10" />
             <div className="relative bg-white/60 backdrop-blur-xl border border-stone-200 rounded-3xl p-12 shadow-xl">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-12">
-                <div className="flex-1">
+              <div className="flex flex-col gap-8">
+                <div className="text-center">
                   <h3 className="text-5xl font-bold mb-6 tracking-tight" style={{
                     background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 50%, #eab308 100%)',
                     WebkitBackgroundClip: 'text',
@@ -322,20 +325,31 @@ export default function WeatherSpectrum() {
                   }}>
                     The Storm Serenader
                   </h3>
-                  <p className="text-stone-700 text-xl mb-8 leading-relaxed">
+                  <p className="text-stone-700 text-xl leading-relaxed max-w-3xl mx-auto">
                     Experience severe weather through a unique artistic lens. Watch our meteorologist perform live trumpet serenades to supercells, tornadoes, and storms in the field.
                   </p>
+                </div>
+                
+                {/* YouTube Video Embed */}
+                <div className="relative aspect-video rounded-2xl overflow-hidden shadow-2xl">
+                  <iframe 
+                    width="100%" 
+                    height="100%" 
+                    src="https://www.youtube.com/embed/zthzgcGwJ6U?si=LPcL3RSbav6sj64o" 
+                    title="YouTube video player" 
+                    frameBorder="0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                    referrerPolicy="strict-origin-when-cross-origin" 
+                    allowFullScreen
+                    className="absolute inset-0"
+                  />
+                </div>
+                
+                <div className="text-center">
                   <button className="group inline-flex items-center gap-2 text-orange-600 font-semibold text-lg hover:gap-4 transition-all">
                     Watch All Videos 
                     <ChevronRight className="w-5 h-5" />
                   </button>
-                </div>
-                
-                <div className="relative">
-                  <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full blur-3xl opacity-30" />
-                  <div className="relative w-48 h-48 bg-gradient-to-br from-orange-500 to-amber-600 rounded-full flex items-center justify-center shadow-2xl">
-                    <Play className="w-24 h-24 text-white" />
-                  </div>
                 </div>
               </div>
             </div>
