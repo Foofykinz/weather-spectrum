@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Sun, Wind, Calendar, Play, ChevronRight, MapPin, Zap, Loader, Search } from 'lucide-react';
 
@@ -254,6 +253,20 @@ export default function WeatherSpectrum() {
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* Radar Map Section */}
+        <section className="max-w-7xl mx-auto px-6 py-16">
+          <h3 className="text-4xl font-bold mb-10 text-stone-900">Live Radar</h3>
+          <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-stone-200">
+            <iframe
+              src="https://embed.windy.com/embed2.html?lat=32.755&lon=-97.331&detailLat=32.755&detailLon=-97.331&width=650&height=450&zoom=8&level=surface&overlay=radar&product=radar&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1"
+              width="100%"
+              height="500"
+              frameBorder="0"
+              className="w-full"
+            />
           </div>
         </section>
 
