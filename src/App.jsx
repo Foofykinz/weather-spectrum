@@ -163,7 +163,7 @@ export default function WeatherSpectrum() {
                 <h1 className="text-xl font-bold tracking-tight text-stone-900">
                   The Weather Spectrum
                 </h1>
-                <p className="text-xs text-stone-500 italic">Where meteorology meets music</p>
+                <p className="text-xs text-stone-500 italic">No hype. Just accurate weather.</p>
               </div>
             </div>
             <nav className="hidden md:flex gap-8 text-sm font-semibold text-stone-600">
@@ -229,7 +229,7 @@ export default function WeatherSpectrum() {
               </div>
 
               <p className="text-xl text-stone-600 mb-10 leading-relaxed max-w-xl">
-                Expert forecasts meet artistic expression. Experience weather through the lens of storm chasing and live musical performance.
+                Expert forcasts. Live coverage. 
               </p>
               
               <button className="group bg-gradient-to-r from-orange-600 to-amber-600 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]">
