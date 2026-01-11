@@ -1,7 +1,9 @@
+import WeatherAlerts from '../components/WeatherAlerts';
 import React, { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Sun, Wind, Calendar, Play, ChevronRight, MapPin, Zap, Loader, Search } from 'lucide-react';
 
 export default function Home() {
+  const [coords, setCoords] = useState(null);
   const [currentTemp, setCurrentTemp] = useState(null);
   const [location, setLocation] = useState('Loading...');
   const [weatherCondition, setWeatherCondition] = useState('');
@@ -65,6 +67,7 @@ export default function Home() {
       setCurrentTemp(currentTempF || currentPeriod.temperature);
       setWeatherCondition(obsData.properties.textDescription || currentPeriod.shortForecast);
       setLocation(cityName || `${pointsData.properties.relativeLocation.properties.city}, ${pointsData.properties.relativeLocation.properties.state}`);
+      setCoords({ lat, lon });
 
       const forecastPeriods = forecastData.properties.periods;
       const dailyForecast = [];
@@ -129,6 +132,7 @@ export default function Home() {
 
   return (
     <>
+    {coords && <WeatherAlerts lat={coords.lat} lon={coords.lon} />}
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-6 py-20">
         <div className="grid md:grid-cols-2 gap-16 items-center">
