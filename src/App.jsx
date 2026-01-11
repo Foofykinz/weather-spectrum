@@ -164,7 +164,7 @@ export default function WeatherSpectrum() {
                 <h1 className="text-xl font-bold tracking-tight text-stone-900">
                   The Weather Spectrum
                 </h1>
-                <p className="text-xs text-stone-500 italic">Accurate forecasts. No Hype.</p>
+                <p className="text-xs text-stone-500 italic">See the storms, skip the hype.</p>
               </div>
             </div>
             <nav className="hidden md:flex gap-8 text-sm font-semibold text-stone-600">
@@ -230,7 +230,7 @@ export default function WeatherSpectrum() {
               </div>
 
               <p className="text-xl text-stone-600 mb-10 leading-relaxed max-w-xl">
-                Expert meteorologist forcasts without the hype. 
+                Accurate hype-free forcasts from expert meteorologists and seasoned storm chasers. 
               </p>
               
               <button className="group bg-gradient-to-r from-orange-600 to-amber-600 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02]">
