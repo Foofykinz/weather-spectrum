@@ -1,4 +1,5 @@
-mport React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Sun, Wind, Calendar, Play, ChevronRight, MapPin, Zap, Loader, Search } from 'lucide-react';
 
 export default function WeatherSpectrum() {
@@ -75,29 +76,29 @@ export default function WeatherSpectrum() {
       setWeatherCondition(obsData.properties.textDescription || currentPeriod.shortForecast);
       setLocation(cityName || `${pointsData.properties.relativeLocation.properties.city}, ${pointsData.properties.relativeLocation.properties.state}`);
 
-      // Parse 5-day forecast (take every other period to get one per day)
-      const forecastPeriods = forecastData.properties.periods.slice(0, 10);
+      // Parse 5-day forecast
+      const forecastPeriods = forecastData.properties.periods;
       const dailyForecast = [];
       
-      for (let i = 0; i < Math.min(10, forecastPeriods.length); i += 2) {
-        const dayPeriod = forecastPeriods[i];
-        const nightPeriod = forecastPeriods[i + 1] || dayPeriod;
+      // Group periods by day
+      for (let i = 0; i < Math.min(10, forecastPeriods.length); i++) {
+        const period = forecastPeriods[i];
+        const nextPeriod = forecastPeriods[i + 1];
         
-        // Make sure we get high and low correctly regardless of day/night order
-        const temp1 = dayPeriod.temperature;
-        const temp2 = nightPeriod.temperature;
-        const high = Math.max(temp1, temp2);
-        const low = Math.min(temp1, temp2);
-        
-        dailyForecast.push({
-          day: i === 0 ? 'Today' : dayPeriod.name.split(' ')[0],
-          high: high,
-          low: low,
-          condition: dayPeriod.shortForecast,
-          icon: getWeatherIcon(dayPeriod.shortForecast)
-        });
-        
+        // Skip if we already have 5 days
         if (dailyForecast.length >= 5) break;
+        
+        // Only process daytime periods
+        if (period.isDaytime) {
+          dailyForecast.push({
+            day: i === 0 || i === 1 ? 'Today' : period.name.split(' ')[0],
+            high: period.temperature,
+            low: nextPeriod ? nextPeriod.temperature : period.temperature,
+            condition: period.shortForecast,
+            icon: getWeatherIcon(period.shortForecast)
+          });
+          i++; // Skip the night period since we just used it
+        }
       }
       
       setForecast(dailyForecast);
