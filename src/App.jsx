@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+mport React, { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Sun, Wind, Calendar, Play, ChevronRight, MapPin, Zap, Loader, Search } from 'lucide-react';
 
 export default function WeatherSpectrum() {
@@ -79,17 +79,25 @@ export default function WeatherSpectrum() {
       const forecastPeriods = forecastData.properties.periods.slice(0, 10);
       const dailyForecast = [];
       
-      for (let i = 0; i < Math.min(5, forecastPeriods.length); i += 2) {
+      for (let i = 0; i < Math.min(10, forecastPeriods.length); i += 2) {
         const dayPeriod = forecastPeriods[i];
         const nightPeriod = forecastPeriods[i + 1] || dayPeriod;
         
+        // Make sure we get high and low correctly regardless of day/night order
+        const temp1 = dayPeriod.temperature;
+        const temp2 = nightPeriod.temperature;
+        const high = Math.max(temp1, temp2);
+        const low = Math.min(temp1, temp2);
+        
         dailyForecast.push({
           day: i === 0 ? 'Today' : dayPeriod.name.split(' ')[0],
-          high: dayPeriod.temperature,
-          low: nightPeriod.temperature,
+          high: high,
+          low: low,
           condition: dayPeriod.shortForecast,
           icon: getWeatherIcon(dayPeriod.shortForecast)
         });
+        
+        if (dailyForecast.length >= 5) break;
       }
       
       setForecast(dailyForecast);
