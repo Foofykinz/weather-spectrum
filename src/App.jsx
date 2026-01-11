@@ -49,15 +49,30 @@ export default function WeatherSpectrum() {
       
       const pointsData = await pointsResponse.json();
       
-      // Get current conditions
+      // Get current conditions from observations (more accurate)
+      const stationsUrl = pointsData.properties.observationStations;
+      const stationsResponse = await fetch(stationsUrl);
+      const stationsData = await stationsResponse.json();
+      
+      // Get the closest station
+      const closestStation = stationsData.features[0].id;
+      const obsResponse = await fetch(`${closestStation}/observations/latest`);
+      const obsData = await obsResponse.json();
+      
+      // Get current temp from observations
+      const currentTempC = obsData.properties.temperature.value;
+      const currentTempF = currentTempC ? Math.round((currentTempC * 9/5) + 32) : null;
+      
+      // Get forecast for conditions description
       const forecastUrl = pointsData.properties.forecast;
       const forecastResponse = await fetch(forecastUrl);
       const forecastData = await forecastResponse.json();
-
-      // Parse current conditions
-      const current = forecastData.properties.periods[0];
-      setCurrentTemp(current.temperature);
-      setWeatherCondition(current.shortForecast);
+      
+      // Find the current daytime period for conditions
+      const currentPeriod = forecastData.properties.periods.find(p => p.isDaytime) || forecastData.properties.periods[0];
+      
+      setCurrentTemp(currentTempF || currentPeriod.temperature);
+      setWeatherCondition(obsData.properties.textDescription || currentPeriod.shortForecast);
       setLocation(cityName || `${pointsData.properties.relativeLocation.properties.city}, ${pointsData.properties.relativeLocation.properties.state}`);
 
       // Parse 5-day forecast (take every other period to get one per day)
