@@ -1,3 +1,4 @@
+import NearbyWebcams from '../components/NearbyWebcams';
 import WeatherAlerts from '../components/WeatherAlerts';
 import React, { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Sun, Wind, Calendar, Play, ChevronRight, MapPin, Zap, Loader, Search } from 'lucide-react';
@@ -226,6 +227,8 @@ export default function Home() {
           />
         </div>
       </section>
+      {/* Nearby Webcams */}
+      {coords && <NearbyWebcams lat={coords.lat} lon={coords.lon} maxDistance={50} />}
 
       {/* 5-Day Forecast */}
       <section className="max-w-7xl mx-auto px-6 py-16">
