@@ -1,7 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Zap } from 'lucide-react';
-import Home from './pages/Home';
+import Home from './pages/home';
 
 export default function App() {
   return (

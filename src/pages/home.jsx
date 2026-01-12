@@ -1,5 +1,5 @@
 import NearbyWebcams from '../components/NearbyWebcams';
-import WeatherAlerts from '../components/WeatherAlerts';
+import WeatherAlerts from '../components/weatheralerts';
 import React, { useState, useEffect } from 'react';
 import { Cloud, CloudRain, Sun, Wind, Calendar, Play, ChevronRight, MapPin, Zap, Loader, Search } from 'lucide-react';
 
