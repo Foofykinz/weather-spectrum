@@ -1,14 +1,204 @@
 {
   "custom": [
     {
-      "id": "custom-1",
-      "title": "Example Custom Webcam",
-      "url": "https://example.com/webcam",
-      "city": "Fort Worth",
+      "id": "abbey-road",
+      "title": "Abbey Road Crossing - London",
+      "url": "https://www.abbeyroad.com/crossing",
+      "city": "London",
+      "state": "UK",
+      "latitude": 51.5319,
+      "longitude": -0.1774,
+      "type": "live"
+    },
+    {
+      "id": "times-square-live",
+      "title": "Times Square Live Stream",
+      "url": "https://www.earthcam.com/usa/newyork/timessquare/?cam=tsrobo1",
+      "city": "New York",
+      "state": "NY",
+      "latitude": 40.7580,
+      "longitude": -73.9855,
+      "type": "live"
+    },
+    {
+      "id": "jackson-hole-town",
+      "title": "Jackson Hole Town Square",
+      "url": "https://www.see jackson.com/jackson-town-square-webcam",
+      "city": "Jackson",
+      "state": "WY",
+      "latitude": 43.4799,
+      "longitude": -110.7624,
+      "type": "live"
+    },
+    {
+      "id": "key-west-duval",
+      "title": "Duval Street - Key West",
+      "url": "https://www.liveduvalstreet.com/",
+      "city": "Key West",
+      "state": "FL",
+      "latitude": 24.5551,
+      "longitude": -81.7800,
+      "type": "live"
+    },
+    {
+      "id": "bourbon-street-live",
+      "title": "Bourbon Street - New Orleans",
+      "url": "https://www.earthcam.com/usa/louisiana/neworleans/bourbonstreet/?cam=catsmeow2",
+      "city": "New Orleans",
+      "state": "LA",
+      "latitude": 29.9584,
+      "longitude": -90.0644,
+      "type": "live"
+    },
+    {
+      "id": "waikiki-beach",
+      "title": "Waikiki Beach - Hawaii",
+      "url": "https://www.earthcam.com/usa/hawaii/waikiki/?cam=waikiki_hd",
+      "city": "Honolulu",
+      "state": "HI",
+      "latitude": 21.2793,
+      "longitude": -157.8294,
+      "type": "beach"
+    },
+    {
+      "id": "clearwater-beach-live",
+      "title": "Clearwater Beach Pier",
+      "url": "https://www.earthcam.com/usa/florida/clearwaterbeach/?cam=clearwaterbeach",
+      "city": "Clearwater",
+      "state": "FL",
+      "latitude": 27.9659,
+      "longitude": -82.8001,
+      "type": "beach"
+    },
+    {
+      "id": "south-beach-miami",
+      "title": "South Beach - Miami",
+      "url": "https://www.earthcam.com/usa/florida/miamibeach/?cam=miamibeach1",
+      "city": "Miami Beach",
+      "state": "FL",
+      "latitude": 25.7907,
+      "longitude": -80.1300,
+      "type": "beach"
+    },
+    {
+      "id": "galveston-pleasure-pier",
+      "title": "Galveston Pleasure Pier",
+      "url": "https://galvestonpier.com/webcam/",
+      "city": "Galveston",
       "state": "TX",
-      "latitude": 32.7555,
-      "longitude": -97.3308,
-      "type": "traffic"
+      "latitude": 29.2825,
+      "longitude": -94.7869,
+      "type": "beach"
+    },
+    {
+      "id": "pike-place-market",
+      "title": "Pike Place Market - Seattle",
+      "url": "https://www.earthcam.com/usa/washington/seattle/pikeplace/?cam=pikeplace_int",
+      "city": "Seattle",
+      "state": "WA",
+      "latitude": 47.6097,
+      "longitude": -122.3425,
+      "type": "live"
+    },
+    {
+      "id": "nashville-broadway",
+      "title": "Broadway - Nashville",
+      "url": "https://www.earthcam.com/usa/tennessee/nashville/?cam=nashville",
+      "city": "Nashville",
+      "state": "TN",
+      "latitude": 36.1627,
+      "longitude": -86.7816,
+      "type": "live"
+    },
+    {
+      "id": "old-faithful",
+      "title": "Old Faithful Geyser - Yellowstone",
+      "url": "https://www.nps.gov/yell/learn/photosmultimedia/webcams.htm",
+      "city": "Yellowstone",
+      "state": "WY",
+      "latitude": 44.4605,
+      "longitude": -110.8281,
+      "type": "nature"
+    },
+    {
+      "id": "santa-monica-pier",
+      "title": "Santa Monica Pier",
+      "url": "https://www.santamonica.com/santa-monica-pier-cam/",
+      "city": "Santa Monica",
+      "state": "CA",
+      "latitude": 34.0095,
+      "longitude": -118.4974,
+      "type": "beach"
+    },
+    {
+      "id": "french-quarter",
+      "title": "Jackson Square - New Orleans",
+      "url": "https://www.earthcam.com/usa/louisiana/neworleans/jacksonsquare/?cam=catsmeow1",
+      "city": "New Orleans",
+      "state": "LA",
+      "latitude": 29.9571,
+      "longitude": -90.0634,
+      "type": "live"
+    },
+    {
+      "id": "navy-pier-chicago",
+      "title": "Navy Pier - Chicago",
+      "url": "https://www.earthcam.com/usa/illinois/chicago/navypier/?cam=chicagonavypier",
+      "city": "Chicago",
+      "state": "IL",
+      "latitude": 41.8919,
+      "longitude": -87.6051,
+      "type": "live"
+    },
+    {
+      "id": "vegas-strip",
+      "title": "Las Vegas Strip",
+      "url": "https://www.earthcam.com/usa/nevada/lasvegas/?cam=lasvegas",
+      "city": "Las Vegas",
+      "state": "NV",
+      "latitude": 36.1147,
+      "longitude": -115.1728,
+      "type": "live"
+    },
+    {
+      "id": "hollywood-walk",
+      "title": "Hollywood Walk of Fame",
+      "url": "https://www.earthcam.com/usa/california/losangeles/hollywoodandhighland/?cam=hollywood1",
+      "city": "Los Angeles",
+      "state": "CA",
+      "latitude": 34.1016,
+      "longitude": -118.3432,
+      "type": "live"
+    },
+    {
+      "id": "dealey-plaza",
+      "title": "Dealey Plaza - Dallas",
+      "url": "https://www.earthcam.com/usa/texas/dallas/?cam=dealeyplaza",
+      "city": "Dallas",
+      "state": "TX",
+      "latitude": 32.7787,
+      "longitude": -96.8085,
+      "type": "live"
+    },
+    {
+      "id": "south-padre-island",
+      "title": "South Padre Island Beach",
+      "url": "https://www.sopadre.com/attractions/beach-cams/",
+      "city": "South Padre Island",
+      "state": "TX",
+      "latitude": 26.1118,
+      "longitude": -97.1681,
+      "type": "beach"
+    },
+    {
+      "id": "port-aransas",
+      "title": "Port Aransas Beach",
+      "url": "https://www.portaransas.org/beach-cam/",
+      "city": "Port Aransas",
+      "state": "TX",
+      "latitude": 27.8339,
+      "longitude": -97.0614,
+      "type": "beach"
     }
   ]
 }
