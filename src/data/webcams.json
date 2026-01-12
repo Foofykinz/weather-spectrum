@@ -1,0 +1,14 @@
+{
+  "custom": [
+    {
+      "id": "custom-1",
+      "title": "Example Custom Webcam",
+      "url": "https://example.com/webcam",
+      "city": "Fort Worth",
+      "state": "TX",
+      "latitude": 32.7555,
+      "longitude": -97.3308,
+      "type": "traffic"
+    }
+  ]
+}
