@@ -130,6 +130,8 @@ export default function Home() {
       setError(err.message);
     }
   };
+  
+  console.log('Coords:', coords);
 
   return (
     <>
