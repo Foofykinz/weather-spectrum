@@ -285,7 +285,7 @@ export default function Home() {
                   The Storm Serenader
                 </h3>
                 <p className="text-stone-700 text-xl leading-relaxed max-w-3xl mx-auto">
-                  Accurate hype-free forcasts from expert meteorologists and seasoned storm chasers.
+                  Do storms love to be serenaded by wind instruments? We think so!
                 </p>
               </div>
               
