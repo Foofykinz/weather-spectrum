@@ -27,8 +27,9 @@ export default function NearbyWebcams({ lat, lon, maxDistance = 50 }) {
         setLoading(true);
         
         // Windy.com webcams API - free tier
+        const API_KEY = process.env.REACT_APP_WINDY_KEY;
         const response = await fetch(
-          `https://api.windy.com/api/webcams/v2/list/nearby=${lat},${lon},${maxDistance}?show=webcams:image,location&key=demo`
+          `https://api.windy.com/api/webcams/v2/list/nearby=${lat},${lon},${maxDistance}?show=webcams:image,location&key=${API_KEY}`
         );
         
         if (!response.ok) throw new Error('Failed to fetch webcams');
