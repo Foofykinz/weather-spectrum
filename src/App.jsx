@@ -1,9 +1,14 @@
+import { useEffect } from 'react';
+import { initOneSignal } from './utils/oneSignalConfig';
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Zap } from 'lucide-react';
 import Home from './pages/home';
 
 export default function App() {
+   useEffect(() => {
+    initOneSignal();
+  }, []);
   return (
     <Router>
       <div className="min-h-screen bg-stone-50 text-stone-900">

@@ -1,3 +1,5 @@
+import PushNotificationButton from "../components/PushNotificationButton";
+import AlertTypesSection from "../components/AlertTypesSection";
 import AllWebcams from '../components/AllWebcams';
 import WeatherAlerts from '../components/weatheralerts';
 import React, { useState, useEffect } from 'react';
@@ -229,6 +231,10 @@ export default function Home() {
           />
         </div>
       </section>
+      
+      {/* Push Notification Alerts - replaces newsletter */}
+<AlertTypesSection />
+
       {/* Nearby Webcams */}
      {coords && <AllWebcams lat={coords.lat} lon={coords.lon} maxDistance={100} />}
 
@@ -337,28 +343,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Newsletter Signup */}
-      <section className="max-w-7xl mx-auto px-6 py-20">
-        <div className="relative overflow-hidden rounded-3xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-orange-600 via-amber-600 to-yellow-600" />
-          <div className="relative px-12 py-16 text-center">
-            <h3 className="text-5xl font-bold mb-6 text-white">Never Miss a Storm</h3>
-            <p className="text-xl mb-10 text-orange-100 max-w-2xl mx-auto">
-              Get severe weather alerts, forecasts, and Storm Serenader updates delivered to your inbox.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 max-w-xl mx-auto">
-              <input 
-                type="email" 
-                placeholder="your@email.com" 
-                className="flex-1 px-6 py-4 rounded-xl bg-white/20 backdrop-blur-sm border border-white/30 text-white placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-white/50 font-medium"
-              />
-              <button className="px-8 py-4 bg-white text-orange-600 rounded-xl font-semibold hover:bg-orange-50 transition-all shadow-lg hover:shadow-xl">
-                Subscribe
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
+      
     </>
   );
 }
