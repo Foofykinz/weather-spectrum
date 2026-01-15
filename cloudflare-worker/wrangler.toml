@@ -4,3 +4,12 @@ compatibility_date = "2024-01-01"
 
 [vars]
 ONESIGNAL_APP_ID = "be86b5ac-f86f-469f-ba7a-a072736bd728"
+
+# Run every 5 minutes
+[triggers]
+crons = ["*/5 * * * *"]
+
+# KV namespace for tracking sent alerts (prevents duplicates)
+[[kv_namespaces]]
+binding = "SENT_ALERTS"
+id = "3a1fe638888c44fa896c047d09364b12"
