@@ -1,3 +1,4 @@
+import Admin from './pages/Admin';
 import { useEffect } from 'react';
 import { initOneSignal } from './utils/oneSignalConfig';
 import React from 'react';
@@ -50,6 +51,7 @@ export default function App() {
             <Route path="/history" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Weather History - Coming Soon</h1></div>} />
             <Route path="/blog" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Blog - Coming Soon</h1></div>} />
             <Route path="/gallery" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Gallery - Coming Soon</h1></div>} />
+            <Route path="/admin" element={<Admin />} />
           </Routes>
 
           {/* Footer */}

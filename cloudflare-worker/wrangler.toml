@@ -1,0 +1,6 @@
+name = "weather-spectrum-notifications"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+ONESIGNAL_APP_ID = "be86b5ac-f86f-469f-ba7a-a072736bd728"

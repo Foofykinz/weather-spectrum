@@ -199,22 +199,7 @@ export default function Home() {
             </a>
           </div>
           
-          {/* <div className="relative group cursor-pointer">
-            <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-500 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity" />
-            <div className="relative aspect-video bg-gradient-to-br from-stone-800 to-stone-900 rounded-3xl overflow-hidden shadow-2xl border border-stone-200">
-              <iframe 
-                width="100%" 
-                height="100%" 
-                src="https://www.youtube.com/embed/zthzgcGwJ6U?si=LPcL3RSbav6sj64o" 
-                title="YouTube video player" 
-                frameBorder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                referrerPolicy="strict-origin-when-cross-origin" 
-                allowFullScreen
-                className="absolute inset-0"
-              />
-            </div>
-          </div> */}
+          
         </div>
       </section>
 {/* 5-Day Forecast */}
