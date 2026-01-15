@@ -199,7 +199,7 @@ export default function Home() {
             </a>
           </div>
           
-          <div className="relative group cursor-pointer">
+          {/* <div className="relative group cursor-pointer">
             <div className="absolute inset-0 bg-gradient-to-br from-orange-400 to-amber-500 rounded-3xl blur-2xl opacity-20 group-hover:opacity-30 transition-opacity" />
             <div className="relative aspect-video bg-gradient-to-br from-stone-800 to-stone-900 rounded-3xl overflow-hidden shadow-2xl border border-stone-200">
               <iframe 
@@ -214,31 +214,10 @@ export default function Home() {
                 className="absolute inset-0"
               />
             </div>
-          </div>
+          </div> */}
         </div>
       </section>
-
-      {/* Radar Map Section */}
-      <section className="max-w-7xl mx-auto px-6 py-16">
-        <h3 className="text-4xl font-bold mb-10 text-stone-900">Live Radar</h3>
-        <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-stone-200">
-          <iframe
-            src="https://embed.windy.com/embed2.html?lat=32.755&lon=-97.331&detailLat=32.755&detailLon=-97.331&width=650&height=450&zoom=8&level=surface&overlay=radar&product=radar&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1"
-            width="100%"
-            height="500"
-            frameBorder="0"
-            className="w-full"
-          />
-        </div>
-      </section>
-      
-      {/* Push Notification Alerts - replaces newsletter */}
-<AlertTypesSection />
-
-      {/* Nearby Webcams */}
-     {coords && <AllWebcams lat={coords.lat} lon={coords.lon} maxDistance={100} />}
-
-      {/* 5-Day Forecast */}
+{/* 5-Day Forecast */}
       <section className="max-w-7xl mx-auto px-6 py-16">
         <h3 className="text-4xl font-bold mb-10 text-stone-900">5-Day Forecast</h3>
         {loading ? (
@@ -274,6 +253,27 @@ export default function Home() {
           </div>
         )}
       </section>
+      {/* Radar Map Section */}
+      <section className="max-w-7xl mx-auto px-6 py-16">
+        <h3 className="text-4xl font-bold mb-10 text-stone-900">Live Radar</h3>
+        <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-stone-200">
+          <iframe
+            src="https://embed.windy.com/embed2.html?lat=32.755&lon=-97.331&detailLat=32.755&detailLon=-97.331&width=650&height=450&zoom=8&level=surface&overlay=radar&product=radar&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1"
+            width="100%"
+            height="500"
+            frameBorder="0"
+            className="w-full"
+          />
+        </div>
+      </section>
+
+      {/* Push Notification Alerts - replaces newsletter */}
+<AlertTypesSection />
+
+      {/* Nearby Webcams */}
+     {coords && <AllWebcams lat={coords.lat} lon={coords.lon} maxDistance={100} />}
+
+      
 
       {/* Storm Serenader Feature */}
       <section className="max-w-7xl mx-auto px-6 py-16">
