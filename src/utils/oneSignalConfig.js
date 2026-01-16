@@ -1,15 +1,25 @@
 import OneSignal from 'react-onesignal';
 
+let isInitialized = false;
+
 export const initOneSignal = async () => {
+  if (isInitialized) {
+    console.log('OneSignal already initialized');
+    return true;
+  }
+
   try {
     await OneSignal.init({
       appId: 'be86b5ac-f86f-469f-ba7a-a072736bd728',
       allowLocalhostAsSecureOrigin: true,
+      serviceWorkerPath: '/OneSignalSDKWorker.js',
+      serviceWorkerParam: { scope: '/' },
       notifyButton: {
-        enable: false, // We'll use our custom button
+        enable: false,
       },
     });
     
+    isInitialized = true;
     console.log('OneSignal initialized successfully');
     return true;
   } catch (error) {
@@ -20,7 +30,7 @@ export const initOneSignal = async () => {
 
 export const subscribeUser = async () => {
   try {
-    await OneSignal.showSlidedownPrompt();
+    await OneSignal.Slidedown.promptPush();
     return true;
   } catch (error) {
     console.error('Subscription error:', error);
@@ -30,14 +40,9 @@ export const subscribeUser = async () => {
 
 export const isSubscribed = async () => {
   try {
-    return await OneSignal.isPushNotificationsEnabled();
+    const permission = await OneSignal.Notifications.permission;
+    return permission;
   } catch (error) {
     return false;
   }
-};
-
-export const sendNotification = async (title, message, url = null) => {
-  // This would typically be done from a backend, but for testing:
-  console.log('Notification to send:', { title, message, url });
-  // You'll use OneSignal's REST API or dashboard to actually send
 };
