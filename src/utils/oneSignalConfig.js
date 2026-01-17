@@ -12,6 +12,8 @@ export const initOneSignal = async () => {
     await OneSignal.init({
       appId: 'be86b5ac-f86f-469f-ba7a-a072736bd728',
       allowLocalhostAsSecureOrigin: true,
+      serviceWorkerParam: { scope: '/push/onesignal/' },
+      path: 'https://theweatherspectrum.com/push/onesignal/',
     });
     
     isInitialized = true;
