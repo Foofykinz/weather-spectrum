@@ -192,60 +192,29 @@ export default function HailMap() {
   };
 
   // Get ZIP code and accurate population from Census Bureau
-  const getZipAndPopulation = async (lat, lon) => {
-    try {
-      // Step 1: Get ZIP code from Census Bureau (free, no API key)
-      const geoResponse = await fetch(
-        `https://geocoding.geo.census.gov/geocoder/geographies/coordinates?x=${lon}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current&format=json`
-      );
-      const geoData = await geoResponse.json();
-      
-      let zipCode = 'Unknown';
-      let population = 0;
-      
-      if (geoData.result?.geographies?.['2020 Census Blocks']?.[0]) {
-        // Get ZIP from the geographic data
-        const block = geoData.result.geographies['2020 Census Blocks'][0];
-        zipCode = block.ZCTA5 || 'Unknown';
-        
-        // Step 2: Get population data for this ZIP code
-        if (zipCode !== 'Unknown') {
-          try {
-            // Use Census API to get ZIP code population
-            const popResponse = await fetch(
-              `https://api.census.gov/data/2020/dec/pl?get=P1_001N,NAME&for=zip%20code%20tabulation%20area:${zipCode}`
-            );
-            const popData = await popResponse.json();
-            
-            if (popData && popData.length > 1) {
-              // popData[1][0] contains the actual population
-              const zipPopulation = parseInt(popData[1][0]);
-              
-              // Calculate affected population in 5-mile radius
-              // Assume roughly 30% of ZIP population within 5 miles of impact point
-              population = Math.round(zipPopulation * 0.3);
-            }
-          } catch (popError) {
-            console.log('Could not fetch population for ZIP', zipCode);
-            // Fallback to area-based estimate
-            population = Math.round(Math.PI * 25 * 94);
-          }
-        }
-      }
-      
-      return {
-        zip: zipCode,
-        population: population || Math.round(Math.PI * 25 * 94),
-      };
-    } catch (error) {
-      console.error('Geocoding error:', error);
-      // Fallback estimate
-      return {
-        zip: 'Unknown',
-        population: Math.round(Math.PI * 25 * 94),
-      };
-    }
-  };
+const getZipAndPopulation = async (lat, lon) => {
+  try {
+    const response = await fetch('https://weather-spectrum-notifications.alysonwalters22.workers.dev/census-lookup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ lat, lon }),
+    });
+
+    const data = await response.json();
+    return {
+      zip: data.zip || 'Unknown',
+      population: data.population || 7383,
+    };
+  } catch (error) {
+    console.error('Census lookup error:', error);
+    return {
+      zip: 'Unknown',
+      population: 7383,
+    };
+  }
+};
 
   const loadSampleData = () => {
     const samples = [
