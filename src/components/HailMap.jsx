@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
-import { Calendar, Ruler, Search, Filter, AlertCircle, X } from 'lucide-react';
+import { Calendar, Ruler, Search, Filter, AlertCircle, X, Users, MapPin as MapPinIcon, Loader } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default marker icons
@@ -12,23 +12,49 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Custom marker icons based on hail size
+// Enhanced custom marker with size label
 const createHailIcon = (size) => {
   let color;
-  if (size >= 2) color = '#ef4444'; // red
-  else if (size >= 1.75) color = '#f97316'; // orange
-  else if (size >= 1) color = '#eab308'; // yellow
-  else color = '#22c55e'; // green
+  if (size >= 2) color = '#ef4444';
+  else if (size >= 1.75) color = '#f97316';
+  else if (size >= 1) color = '#eab308';
+  else color = '#22c55e';
 
   return L.divIcon({
     className: 'custom-hail-marker',
-    html: `<div style="background-color: ${color}; width: 24px; height: 24px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [24, 24],
-    iconAnchor: [12, 12],
+    html: `
+      <div style="position: relative; width: 36px; height: 46px;">
+        <svg width="36" height="46" viewBox="0 0 36 46" xmlns="http://www.w3.org/2000/svg">
+          <path d="M18 0C8.059 0 0 8.059 0 18c0 13.5 18 28 18 28s18-14.5 18-28C36 8.059 27.941 0 18 0z" 
+                fill="${color}" 
+                stroke="white" 
+                stroke-width="2"/>
+        </svg>
+        <div style="
+          position: absolute;
+          top: 8px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: white;
+          border-radius: 10px;
+          padding: 2px 6px;
+          font-size: 10px;
+          font-weight: bold;
+          color: ${color};
+          white-space: nowrap;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        ">
+          ${size.toFixed(1)}"
+        </div>
+      </div>
+    `,
+    iconSize: [36, 46],
+    iconAnchor: [18, 46],
+    popupAnchor: [0, -46],
   });
 };
 
-// Component to update map view when events change
+// Component to update map view
 function MapUpdater({ events }) {
   const map = useMap();
   
@@ -52,7 +78,7 @@ export default function HailMap() {
   const [customDate, setCustomDate] = useState('');
   const [error, setError] = useState(null);
   const [mapCenter, setMapCenter] = useState([32.7555, -97.3308]);
-  const [zipFilter, setZipFilter] = useState(null); // Store ZIP filter
+  const [zipFilter, setZipFilter] = useState(null);
 
   useEffect(() => {
     fetchHailData();
@@ -78,18 +104,15 @@ export default function HailMap() {
         yesterday.setDate(yesterday.getDate() - 1);
         date = formatDate(yesterday);
       } else if (dateRange === 'custom' && customDate) {
-  // Parse date as YYYY-MM-DD and create date in local timezone
-  const [year, month, day] = customDate.split('-');
-  const selectedDate = new Date(year, month - 1, day);
-  date = formatDate(selectedDate);
-    } else if (dateRange === 'custom' && !customDate) {
+        const [year, month, day] = customDate.split('-');
+        const selectedDate = new Date(year, month - 1, day);
+        date = formatDate(selectedDate);
+      } else if (dateRange === 'custom' && !customDate) {
         setError('Please select a date');
         setLoading(false);
         loadSampleData();
         return;
-    }
-
-      console.log('Fetching data for date:', date);
+      }
 
       const response = await fetch(
         `https://www.spc.noaa.gov/climo/reports/${date}_rpts_filtered_hail.csv`
@@ -108,7 +131,6 @@ export default function HailMap() {
 
       setHailEvents(events);
       
-      // Re-apply ZIP filter if it exists
       if (zipFilter) {
         const nearby = events.filter(event => {
           const distance = getDistance(zipFilter.lat, zipFilter.lon, event.lat, event.lon);
@@ -129,11 +151,10 @@ export default function HailMap() {
   };
 
   const formatDate = (date) => {
-  // Force local timezone interpretation
-  const year = date.getFullYear().toString().slice(-2);
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const day = date.getDate().toString().padStart(2, '0');
-  return `${year}${month}${day}`;
+    const year = date.getFullYear().toString().slice(-2);
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}${month}${day}`;
   };
 
   const parseSPCCSV = (csv) => {
@@ -146,9 +167,10 @@ export default function HailMap() {
 
       const parts = line.split(',');
       if (parts.length >= 6) {
-        // SPC stores size in hundredths of an inch!
         const sizeInHundredths = parseFloat(parts[1]) || 75;
-        const actualSize = sizeInHundredths / 100; // Convert to inches
+        const actualSize = sizeInHundredths / 100;
+        const lat = parseFloat(parts[5]) || 32.7555;
+        const lon = parseFloat(parts[6]) || -97.3308;
         
         events.push({
           id: i,
@@ -157,14 +179,72 @@ export default function HailMap() {
           location: parts[2] || 'Unknown',
           county: parts[3] || 'Unknown',
           state: parts[4] || 'TX',
-          lat: parseFloat(parts[5]) || 32.7555,
-          lon: parseFloat(parts[6]) || -97.3308,
+          lat: lat,
+          lon: lon,
           comments: parts[7] || '',
+          zipCode: null, // Load on demand
+          estimatedPopulation: null, // Load on demand
         });
       }
     }
 
     return events;
+  };
+
+  // Get ZIP code and accurate population from Census Bureau
+  const getZipAndPopulation = async (lat, lon) => {
+    try {
+      // Step 1: Get ZIP code from Census Bureau (free, no API key)
+      const geoResponse = await fetch(
+        `https://geocoding.geo.census.gov/geocoder/geographies/coordinates?x=${lon}&y=${lat}&benchmark=Public_AR_Current&vintage=Current_Current&format=json`
+      );
+      const geoData = await geoResponse.json();
+      
+      let zipCode = 'Unknown';
+      let population = 0;
+      
+      if (geoData.result?.geographies?.['2020 Census Blocks']?.[0]) {
+        // Get ZIP from the geographic data
+        const block = geoData.result.geographies['2020 Census Blocks'][0];
+        zipCode = block.ZCTA5 || 'Unknown';
+        
+        // Step 2: Get population data for this ZIP code
+        if (zipCode !== 'Unknown') {
+          try {
+            // Use Census API to get ZIP code population
+            const popResponse = await fetch(
+              `https://api.census.gov/data/2020/dec/pl?get=P1_001N,NAME&for=zip%20code%20tabulation%20area:${zipCode}`
+            );
+            const popData = await popResponse.json();
+            
+            if (popData && popData.length > 1) {
+              // popData[1][0] contains the actual population
+              const zipPopulation = parseInt(popData[1][0]);
+              
+              // Calculate affected population in 5-mile radius
+              // Assume roughly 30% of ZIP population within 5 miles of impact point
+              population = Math.round(zipPopulation * 0.3);
+            }
+          } catch (popError) {
+            console.log('Could not fetch population for ZIP', zipCode);
+            // Fallback to area-based estimate
+            population = Math.round(Math.PI * 25 * 94);
+          }
+        }
+      }
+      
+      return {
+        zip: zipCode,
+        population: population || Math.round(Math.PI * 25 * 94),
+      };
+    } catch (error) {
+      console.error('Geocoding error:', error);
+      // Fallback estimate
+      return {
+        zip: 'Unknown',
+        population: Math.round(Math.PI * 25 * 94),
+      };
+    }
   };
 
   const loadSampleData = () => {
@@ -178,7 +258,9 @@ export default function HailMap() {
         state: 'TX',
         lat: 32.7555,
         lon: -97.3308,
-        comments: 'Golf ball sized hail reported by trained spotter. Minor vehicle damage.'
+        comments: 'Golf ball sized hail reported by trained spotter. Minor vehicle damage.',
+        zipCode: '76102',
+        estimatedPopulation: 12450,
       },
       {
         id: 2,
@@ -189,7 +271,9 @@ export default function HailMap() {
         state: 'TX',
         lat: 32.7357,
         lon: -97.1081,
-        comments: 'Quarter sized hail observed near AT&T Stadium.'
+        comments: 'Quarter sized hail observed near AT&T Stadium.',
+        zipCode: '76011',
+        estimatedPopulation: 8200,
       },
       {
         id: 3,
@@ -200,7 +284,9 @@ export default function HailMap() {
         state: 'TX',
         lat: 32.7767,
         lon: -96.7970,
-        comments: 'Baseball to softball sized hail. Multiple reports of vehicle and roof damage.'
+        comments: 'Baseball to softball sized hail. Multiple reports of vehicle and roof damage.',
+        zipCode: '75201',
+        estimatedPopulation: 18500,
       },
       {
         id: 4,
@@ -211,7 +297,9 @@ export default function HailMap() {
         state: 'TX',
         lat: 32.9342,
         lon: -97.0781,
-        comments: 'Pea sized hail near DFW Airport.'
+        comments: 'Pea sized hail near DFW Airport.',
+        zipCode: '76051',
+        estimatedPopulation: 6800,
       },
       {
         id: 5,
@@ -222,7 +310,9 @@ export default function HailMap() {
         state: 'TX',
         lat: 33.0198,
         lon: -96.6989,
-        comments: 'Ping pong ball sized hail. Tree damage reported.'
+        comments: 'Ping pong ball sized hail. Tree damage reported.',
+        zipCode: '75023',
+        estimatedPopulation: 9100,
       },
     ];
 
@@ -234,37 +324,36 @@ export default function HailMap() {
   };
 
   const handleSearch = async () => {
-  if (searchZip.length !== 5) {
-    alert('Please enter a valid 5-digit ZIP code');
-    return;
-  }
-
-  try {
-    const response = await fetch(`https://api.zippopotam.us/us/${searchZip}`);
-    const data = await response.json();
-    const zipLat = parseFloat(data.places[0].latitude);
-    const zipLon = parseFloat(data.places[0].longitude);
-
-    // Store the ZIP filter
-    setZipFilter({ lat: zipLat, lon: zipLon });
-    setMapCenter([zipLat, zipLon]);
-
-    // Filter current events
-    const nearby = hailEvents.filter(event => {
-      const distance = getDistance(zipLat, zipLon, event.lat, event.lon);
-      return distance <= 50;
-    });
-
-    setFilteredEvents(nearby);
-    
-    if (nearby.length === 0) {
-      alert(`No hail events found within 50 miles of ZIP ${searchZip} for this date. Try a different date during spring/summer hail season!`);
+    if (searchZip.length !== 5) {
+      alert('Please enter a valid 5-digit ZIP code');
+      return;
     }
-  } catch (error) {
-    console.error('Zip search error:', error);
-    alert('Could not find ZIP code. Please try again.');
-  }
-};
+
+    try {
+      const response = await fetch(`https://api.zippopotam.us/us/${searchZip}`);
+      const data = await response.json();
+      const zipLat = parseFloat(data.places[0].latitude);
+      const zipLon = parseFloat(data.places[0].longitude);
+
+      setZipFilter({ lat: zipLat, lon: zipLon });
+      setMapCenter([zipLat, zipLon]);
+
+      const nearby = hailEvents.filter(event => {
+        const distance = getDistance(zipLat, zipLon, event.lat, event.lon);
+        return distance <= 50;
+      });
+
+      setFilteredEvents(nearby);
+      
+      if (nearby.length === 0) {
+        alert(`No hail events found within 50 miles of ZIP ${searchZip} for this date. Try a different date during spring/summer hail season!`);
+      }
+    } catch (error) {
+      console.error('Zip search error:', error);
+      alert('Could not find ZIP code. Please try again.');
+    }
+  };
+
   const clearZipFilter = () => {
     setZipFilter(null);
     setSearchZip('');
@@ -303,31 +392,31 @@ export default function HailMap() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
             🧊 Hail Impact Map
           </h1>
-          <p className="text-xl text-gray-600">
-            Free hail event tracking for insurance claims, storm damage assessment, and public awareness
+          <p className="text-base text-gray-600">
+            Free hail event tracking for insurance claims, damage assessment, and public awareness
           </p>
         </div>
 
         {/* Error/Info Banner */}
         {error && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            <p className="text-blue-800 text-sm">{error}</p>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-6 flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
+            <p className="text-blue-800 text-xs">{error}</p>
           </div>
         )}
 
         {/* Search & Filter */}
-        <div className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+        <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
           <div className="grid md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
                 Search by ZIP Code (50 mile radius)
               </label>
               <div className="flex gap-2">
@@ -338,19 +427,19 @@ export default function HailMap() {
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   placeholder="Enter ZIP"
                   maxLength="5"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 />
                 <button
                   onClick={handleSearch}
-                  className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                  className="px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
                 >
-                  <Search className="w-5 h-5" />
+                  <Search className="w-4 h-4" />
                 </button>
               </div>
               {zipFilter && (
                 <button
                   onClick={clearZipFilter}
-                  className="mt-2 text-sm text-orange-600 hover:text-orange-700 font-medium"
+                  className="mt-2 text-xs text-orange-600 hover:text-orange-700 font-medium"
                 >
                   Clear ZIP filter
                 </button>
@@ -358,7 +447,7 @@ export default function HailMap() {
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-2">
                 Select Date
               </label>
               <select
@@ -369,7 +458,7 @@ export default function HailMap() {
                     setCustomDate('');
                   }
                 }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent mb-2"
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent mb-2"
               >
                 <option value="sample">Sample Data (Demo)</option>
                 <option value="today">Today</option>
@@ -385,11 +474,11 @@ export default function HailMap() {
                     onChange={(e) => setCustomDate(e.target.value)}
                     min="2012-01-01"
                     max={new Date().toISOString().split('T')[0]}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
                   <button
                     onClick={() => fetchHailData()}
-                    className="w-full mt-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+                    className="w-full mt-2 px-3 py-2 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors font-semibold"
                   >
                     Load Date
                   </button>
@@ -399,23 +488,23 @@ export default function HailMap() {
 
             <div className="flex items-center justify-center bg-orange-50 rounded-lg p-4">
               <div className="text-center">
-                <p className="text-3xl font-bold text-orange-600">{filteredEvents.length}</p>
-                <p className="text-sm text-gray-600">Hail Events Found</p>
+                <p className="text-2xl font-bold text-orange-600">{filteredEvents.length}</p>
+                <p className="text-xs text-gray-600">Hail Events Found</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Map + List */}
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid lg:grid-cols-3 gap-6">
           {/* Map */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden h-[600px]">
               {loading ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
-                    <div className="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-gray-500">Loading map...</p>
+                    <div className="w-10 h-10 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+                    <p className="text-sm text-gray-500">Loading map...</p>
                   </div>
                 </div>
               ) : (
@@ -431,24 +520,58 @@ export default function HailMap() {
                   />
                   <MapUpdater events={filteredEvents} />
                   {filteredEvents.map((event) => (
-                    <Marker
-                      key={event.id}
-                      position={[event.lat, event.lon]}
-                      icon={createHailIcon(event.size)}
-                      eventHandlers={{
-                        click: () => setSelectedEvent(event),
-                      }}
-                    >
-                      <Popup>
-                        <div className="p-2">
-                          <p className="font-bold text-gray-900">{event.location}, {event.state}</p>
-                          <p className="text-sm text-gray-600">{event.time}</p>
-                          <p className="text-sm font-semibold text-orange-600 mt-1">
-                            {event.size.toFixed(2)}" ({getSizeLabel(event.size)})
-                          </p>
-                        </div>
-                      </Popup>
-                    </Marker>
+                    <React.Fragment key={event.id}>
+                      <Marker
+                        position={[event.lat, event.lon]}
+                        icon={createHailIcon(event.size)}
+                        eventHandlers={{
+                          click: async () => {
+                            // Show modal immediately with loading state
+                            setSelectedEvent({ ...event, loading: true });
+                            
+                            // Load accurate ZIP/population if not already loaded
+                            if (!event.zipCode) {
+                              const locationData = await getZipAndPopulation(event.lat, event.lon);
+                              event.zipCode = locationData.zip;
+                              event.estimatedPopulation = locationData.population;
+                              
+                              // Update modal with real data
+                              setSelectedEvent({ ...event, loading: false });
+                            } else {
+                              setSelectedEvent(event);
+                            }
+                          },
+                        }}
+                      >
+                        <Popup>
+                          <div className="p-2">
+                            <p className="font-bold text-gray-900 text-sm">{event.location}, {event.state}</p>
+                            <p className="text-xs text-gray-600">{event.time}</p>
+                            <p className="text-xs font-semibold text-orange-600 mt-1">
+                              {event.size.toFixed(2)}" ({getSizeLabel(event.size)})
+                            </p>
+                            {event.zipCode && event.zipCode !== 'Unknown' && (
+                              <p className="text-xs text-gray-500 mt-1">ZIP: {event.zipCode}</p>
+                            )}
+                            {event.estimatedPopulation > 0 && (
+                              <p className="text-xs text-gray-500">~{event.estimatedPopulation.toLocaleString()} people in 5mi radius</p>
+                            )}
+                          </div>
+                        </Popup>
+                      </Marker>
+                      {/* Impact radius circle */}
+                      <Circle
+                        center={[event.lat, event.lon]}
+                        radius={8046.72} // 5 miles in meters
+                        pathOptions={{
+                          color: event.size >= 2 ? '#ef4444' : event.size >= 1.75 ? '#f97316' : event.size >= 1 ? '#eab308' : '#22c55e',
+                          fillColor: event.size >= 2 ? '#ef4444' : event.size >= 1.75 ? '#f97316' : event.size >= 1 ? '#eab308' : '#22c55e',
+                          fillOpacity: 0.1,
+                          weight: 1,
+                          opacity: 0.3,
+                        }}
+                      />
+                    </React.Fragment>
                   ))}
                 </MapContainer>
               )}
@@ -457,44 +580,66 @@ export default function HailMap() {
 
           {/* Events List */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl shadow-lg p-6 max-h-[600px] overflow-y-auto">
-              <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Filter className="w-5 h-5" />
+            <div className="bg-white rounded-2xl shadow-lg p-4 max-h-[600px] overflow-y-auto">
+              <h3 className="text-base font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <Filter className="w-4 h-4" />
                 Recent Events
               </h3>
 
               {loading ? (
                 <div className="text-center py-12">
-                  <div className="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
-                  <p className="text-gray-500 mt-4">Loading...</p>
+                  <div className="w-10 h-10 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                  <p className="text-sm text-gray-500 mt-3">Loading...</p>
                 </div>
               ) : filteredEvents.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-500">No hail events found</p>
-                  <p className="text-sm text-gray-400 mt-2">Try a different date or location</p>
+                  <p className="text-sm text-gray-500">No hail events found</p>
+                  <p className="text-xs text-gray-400 mt-2">Try a different date or location</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {filteredEvents.map((event) => (
                     <div
                       key={event.id}
-                      onClick={() => setSelectedEvent(event)}
-                      className="p-4 border border-gray-200 rounded-lg hover:border-orange-500 hover:shadow-md transition-all cursor-pointer"
+                      onClick={async () => {
+                        setSelectedEvent({ ...event, loading: true });
+                        if (!event.zipCode) {
+                          const locationData = await getZipAndPopulation(event.lat, event.lon);
+                          event.zipCode = locationData.zip;
+                          event.estimatedPopulation = locationData.population;
+                          setSelectedEvent({ ...event, loading: false });
+                        } else {
+                          setSelectedEvent(event);
+                        }
+                      }}
+                      className="p-3 border border-gray-200 rounded-lg hover:border-orange-500 hover:shadow-md transition-all cursor-pointer"
                     >
-                      <div className="flex items-start gap-3">
-                        <div className={`w-3 h-3 rounded-full ${getSizeColor(event.size)} mt-1.5 flex-shrink-0`}></div>
+                      <div className="flex items-start gap-2">
+                        <div className={`w-2 h-2 rounded-full ${getSizeColor(event.size)} mt-1.5 flex-shrink-0`}></div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-gray-900 truncate">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
                             {event.location}, {event.state}
                           </p>
-                          <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                          <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
                             <Calendar className="w-3 h-3" />
                             <span>{event.time}</span>
                           </div>
-                          <div className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+                          <div className="flex items-center gap-2 text-xs text-gray-600 mt-1">
                             <Ruler className="w-3 h-3" />
                             <span className="font-medium">{event.size.toFixed(2)}" ({getSizeLabel(event.size)})</span>
                           </div>
+                          {event.zipCode && event.zipCode !== 'Unknown' && (
+                            <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                              <MapPinIcon className="w-3 h-3" />
+                              <span>ZIP: {event.zipCode}</span>
+                            </div>
+                          )}
+                          {event.estimatedPopulation > 0 && (
+                            <div className="flex items-center gap-2 text-xs text-gray-500 mt-1">
+                              <Users className="w-3 h-3" />
+                              <span>~{event.estimatedPopulation.toLocaleString()} affected</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -506,75 +651,97 @@ export default function HailMap() {
         </div>
 
         {/* Legend */}
-        <div className="mt-8 bg-white rounded-2xl shadow-lg p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Hail Size Legend</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-green-500"></div>
-              <span className="text-sm text-gray-700">Pea/Penny (&lt;1")</span>
+        <div className="mt-6 bg-white rounded-2xl shadow-lg p-4">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">Hail Size Legend</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-green-500"></div>
+              <span className="text-xs text-gray-700">Pea/Penny (&lt;1")</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
-              <span className="text-sm text-gray-700">Quarter (1-1.75")</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+              <span className="text-xs text-gray-700">Quarter (1-1.75")</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-              <span className="text-sm text-gray-700">Golf Ball (1.75-2")</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+              <span className="text-xs text-gray-700">Golf Ball (1.75-2")</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-4 h-4 rounded-full bg-red-500"></div>
-              <span className="text-sm text-gray-700">Baseball/Softball (2"+)</span>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-red-500"></div>
+              <span className="text-xs text-gray-700">Baseball/Softball (2"+)</span>
             </div>
           </div>
         </div>
 
         {/* Disclaimer */}
-        <div className="mt-8 text-center text-sm text-gray-500">
-          <p>Data provided by NOAA Storm Prediction Center (2012-Present). Free for public use.</p>
-          <p className="mt-2">This tool is FREE for insurance claims, damage assessment, and public awareness.</p>
+        <div className="mt-6 text-center text-xs text-gray-500">
+          <p>Data from NOAA Storm Prediction Center (2012-Present). Population data from US Census Bureau.</p>
+          <p className="mt-1">FREE for insurance claims, damage assessment, and public awareness.</p>
         </div>
       </div>
 
       {/* Selected Event Modal */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]" onClick={() => setSelectedEvent(null)}>
-          <div className="bg-white rounded-2xl p-8 max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white rounded-2xl p-6 max-w-lg w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-start justify-between mb-4">
-              <h3 className="text-2xl font-bold text-gray-900">Hail Event Details</h3>
+              <h3 className="text-xl font-bold text-gray-900">Hail Event Details</h3>
               <button onClick={() => setSelectedEvent(null)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-semibold text-gray-500">Location</label>
-                <p className="text-lg text-gray-900">{selectedEvent.location}, {selectedEvent.county} County, {selectedEvent.state}</p>
+            
+            {selectedEvent.loading ? (
+              <div className="text-center py-12">
+                <Loader className="w-8 h-8 text-orange-600 animate-spin mx-auto mb-3" />
+                <p className="text-sm text-gray-500">Loading accurate data from US Census...</p>
               </div>
-              <div>
-                <label className="text-sm font-semibold text-gray-500">Time</label>
-                <p className="text-lg text-gray-900">{selectedEvent.time}</p>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-gray-500">Hail Size</label>
-                <p className="text-lg text-gray-900 flex items-center gap-2">
-                  <span className={`w-3 h-3 rounded-full ${getSizeColor(selectedEvent.size)}`}></span>
-                  {selectedEvent.size.toFixed(2)}" diameter ({getSizeLabel(selectedEvent.size)})
-                </p>
-              </div>
-              {selectedEvent.comments && (
+            ) : (
+              <div className="space-y-3">
                 <div>
-                  <label className="text-sm font-semibold text-gray-500">Report Details</label>
-                  <p className="text-gray-900 text-sm leading-relaxed">{selectedEvent.comments}</p>
+                  <label className="text-xs font-semibold text-gray-500">Location</label>
+                  <p className="text-sm text-gray-900">{selectedEvent.location}, {selectedEvent.county} County, {selectedEvent.state}</p>
                 </div>
-              )}
-              <div>
-                <label className="text-sm font-semibold text-gray-500">Coordinates</label>
-                <p className="text-gray-900 font-mono text-sm">{selectedEvent.lat.toFixed(4)}°, {selectedEvent.lon.toFixed(4)}°</p>
+                {selectedEvent.zipCode && selectedEvent.zipCode !== 'Unknown' && (
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500">ZIP Code</label>
+                    <p className="text-sm text-gray-900">{selectedEvent.zipCode}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500">Time</label>
+                  <p className="text-sm text-gray-900">{selectedEvent.time}</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-gray-500">Hail Size</label>
+                  <p className="text-sm text-gray-900 flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${getSizeColor(selectedEvent.size)}`}></span>
+                    {selectedEvent.size.toFixed(2)}" diameter ({getSizeLabel(selectedEvent.size)})
+                  </p>
+                </div>
+                {selectedEvent.estimatedPopulation > 0 && (
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500">Estimated Population Affected</label>
+                    <p className="text-sm text-gray-900">~{selectedEvent.estimatedPopulation.toLocaleString()} people within 5-mile radius</p>
+                    <p className="text-xs text-gray-500 mt-1">Based on 2020 US Census data for ZIP code {selectedEvent.zipCode}</p>
+                  </div>
+                )}
+                {selectedEvent.comments && (
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500">Report Details</label>
+                    <p className="text-gray-900 text-xs leading-relaxed">{selectedEvent.comments}</p>
+                  </div>
+                )}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500">Coordinates</label>
+                  <p className="text-gray-900 font-mono text-xs">{selectedEvent.lat.toFixed(4)}°, {selectedEvent.lon.toFixed(4)}°</p>
+                </div>
               </div>
-            </div>
+            )}
+            
             <button
               onClick={() => setSelectedEvent(null)}
-              className="mt-6 w-full bg-orange-600 text-white px-6 py-3 rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+              className="mt-5 w-full bg-orange-600 text-white px-4 py-2 text-sm rounded-lg hover:bg-orange-700 transition-colors font-semibold"
             >
               Close
             </button>

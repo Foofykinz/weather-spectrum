@@ -190,7 +190,7 @@ export default function Home() {
             </div>
 
             <p className="text-xl text-stone-600 mb-10 leading-relaxed max-w-xl">
-              Accurate hype-free forcasts from expert meteorologists and seasoned storm chasers.
+              Accurate hype-free forecasts from expert meteorologists and seasoned storm chasers.
             </p>
             
             <a href="/forecast" className="group bg-gradient-to-r from-orange-600 to-amber-600 text-white px-8 py-4 rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all transform hover:scale-[1.02] inline-block">
