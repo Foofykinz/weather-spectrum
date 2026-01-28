@@ -124,13 +124,16 @@ export default function App() {
             <Route path="/history" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Weather History - Coming Soon</h1></div>} />
             <Route path="/blog" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Blog - Coming Soon</h1></div>} />
             <Route path="/gallery" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Gallery - Coming Soon</h1></div>} />
+            <Route path="/about" element={<div className="max-w-4xl mx-auto px-6 py-20"><iframe src="/about.html" className="w-full h-screen border-0" title="About"></iframe></div>} />
+            <Route path="/privacy-policy" element={<div className="max-w-4xl mx-auto px-6 py-20"><iframe src="/privacy-policy.html" className="w-full h-screen border-0" title="Privacy Policy"></iframe></div>} />
+            <Route path="/terms-of-service" element={<div className="max-w-4xl mx-auto px-6 py-20"><iframe src="/terms-of-service.html" className="w-full h-screen border-0" title="Terms of Service"></iframe></div>} />
             <Route path="/admin" element={<Admin />} />
           </Routes>
 
           {/* Footer */}
           <footer className="bg-stone-900 border-t border-stone-800 mt-20">
             <div className="max-w-7xl mx-auto px-6 py-12">
-              <div className="grid md:grid-cols-4 gap-8 mb-8">
+              <div className="grid md:grid-cols-5 gap-8 mb-8">
                 <div>
                   <h4 className="font-bold mb-4 text-orange-400 text-sm tracking-wider uppercase">Forecasts</h4>
                   <ul className="space-y-2 text-sm text-stone-400">
@@ -166,6 +169,14 @@ export default function App() {
                     <li><a href="#" className="hover:text-orange-400 transition-colors">Instagram</a></li>
                     <li><a href="#" className="hover:text-orange-400 transition-colors">Facebook</a></li>
                     <li><a href="#" className="hover:text-orange-400 transition-colors">Contact Us</a></li>
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="font-bold mb-4 text-orange-400 text-sm tracking-wider uppercase">Legal</h4>
+                  <ul className="space-y-2 text-sm text-stone-400">
+                    <li><Link to="/about" className="hover:text-orange-400 transition-colors">About</Link></li>
+                    <li><Link to="/privacy-policy" className="hover:text-orange-400 transition-colors">Privacy Policy</Link></li>
+                    <li><Link to="/terms-of-service" className="hover:text-orange-400 transition-colors">Terms of Service</Link></li>
                   </ul>
                 </div>
               </div>
