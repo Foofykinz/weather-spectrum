@@ -6,6 +6,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Zap } from 'lucide-react';
 import Home from './pages/home';
+import CookieConsent from './components/CookieConsent';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -186,6 +187,7 @@ export default function App() {
             </div>
           </footer>
         </div>
+        <CookieConsent /> 
       </div>
     </Router>
   );
