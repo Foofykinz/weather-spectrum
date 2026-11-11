@@ -23,6 +23,7 @@ function formatAge(min) {
 // Shows exactly which scan is on screen, how old it is, and any problems.
 export default function RadarStatus({ product, station, frame, now, tileErrors }) {
   const where = product.scope === 'site' ? (station ? `${station.icao} · ${station.name}` : 'No station') : product.coverage;
+  const tilt = product.elevation ? ` · ${product.elevation} tilt` : '';
 
   let body;
   if (frame.status === 'needs-station') {
@@ -32,7 +33,7 @@ export default function RadarStatus({ product, station, frame, now, tileErrors }
   } else if (frame.status === 'error') {
     const msg =
       frame.error?.code === 'NO_DATA'
-        ? `${station?.icao || 'This radar'} has no recent data. It may be offline for maintenance — try a neighboring radar.`
+        ? `${product.name} isn't available for ${station?.icao || 'this radar'} right now. The radar may be offline, or this product isn't offered for it — try a neighboring radar or another product.`
         : `Radar data is unavailable right now (${frame.error?.message || 'unknown error'}). Retrying automatically.`;
     body = <p className="text-red-300">{msg}</p>;
   } else {
@@ -69,6 +70,7 @@ export default function RadarStatus({ product, station, frame, now, tileErrors }
     <div className="rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 py-2 shadow-lg text-xs leading-snug">
       <div className="text-slate-400 mb-0.5 truncate">
         <span className="text-slate-200 font-semibold">{product.name}</span> · {where}
+        {tilt}
       </div>
       {body}
     </div>

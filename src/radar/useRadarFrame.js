@@ -7,16 +7,22 @@ import { useEffect, useRef, useState } from 'react';
 //  - Map tiles are requested only when that timestamp actually changes.
 //  - It pauses while the browser tab is hidden and checks again on return.
 //
-// Returns { status, validTime, tileUrl, details, error, checkedAt }
+// Returns { status, validTime, layer, details, error, checkedAt }
 //   status: 'loading' | 'ok' | 'error' | 'needs-station'
+//   layer:  map layer description from the product (see products.js)
 
-export function useRadarFrame(product, siteId) {
+export function useRadarFrame(product, site) {
   const [frame, setFrame] = useState({ status: 'loading' });
   const lastValid = useRef(null);
+  const siteId = site?.id;
+  // Which product + station a result belongs to. Results for anything else
+  // (e.g. in the instant after switching products) are never shown.
+  const key = `${product.id}:${siteId || ''}`;
+  const needsStation = product.scope === 'site' && !site;
 
   useEffect(() => {
-    if (product.scope === 'site' && !siteId) {
-      setFrame({ status: 'needs-station' });
+    if (needsStation) {
+      setFrame({ status: 'needs-station', key });
       return undefined;
     }
 
@@ -24,30 +30,32 @@ export function useRadarFrame(product, siteId) {
     let timer = null;
     let controller = null;
     lastValid.current = null;
-    setFrame({ status: 'loading' });
+    setFrame({ status: 'loading', key });
 
     const check = async () => {
       clearTimeout(timer);
       controller?.abort();
       controller = new AbortController();
       try {
-        const { validTime, details } = await product.latest(siteId, controller.signal);
+        const { validTime, details } = await product.latest(site, controller.signal);
         if (cancelled) return;
         const changed = lastValid.current !== validTime.getTime();
         lastValid.current = validTime.getTime();
         setFrame((prev) => ({
+          key,
           status: 'ok',
           validTime,
           details,
-          // Keep the same URL string if nothing changed, so the map doesn't redraw.
-          tileUrl: changed || !prev.tileUrl ? product.render.tileUrl(siteId, validTime) : prev.tileUrl,
+          // Keep the same layer object if nothing changed, so the map doesn't redraw.
+          layer: changed || !prev.layer ? product.layer(site, validTime) : prev.layer,
           checkedAt: new Date(),
           error: null,
         }));
       } catch (err) {
+        // Aborted = a newer check replaced this one; that check schedules the next.
         if (cancelled || err.name === 'AbortError') return;
         // Keep showing the last good image (if any), but say clearly that updating failed.
-        setFrame((prev) => ({ ...prev, status: prev.tileUrl ? 'ok' : 'error', error: err, checkedAt: new Date() }));
+        setFrame((prev) => ({ ...prev, status: prev.layer ? 'ok' : 'error', error: err, checkedAt: new Date() }));
       }
       if (!cancelled && !document.hidden) timer = setTimeout(check, product.pollSeconds * 1000);
     };
@@ -65,8 +73,9 @@ export function useRadarFrame(product, siteId) {
       controller?.abort();
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [product, siteId]);
+  }, [product, siteId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  if (frame.key !== key) return { status: needsStation ? 'needs-station' : 'loading', key };
   return frame;
 }
 

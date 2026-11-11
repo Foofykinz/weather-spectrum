@@ -27,26 +27,40 @@ function Panes() {
 // Radar imagery layer. When a new scan arrives, the new tiles load on top of
 // the old ones and the old layer is removed only once the new one is ready,
 // so the radar never blinks out while updating.
-function RadarTiles({ url, opacity, maxNativeZoom, attribution, onTileErrors }) {
+// Build a Leaflet layer from a product's layer description:
+//   { kind: 'xyz', url }          ready-made map tiles (e.g. IEM)
+//   { kind: 'wms', url, params }  map images rendered on request (e.g. NWS)
+function createRadarLayer(spec, { opacity, maxNativeZoom, attribution }) {
+  const common = {
+    pane: 'radar',
+    opacity,
+    maxZoom: 18,
+    attribution,
+    // Fewer requests on mobile: don't load tiles mid-pan, keep a small buffer.
+    updateWhenIdle: true,
+    keepBuffer: 1,
+    crossOrigin: true,
+    // Skip requests outside the product's coverage area.
+    ...(spec.bounds ? { bounds: L.latLngBounds(spec.bounds) } : {}),
+  };
+  if (spec.kind === 'wms') {
+    // 512px images: a quarter as many requests as 256px tiles, same sharpness,
+    // because the server renders each image fresh for exactly this area.
+    return L.tileLayer.wms(spec.url, { ...common, ...spec.params, tileSize: 512 });
+  }
+  return L.tileLayer(spec.url, { ...common, maxNativeZoom });
+}
+
+function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors }) {
   const map = useMap();
   const current = useRef(null);
   const errorCb = useRef(onTileErrors);
   errorCb.current = onTileErrors;
 
   useEffect(() => {
-    if (!url) return undefined;
+    if (!spec) return undefined;
     let errors = 0;
-    const layer = L.tileLayer(url, {
-      pane: 'radar',
-      opacity,
-      maxNativeZoom,
-      maxZoom: 18,
-      attribution,
-      // Fewer requests on mobile: don't load tiles mid-pan, keep a small buffer.
-      updateWhenIdle: true,
-      keepBuffer: 1,
-      crossOrigin: true,
-    });
+    const layer = createRadarLayer(spec, { opacity, maxNativeZoom, attribution });
     const previous = current.current;
     current.current = layer;
     errorCb.current?.(0);
@@ -66,7 +80,7 @@ function RadarTiles({ url, opacity, maxNativeZoom, attribution, onTileErrors }) 
     }, 8000);
 
     return () => clearTimeout(t);
-  }, [url, map, maxNativeZoom, attribution]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [spec, map, maxNativeZoom, attribution]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     current.current?.setOpacity(opacity);
@@ -139,7 +153,7 @@ function StationMarkers({ selectedId, onSelect }) {
 
 export default function RadarMap({
   product,
-  tileUrl,
+  layer,
   opacity,
   initialView,
   onViewChange,
@@ -162,9 +176,9 @@ export default function RadarMap({
     >
       <Panes />
       <VectorBasemap labelsPane="labels" onError={onBasemapError} />
-      {tileUrl && (
+      {layer && (
         <RadarTiles
-          url={tileUrl}
+          spec={layer}
           opacity={opacity}
           maxNativeZoom={product.maxNativeZoom}
           attribution={product.attribution}

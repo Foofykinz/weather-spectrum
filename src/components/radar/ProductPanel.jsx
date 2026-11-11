@@ -60,6 +60,9 @@ export default function ProductPanel({
                     <span className="text-[10px] uppercase text-slate-500">{p.scope === 'site' ? 'Single site' : 'Mosaic'}</span>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5 leading-snug">{p.description}</p>
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    {[p.elevation && `${p.elevation} tilt`, p.resolution, `Source: ${p.source}`].filter(Boolean).join(' · ')}
+                  </p>
                 </button>
               );
             })}
@@ -122,7 +125,7 @@ export default function ProductPanel({
       </section>
 
       <p className="px-4 pb-3 text-[11px] text-slate-500 leading-snug">
-        Velocity, dual-polarization and other products will appear here as they are added.
+        More dual-polarization and storm products will appear here as they are added.
       </p>
     </div>
   );

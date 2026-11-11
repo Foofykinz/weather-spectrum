@@ -33,6 +33,11 @@ export function iemTileUrl(site, product, validTime) {
   return `${IEM}/cache/tile.py/1.0.0/ridge::${site}-${product}-${toIemStamp(validTime)}/{z}/{x}/{y}.png`;
 }
 
+// Map layer description for the renderer (see RadarMap).
+export function iemXyzLayer(site, product, validTime) {
+  return { kind: 'xyz', url: iemTileUrl(site, product, validTime) };
+}
+
 // Ask IEM what the newest available scan is. These files are tiny (~150 bytes).
 export async function fetchIemLatest(site, product, signal) {
   const url =

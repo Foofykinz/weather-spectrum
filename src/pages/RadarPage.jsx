@@ -50,8 +50,7 @@ export default function RadarPage() {
   const [tileErrors, setTileErrors] = useState(0);
   const [basemapError, setBasemapError] = useState(null);
 
-  const siteId = product.scope === 'site' ? station?.id : undefined;
-  const frame = useRadarFrame(product, siteId);
+  const frame = useRadarFrame(product, product.scope === 'site' ? station : null);
   const now = useNow();
 
   const updateParams = useCallback(
@@ -111,7 +110,7 @@ export default function RadarPage() {
     <div className="fixed inset-0 z-[55] bg-[#0b0f17] text-slate-200">
       <RadarMap
         product={product}
-        tileUrl={frame.status === 'ok' ? frame.tileUrl : null}
+        layer={frame.status === 'ok' ? frame.layer : null}
         opacity={opacity}
         initialView={initialView}
         onViewChange={onViewChange}
@@ -177,7 +176,7 @@ export default function RadarPage() {
       {/* Bottom-left legend; leaves room for zoom buttons and attribution on the right. */}
       <div className="pointer-events-none absolute left-2 right-16 bottom-10 sm:left-3 sm:right-auto sm:bottom-7 sm:w-96 z-[1000]">
         <div className="pointer-events-auto">
-          <RadarLegend product={product} />
+          <RadarLegend product={product} frame={frame} />
         </div>
       </div>
     </div>
