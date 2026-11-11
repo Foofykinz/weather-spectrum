@@ -87,7 +87,7 @@ export default function ProductPanel({
                 <optgroup key={state} label={state}>
                   {list.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.icao} — {s.name}
+                      {s.icao} · {s.name}
                     </option>
                   ))}
                 </optgroup>

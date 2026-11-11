@@ -13,7 +13,8 @@
 //  - decoding/drawing runs in a background worker (main thread stays smooth)
 //  - recent results are cached, so switching back costs nothing
 
-import { groundDistAz, slantRangeKm, beamHeightKm, buildAzimuthTable, levelToValue } from '../level3/geometry';
+import { groundDistAz, slantRangeKm, beamHeightKm, buildAzimuthTable } from '../level3/geometry';
+import { makeScaler } from '../level3/scaling';
 
 const BUCKET = 'https://unidata-nexrad-level3.s3.amazonaws.com';
 
@@ -62,6 +63,40 @@ async function latestKey(site, code, signal) {
   const err = new Error('No recent scans for this product at this radar.');
   err.code = 'NO_DATA';
   throw err;
+}
+
+// ---- which elevation tilts exist right now, and their real angles
+// One ~1 KB listing per tilt, plus the first 400 bytes of each newest file
+// (enough to read the elevation angle from its header). Results are cached
+// per file, so this costs almost nothing after the first call.
+const angleCache = new Map(); // file key -> elevation angle (deg)
+
+async function readElevation(key, signal) {
+  if (angleCache.has(key)) return angleCache.get(key);
+  const res = await fetch(`${BUCKET}/${key}`, { signal, headers: { Range: 'bytes=0-399' } });
+  if (!res.ok) throw new Error(`Level III archive returned ${res.status}.`);
+  const b = new Uint8Array(await res.arrayBuffer());
+  let mh = -1;
+  for (let i = 0; i < b.length - 1; i++) if (b[i] === 0xff && b[i + 1] === 0xff) { mh = i - 18; break; }
+  if (mh < 0 || mh + 60 > b.length) throw new Error('Unreadable Level III header.');
+  const elev = new DataView(b.buffer).getInt16(mh + 58) / 10; // halfword 30
+  angleCache.set(key, elev);
+  return elev;
+}
+
+export async function listLevel3Tilts(site, letter, tilts, signal) {
+  const found = await Promise.all(
+    tilts.map(async (tilt) => {
+      try {
+        const key = await latestKey(site.id, `${tilt}${letter}`, signal);
+        return { tilt, key, elevation: await readElevation(key, signal) };
+      } catch (err) {
+        if (err.name === 'AbortError') throw err;
+        return null; // this tilt isn't available right now
+      }
+    })
+  );
+  return found.filter(Boolean).sort((a, b) => a.elevation - b.elevation);
 }
 
 // Small cache of processed scans (each holds a drawn image, so keep it short).
@@ -130,7 +165,8 @@ export function probeLevel3(details, lat, lon) {
   const rad = r.azTable[Math.floor(az * 10) % 3600];
   if (rad < 0) return { ...base, status: 'no-radial' };
   const level = r.data[rad * r.nbins + bin];
-  if (level === 0) return { ...base, status: 'below-threshold' };
-  if (level === 1) return { ...base, status: 'range-folded' };
-  return { ...base, status: 'value', value: levelToValue(level, r.scale, r.offset), level, radialStart: r.starts[rad], bin };
+  const scaler = r.scaler || (r.scaler = makeScaler(r));
+  const flag = scaler.flag(level);
+  if (flag) return { ...base, status: flag };
+  return { ...base, status: 'value', value: scaler.value(level), topped: scaler.topped(level), level, radialStart: r.starts[rad], bin };
 }

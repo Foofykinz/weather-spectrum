@@ -5,10 +5,14 @@
 // first dual-pol products need is implemented; anything else is rejected
 // rather than guessed.
 
-import { decompress } from 'bz2';
+// 'bz2' is a CommonJS package; the default import works in both Vite and Node.
+import bz2 from 'bz2';
 
-// Range-bin length (km) for the products we support.
-const BIN_KM = { 159: 0.25, 161: 0.25, 163: 0.25 };
+const { decompress } = bz2;
+
+// Range-bin length (km) for the products we support:
+// dual-pol products 0.25 km to 300 km; Digital VIL / Enhanced Echo Tops 1 km.
+const BIN_KM = { 159: 0.25, 161: 0.25, 163: 0.25, 134: 1, 135: 1 };
 
 export function decodeLevel3(arrayBuffer) {
   const bytes = new Uint8Array(arrayBuffer);
@@ -33,9 +37,13 @@ export function decodeLevel3(arrayBuffer) {
   const scanDate = uhw(21);                                 // days since 1970-01-01 (day 1 = 1 Jan 1970)
   const scanSecs = view.getUint32(mh + 42);                 // seconds after midnight UTC
   const scanTime = new Date(((scanDate - 1) * 86400 + scanSecs) * 1000);
-  const elevation = hw(30) / 10;
-  const scale = view.getFloat32(mh + 60);                   // halfwords 31-32
-  const offset = view.getFloat32(mh + 64);                  // halfwords 33-34
+  // Halfword 30 is the elevation angle for single-tilt products. Volume products
+  // (134 Digital VIL, 135 Enhanced Echo Tops) combine all tilts and use that
+  // halfword for something else, so report 0 = "no single tilt".
+  const elevation = product === 134 || product === 135 ? 0 : hw(30) / 10;
+  const scale = view.getFloat32(mh + 60);                   // halfwords 31-32 (dual-pol products)
+  const offset = view.getFloat32(mh + 64);                  // halfwords 33-34 (dual-pol products)
+  const thresholds = Array.from({ length: 16 }, (_, i) => uhw(31 + i)); // raw halfwords 31-46
   const compression = hw(51);
   const symOffset = view.getUint32(mh + 108) * 2;           // halfwords 55-56, in halfwords
 
@@ -64,7 +72,7 @@ export function decodeLevel3(arrayBuffer) {
   }
 
   return {
-    product, lat, lon, vcp, scanTime, elevation, scale, offset,
+    product, lat, lon, vcp, scanTime, elevation, scale, offset, thresholds,
     firstBin, nbins, nrad, binKm: BIN_KM[product], data, starts, deltas,
   };
 }

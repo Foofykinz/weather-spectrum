@@ -8,6 +8,7 @@
 
 import { decodeLevel3 } from './decode';
 import { buildAzimuthTable, slantRangeKm, boundsAround, EARTH_KM } from './geometry';
+import { makeScaler } from './scaling';
 
 const RAD = Math.PI / 180;
 const mercY = (lat) => Math.log(Math.tan(Math.PI / 4 + (lat * RAD) / 2));
@@ -21,10 +22,12 @@ function hexToAbgr(hex) {
 // 256-entry color lookup: data level -> packed RGBA (0 = transparent).
 function buildLut(dec, colors) {
   const lut = new Uint32Array(256);
-  lut[1] = hexToAbgr(colors.rangeFolded);
+  const scaler = makeScaler(dec);
   const stops = colors.stops;
-  for (let n = 2; n < 256; n++) {
-    const v = (n - dec.offset) / dec.scale;
+  for (let n = 0; n < 256; n++) {
+    if (scaler.flag(n) === 'range-folded') { lut[n] = hexToAbgr(colors.rangeFolded); continue; }
+    const v = scaler.value(n);
+    if (v == null) continue; // below threshold / no data: transparent
     let c = stops[0][1];
     for (let i = 0; i < stops.length && stops[i][0] <= v; i++) c = stops[i][1];
     lut[n] = hexToAbgr(c);
@@ -106,7 +109,7 @@ self.onmessage = (e) => {
         id, ok: true,
         meta: {
           product: dec.product, lat: dec.lat, lon: dec.lon, vcp: dec.vcp, scanTime: dec.scanTime.getTime(),
-          elevation: dec.elevation, scale: dec.scale, offset: dec.offset, firstBin: dec.firstBin,
+          elevation: dec.elevation, scale: dec.scale, offset: dec.offset, thresholds: dec.thresholds, firstBin: dec.firstBin,
           nbins: dec.nbins, nrad: dec.nrad, binKm: dec.binKm,
         },
         data: dec.data, starts: dec.starts, deltas: dec.deltas,

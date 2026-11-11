@@ -1,11 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Layers, ArrowLeft } from 'lucide-react';
+import { Layers, ArrowLeft, Zap } from 'lucide-react';
 import RadarMap from '../components/radar/RadarMap';
 import RadarLegend from '../components/radar/RadarLegend';
 import RadarStatus from '../components/radar/RadarStatus';
 import ProductPanel from '../components/radar/ProductPanel';
-import { getProduct, DEFAULT_PRODUCT_ID } from '../radar/products';
+import TiltSelector from '../components/radar/TiltSelector';
+import LightningStatus from '../components/radar/LightningStatus';
+import { getProduct, DEFAULT_PRODUCT_ID, LEVEL3_TILTS } from '../radar/products';
+import { listLevel3Tilts } from '../radar/providers/level3';
 import { getStation, nearestStation } from '../radar/stations';
 import { useRadarFrame, useNow } from '../radar/useRadarFrame';
 
@@ -26,7 +29,7 @@ function writeStored(key, value) {
   try {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {
-    /* storage unavailable — ignore */
+    /* storage unavailable; ignore */
   }
 }
 
@@ -50,8 +53,28 @@ export default function RadarPage() {
   const [tileErrors, setTileErrors] = useState(0);
   const [basemapError, setBasemapError] = useState(null);
 
-  const frame = useRadarFrame(product, product.scope === 'site' ? station : null);
+  // Elevation tilt (Level III products only), also kept in the URL: &tilt=NA
+  const tiltParam = params.get('tilt');
+  const tilt = product.tiltLetter ? (LEVEL3_TILTS.includes(tiltParam) ? tiltParam : 'N0') : undefined;
+  const lightningOn = params.get('ltg') === '1';
+  const [lightningStatus, setLightningStatus] = useState(null);
+
+  const frame = useRadarFrame(product, product.scope === 'site' ? station : null, tilt);
   const now = useNow();
+
+  // Which tilts exist right now (and their real angles). Refreshed when a new scan arrives.
+  const [tiltInfo, setTiltInfo] = useState({ key: null, tilts: [] });
+  const tiltKey = product.tiltLetter && station ? `${station.id}:${product.tiltLetter}` : null;
+  const scanTime = frame.validTime?.getTime();
+  useEffect(() => {
+    if (!tiltKey) return undefined;
+    const controller = new AbortController();
+    listLevel3Tilts(station, product.tiltLetter, LEVEL3_TILTS, controller.signal)
+      .then((tilts) => setTiltInfo({ key: tiltKey, tilts }))
+      .catch(() => {}); // the selector simply stays hidden if this fails
+    return () => controller.abort();
+  }, [tiltKey, scanTime]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tilts = tiltInfo.key === tiltKey ? tiltInfo.tilts : [];
 
   const updateParams = useCallback(
     (changes) => {
@@ -103,7 +126,7 @@ export default function RadarPage() {
   }, []);
   useEffect(() => {
     const label = product.scope === 'site' && station ? `${station.icao} ${product.short}` : product.short;
-    document.title = `${label} — Radar | The Weather Spectrum`;
+    document.title = `${label} | Radar | Weather Spectrum`;
   }, [product, station]);
 
   return (
@@ -120,15 +143,17 @@ export default function RadarPage() {
         onSelectStation={selectStation}
         onTileErrors={setTileErrors}
         onBasemapError={setBasemapError}
+        lightning={lightningOn}
+        onLightningStatus={setLightningStatus}
       />
 
       {/* Top-left: navigation, product button, status. pointer-events-none lets
           map drags pass through the empty space between controls. */}
-      <div className="pointer-events-none absolute top-0 left-0 right-0 z-[1000] p-2 sm:p-3 flex flex-col gap-2 sm:max-w-sm">
+      <div className="pointer-events-none absolute top-0 left-0 right-0 z-[1000] p-2 sm:p-3 flex flex-col gap-2 sm:max-w-md">
         <div className="pointer-events-auto flex items-center gap-2">
           <Link
             to="/"
-            className="flex items-center gap-1.5 rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 shadow-lg"
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 shadow-lg"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Weather Spectrum</span>
@@ -137,7 +162,7 @@ export default function RadarPage() {
             type="button"
             onClick={() => setPanelOpen((o) => !o)}
             aria-expanded={panelOpen}
-            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
+            className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
               panelOpen
                 ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
@@ -146,6 +171,20 @@ export default function RadarPage() {
             <Layers className="w-4 h-4" />
             <span>{product.short}</span>
             {product.scope === 'site' && station && <span className="text-amber-300">{station.icao}</span>}
+          </button>
+          <button
+            type="button"
+            onClick={() => updateParams({ ltg: lightningOn ? null : '1' })}
+            aria-pressed={lightningOn}
+            title="Lightning overlay"
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
+              lightningOn
+                ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
+                : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Zap className="w-4 h-4" />
+            <span className="hidden sm:inline">Lightning</span>
           </button>
         </div>
 
@@ -165,6 +204,16 @@ export default function RadarPage() {
         {!panelOpen && (
           <div className="pointer-events-auto">
             <RadarStatus product={product} station={station} frame={frame} now={now} tileErrors={tileErrors} />
+            {product.tiltLetter && station && (
+              <div className="mt-2">
+                <TiltSelector
+                  tilts={tilts}
+                  selected={tilt}
+                  onSelect={(t) => updateParams({ tilt: t === 'N0' ? null : t })}
+                  loading={!tilts.length}
+                />
+              </div>
+            )}
             {basemapError && (
               <p className="mt-2 rounded-lg border border-amber-700/60 bg-slate-900/85 px-3 py-1.5 text-xs text-amber-300">
                 Background map couldn&apos;t load. Radar data is still shown.
@@ -177,6 +226,7 @@ export default function RadarPage() {
       {/* Bottom-left legend; leaves room for zoom buttons and attribution on the right. */}
       <div className="pointer-events-none absolute left-2 right-16 bottom-10 sm:left-3 sm:right-auto sm:bottom-7 sm:w-96 z-[1000]">
         <div className="pointer-events-auto">
+          {lightningOn && <LightningStatus status={lightningStatus} now={now} />}
           <RadarLegend product={product} frame={frame} />
         </div>
       </div>

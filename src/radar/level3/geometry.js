@@ -41,13 +41,6 @@ export function boundsAround(lat, lon, km) {
   return [[lat - dLat, lon - dLon], [lat + dLat, lon + dLon]];
 }
 
-// Data level -> physical value for products 159/161/163 (ICD scale/offset).
-// Level 0 = below signal threshold, 1 = range folded, 2..255 = data.
-export function levelToValue(level, scale, offset) {
-  if (level < 2) return null;
-  return (level - offset) / scale;
-}
-
 // Map an azimuth to the radial that covers it, at 0.1° resolution.
 export function buildAzimuthTable(starts, deltas) {
   const table = new Int16Array(3600).fill(-1);

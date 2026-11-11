@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { STATIONS } from '../../radar/stations';
 import VectorBasemap from './VectorBasemap';
+import LightningLayer from './LightningLayer';
 
 // Map layer stacking (bottom to top):
 //   dark basemap  ->  radar  ->  borders & place names  ->  station markers
@@ -129,11 +130,15 @@ function ValueProbe({ product, details }) {
       const kft = (km) => (km * 3.28084).toFixed(1);
       const where = `${r.groundKm.toFixed(1)} km at ${r.azimuth.toFixed(0)}° from radar`;
       let main;
-      if (r.status === 'value') main = `<b>${product.short.replace('Site ', '')} ${product.probeFormat(r.value)}</b>`;
-      else if (r.status === 'below-threshold') main = 'No data (below signal threshold)';
+      if (r.status === 'value') {
+        main = `<b>${product.probeFormat(r.value)}</b>`;
+        if (r.topped) main += '<br>Topped: echo continues above the highest scanned tilt, so the true top may be higher';
+      } else if (r.status === 'below-threshold') main = 'No data (below signal threshold)';
       else if (r.status === 'range-folded') main = 'Range folded (no reliable value)';
+      else if (r.status === 'no-data') main = 'No data (flagged by the radar)';
       else main = 'Outside radar coverage';
-      const beam = r.status === 'out-of-range' ? '' : `<br>${r.elevation}° beam ≈ ${kft(r.beamKm)} kft above radar`;
+      // Volume products (elevation 0 in the file) combine all tilts, so there is no single beam height.
+      const beam = r.status === 'out-of-range' || !r.elevation ? '' : `<br>${r.elevation}° beam ≈ ${kft(r.beamKm)} kft above radar`;
       L.popup({ className: 'ws-radar-popup', autoPan: false })
         .setLatLng(e.latlng)
         .setContent(`${main}<br><span style="color:#94a3b8">${where}${beam}</span>`)
@@ -209,6 +214,8 @@ export default function RadarMap({
   onTileErrors,
   onBasemapError,
   details,
+  lightning,
+  onLightningStatus,
 }) {
   return (
     <MapContainer
@@ -235,6 +242,7 @@ export default function RadarMap({
       {showStations && <StationMarkers selectedId={station?.id} onSelect={onSelectStation} />}
       {showStations && <FlyToStation station={station} />}
       <ValueProbe product={product} details={layer ? details : null} />
+      {lightning && <LightningLayer onStatus={onLightningStatus} />}
       <ViewWatcher onViewChange={onViewChange} />
       <ZoomButtons />
     </MapContainer>

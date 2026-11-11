@@ -33,6 +33,10 @@ import { fetchIemLatest, iemXyzLayer, IEM_ATTRIBUTION } from './providers/iem';
 import { fetchNwsLatest, nwsWmsLayer, NWS_ATTRIBUTION } from './providers/nws';
 import { fetchLevel3Latest, probeLevel3, LEVEL3_ATTRIBUTION } from './providers/level3';
 import nwsCcColors from './level3/nws-cc-colors.json';
+import nwsZdrColors from './level3/nws-zdr-colors.json';
+import nwsKdpColors from './level3/nws-kdp-colors.json';
+import nwsEetColors from './level3/nws-eet-colors.json';
+import nwsDvlColors from './level3/nws-dvl-colors.json';
 
 // Shared defaults for single-radar products: a radar finishes a volume scan
 // every ~4-10 minutes depending on its scan strategy (VCP).
@@ -51,6 +55,41 @@ const withBounds = (layer, bounds) => ({ ...layer, bounds });
 // Extent of NWS's national ("conus") MRMS layers, from their capabilities file.
 const NWS_CONUS_BOUNDS = [[20, -130], [55, -60]];
 const MRMS_TIMING = { pollSeconds: 60, freshness: { delayedAfterMin: 10, staleAfterMin: 20 } };
+
+// Elevation tilts published for Level III dual-pol products, lowest first by
+// convention (N0 = lowest). Actual angles depend on the scan strategy and are
+// read from each file, never assumed.
+export const LEVEL3_TILTS = ['N0', 'NA', 'N1', 'NB', 'N2', 'N3'];
+
+// Dual-polarization products decoded in the browser from NOAA Level III data
+// (product codes 161 CC, 159 ZDR, 163 KDP). Values are exact, tilt-selectable,
+// and can be read by tapping the map. `letter` is the product letter in the
+// file name (N0C, NAX, N1K, ...).
+function dualPol({ id, letter, colors, name, short, description, legend, probeFormat }) {
+  return {
+    id,
+    name,
+    short,
+    group: 'Dual-Pol',
+    description: `${description} Tap the map to read exact values.`,
+    scope: 'site',
+    coverage: 'Single radar, 300 km',
+    elevation: null, // read from the file
+    // Level III dual-pol products: 0.25 km range bins, 1° radials.
+    resolution: 'Native Level III (0.25 km × 1°)',
+    source: 'NOAA Level III',
+    tiltLetter: letter,
+    layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds }),
+    latest: (site, signal, { tilt = 'N0' } = {}) => fetchLevel3Latest(site, `${tilt}${letter}`, colors, signal),
+    probe: probeLevel3,
+    probeFormat,
+    // Files reach the archive ~3-4 min after the scan; listing checks are ~1 KB.
+    pollSeconds: 60,
+    freshness: SITE_TIMING.freshness,
+    legend,
+    attribution: LEVEL3_ATTRIBUTION,
+  };
+}
 
 export const RADAR_PRODUCTS = [
   {
@@ -80,7 +119,7 @@ export const RADAR_PRODUCTS = [
     short: 'Mosaic CREF',
     group: 'Reflectivity',
     description:
-      'The strongest echo at any height in each column, from all radar tilts — not just the lowest. Reveals cores aloft, but can overstate what reaches the ground.',
+      'The strongest echo at any height in each column, from all radar tilts, not just the lowest. Reveals cores aloft, but can overstate what reaches the ground.',
     scope: 'mosaic',
     coverage: 'Continental U.S.',
     elevation: null,
@@ -168,31 +207,39 @@ export const RADAR_PRODUCTS = [
     legend: 'nws-hc',
     attribution: NWS_ATTRIBUTION,
   },
-  {
-    // Proof of concept: decoded in the browser from NOAA Level III data,
-    // so values are exact and can be read by tapping the map.
+  dualPol({
     id: 'site-cc',
+    letter: 'C',
+    colors: nwsCcColors,
     name: 'Correlation Coefficient',
     short: 'Site CC',
-    group: 'Dual-Pol',
     description:
-      'How similar the horizontal and vertical radar returns are. Near 1 = uniform rain or snow; lower = mixed targets such as hail, melting snow, debris or birds. Tap the map to read exact values.',
-    scope: 'site',
-    coverage: 'Single radar, 300 km',
-    elevation: '0.5°',
-    // Level III dual-pol products: 0.25 km range bins, 1° radials.
-    resolution: 'Native Level III (0.25 km × 1°)',
-    source: 'NOAA Level III',
-    layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds }),
-    latest: (site, signal) => fetchLevel3Latest(site, 'N0C', nwsCcColors, signal),
-    probe: probeLevel3,
-    probeFormat: (v) => v.toFixed(3),
-    // Files reach the archive ~3-4 min after the scan; listing checks are ~1 KB.
-    pollSeconds: 60,
-    freshness: SITE_TIMING.freshness,
+      'How similar the horizontal and vertical radar returns are. Near 1 means uniform rain or snow; lower values mean mixed targets such as hail, melting snow, debris or birds.',
     legend: 'nws-cc',
-    attribution: LEVEL3_ATTRIBUTION,
-  },
+    probeFormat: (v) => `CC ${v.toFixed(3)}`,
+  }),
+  dualPol({
+    id: 'site-zdr',
+    letter: 'X',
+    colors: nwsZdrColors,
+    name: 'Differential Reflectivity',
+    short: 'Site ZDR',
+    description:
+      'Shape of the targets. Positive values mean flattened drops (larger raindrops); near zero means round targets such as hail, drizzle or dry snow.',
+    legend: 'nws-zdr',
+    probeFormat: (v) => `ZDR ${v.toFixed(2)} dB`,
+  }),
+  dualPol({
+    id: 'site-kdp',
+    letter: 'K',
+    colors: nwsKdpColors,
+    name: 'Specific Differential Phase',
+    short: 'Site KDP',
+    description:
+      'Rate of phase shift through liquid water. High values mark heavy rain; it is not affected by hail or partial beam blockage. Only computed where there is enough signal.',
+    legend: 'nws-kdp',
+    probeFormat: (v) => `KDP ${v.toFixed(2)} °/km`,
+  }),
   {
     id: 'mosaic-echo-tops',
     name: 'Echo Tops (National, 18 dBZ)',
@@ -200,7 +247,7 @@ export const RADAR_PRODUCTS = [
     group: 'Storm structure',
     // Not the single-radar Level III Enhanced Echo Tops (EET) product.
     description:
-      'Height of the highest 18 dBZ echo in each column — a quick read on storm depth. National mosaic; not the single-radar Enhanced Echo Tops (EET) product.',
+      'Height of the highest 18 dBZ echo in each column, a quick read on storm depth. National mosaic; not the single-radar Enhanced Echo Tops (EET) product.',
     scope: 'mosaic',
     coverage: 'Continental U.S.',
     elevation: null,
@@ -212,7 +259,58 @@ export const RADAR_PRODUCTS = [
     legend: 'nws-echo-tops',
     attribution: NWS_ATTRIBUTION,
   },
+  level3Volume({
+    id: 'site-eet',
+    code: 'EET',
+    colors: nwsEetColors,
+    name: 'Enhanced Echo Tops',
+    short: 'Site EET',
+    description:
+      'Height of the highest 18 dBZ echo above each point, from this radar’s full volume scan (Level III product 135). Tap the map to read heights; topped echoes are marked.',
+    coverage: 'Single radar, ~345 km',
+    resolution: 'Level III (1 km × 1°), 1 kft steps',
+    legend: 'nws-eet',
+    probeFormat: (v) => `EET ${v.toFixed(0)} kft`,
+  }),
+  level3Volume({
+    id: 'site-dvl',
+    code: 'DVL',
+    colors: nwsDvlColors,
+    name: 'Digital VIL',
+    short: 'Site DVL',
+    description:
+      'Vertically integrated liquid: estimated liquid water in the column above each point, from the full volume scan (Level III product 134). High values often go with large hail. Tap the map to read values.',
+    coverage: 'Single radar, ~460 km',
+    resolution: 'Level III (1 km × 1°)',
+    legend: 'nws-dvl',
+    probeFormat: (v) => `VIL ${v.toFixed(1)} kg/m²`,
+  }),
 ];
+
+// Level III products computed from the whole volume scan (all tilts), so they
+// have no single elevation angle. Decoded in the browser like the dual-pol products.
+function level3Volume({ id, code, colors, name, short, description, coverage, resolution, legend, probeFormat }) {
+  return {
+    id,
+    name,
+    short,
+    group: 'Storm structure',
+    description,
+    scope: 'site',
+    coverage,
+    elevation: null,
+    resolution,
+    source: 'NOAA Level III',
+    layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds }),
+    latest: (site, signal) => fetchLevel3Latest(site, code, colors, signal),
+    probe: probeLevel3,
+    probeFormat,
+    pollSeconds: 60,
+    freshness: SITE_TIMING.freshness,
+    legend,
+    attribution: LEVEL3_ATTRIBUTION,
+  };
+}
 
 export const DEFAULT_PRODUCT_ID = 'mosaic-reflectivity';
 

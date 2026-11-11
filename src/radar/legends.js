@@ -15,6 +15,10 @@
 import nwsSrBvelLegend from './legend-images/nws-sr-bvel.png';
 import nwsBrefQcdLegend from './legend-images/nws-bref-qcd.png';
 import nwsCcColors from './level3/nws-cc-colors.json';
+import nwsZdrColors from './level3/nws-zdr-colors.json';
+import nwsKdpColors from './level3/nws-kdp-colors.json';
+import nwsEetColors from './level3/nws-eet-colors.json';
+import nwsDvlColors from './level3/nws-dvl-colors.json';
 
 export const LEGENDS = {
   // IEM N0Q / N0B reflectivity. Source: palette embedded in IEM's N0Q
@@ -104,6 +108,48 @@ export const LEGENDS = {
     note: 'Near 1 = uniform targets (rain, snow) · lower = mixed or irregular targets (hail, melting, debris, birds/insects). Tap the map to read a value.',
   },
 
+  // Differential reflectivity, drawn from Level III values with the official
+  // NWS ZDR color table. The table's first entry covers everything below -4 dB.
+  'nws-zdr': {
+    type: 'gradient',
+    units: 'dB',
+    stops: [[-4.5, nwsZdrColors.stops[0][1]], ...nwsZdrColors.stops.slice(1)],
+    max: 8,
+    ticks: [-4, -2, 0, 2, 4, 6, 8],
+    note: 'Positive = horizontally flattened targets (large raindrops) · near 0 = round or tumbling targets (hail, drizzle, dry snow). Tap the map to read a value.',
+  },
+
+  // Specific differential phase, drawn from Level III values with the official
+  // NWS KDP color table. Only computed where the radar has enough signal.
+  'nws-kdp': {
+    type: 'gradient',
+    units: '°/km',
+    stops: nwsKdpColors.stops,
+    max: 10,
+    ticks: [0, 2, 4, 6, 8, 10],
+    note: 'Higher values mark heavier liquid water content. Blank areas mean KDP was not computed there. Tap the map to read a value.',
+  },
+
+  // Enhanced Echo Tops (Level III 135), official NWS EET color table.
+  'nws-eet': {
+    type: 'gradient',
+    units: 'kft',
+    stops: nwsEetColors.stops,
+    max: 71,
+    ticks: [0, 10, 20, 30, 40, 50, 60, 70],
+    note: 'Highest 18 dBZ echo, thousands of feet. Tap the map to read a height. Single-radar product; storms far from the radar are only sampled at higher altitudes.',
+  },
+
+  // Digital VIL (Level III 134), official NWS Digital VIL color table.
+  'nws-dvl': {
+    type: 'gradient',
+    units: 'kg/m²',
+    stops: nwsDvlColors.stops,
+    max: 80,
+    ticks: [0, 10, 20, 30, 40, 50, 60, 70, 80],
+    note: 'Estimated liquid water in the column. Tap the map to read a value.',
+  },
+
   // NWS hydrometeor classification (radar.weather.gov "BDHC").
   // Categories and colors from NWS's official legend
   // (https://www.weather.gov/images/nws/radarfaq/BDHC_CT.png) and the NWS
@@ -155,6 +201,20 @@ export const LEGENDS = {
     },
     note: 'Negative (green) = toward the radar · positive (red) = away, after removing storm motion · coarse 16-level product',
   },
+};
+
+// NOAA nowCOAST lightning strike density (overlay). Classes and colors from
+// the service's own color map (WMS GetLegendGraphic, "intervals" type), which
+// is what renders the imagery. The first class (0 to 0.09) is transparent.
+export const LIGHTNING_LEGEND = {
+  units: 'strikes per km² per minute × 1000',
+  classes: [
+    [0.1, '#ffffcc'], [0.25, '#ffec78'], [0.5, '#ffff00'], [0.75, '#ffd600'], [1, '#ffa400'],
+    [2.5, '#ff7800'], [5, '#ff4500'], [10, '#ff0000'], [15, '#bc0025'], [25, '#cc0066'],
+    [50, '#ff00ff'], [75, '#800080'], [100, '#4000c0'], [150, '#0000ff'], [200, '#00c7ff'],
+    [250, '#00a264'], [300, '#00ff00'],
+  ],
+  labels: { 0: '0.1', 4: '1', 7: '10', 12: '100', 16: '300+' },
 };
 
 // Volume Coverage Patterns used in clear-air mode; all others are precipitation mode.

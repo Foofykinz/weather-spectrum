@@ -24,7 +24,9 @@ function formatAge(min) {
 export default function RadarStatus({ product, station, frame, now, tileErrors }) {
   const where = product.scope === 'site' ? (station ? `${station.icao} · ${station.name}` : 'No station') : product.coverage;
   // Prefer the elevation read from the scan itself (Level III products) over the nominal one.
-  const elev = frame.details?.elevation != null ? `${frame.details.elevation}°` : product.elevation;
+  // Volume products (EET, VIL) store elevation 0: they combine all tilts, so show none.
+  const fileElev = frame.details?.elevation;
+  const elev = fileElev ? `${fileElev}°` : fileElev === 0 ? null : product.elevation;
   const tilt = elev ? ` · ${elev} tilt` : '';
 
   let body;
@@ -35,7 +37,7 @@ export default function RadarStatus({ product, station, frame, now, tileErrors }
   } else if (frame.status === 'error') {
     const msg =
       frame.error?.code === 'NO_DATA'
-        ? `${product.name} isn't available for ${station?.icao || 'this radar'} right now. The radar may be offline, or this product isn't offered for it — try a neighboring radar or another product.`
+        ? `${product.name} isn't available for ${station?.icao || 'this radar'} right now. The radar may be offline, or this product isn't offered for it. Try a neighboring radar or another product.`
         : `Radar data is unavailable right now (${frame.error?.message || 'unknown error'}). Retrying automatically.`;
     body = <p className="text-red-300">{msg}</p>;
   } else {
@@ -52,7 +54,7 @@ export default function RadarStatus({ product, station, frame, now, tileErrors }
           <span className="text-slate-400">· {formatAge(f.ageMin)}</span>
         </div>
         {f.level === 'stale' && (
-          <p className="text-red-300 mt-0.5">This scan is old — the radar or data feed may be down. Don&apos;t rely on it for current conditions.</p>
+          <p className="text-red-300 mt-0.5">This scan is old. The radar or data feed may be down. Don&apos;t rely on it for current conditions.</p>
         )}
         {frame.error && (
           <p className="text-amber-300 mt-0.5">Couldn&apos;t check for a newer scan. Showing the last one received.</p>

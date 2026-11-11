@@ -11,13 +11,13 @@ import { useEffect, useRef, useState } from 'react';
 //   status: 'loading' | 'ok' | 'error' | 'needs-station'
 //   layer:  map layer description from the product (see products.js)
 
-export function useRadarFrame(product, site) {
+export function useRadarFrame(product, site, tilt) {
   const [frame, setFrame] = useState({ status: 'loading' });
   const lastValid = useRef(null);
   const siteId = site?.id;
-  // Which product + station a result belongs to. Results for anything else
-  // (e.g. in the instant after switching products) are never shown.
-  const key = `${product.id}:${siteId || ''}`;
+  // Which product + station (+ tilt) a result belongs to. Results for anything
+  // else (e.g. in the instant after switching products) are never shown.
+  const key = `${product.id}:${siteId || ''}:${tilt || ''}`;
   const needsStation = product.scope === 'site' && !site;
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function useRadarFrame(product, site) {
       controller?.abort();
       controller = new AbortController();
       try {
-        const { validTime, details } = await product.latest(site, controller.signal);
+        const { validTime, details } = await product.latest(site, controller.signal, { tilt });
         if (cancelled) return;
         const changed = lastValid.current !== validTime.getTime();
         lastValid.current = validTime.getTime();
@@ -73,7 +73,7 @@ export function useRadarFrame(product, site) {
       controller?.abort();
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [product, siteId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [product, siteId, tilt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (frame.key !== key) return { status: needsStation ? 'needs-station' : 'loading', key };
   return frame;
