@@ -36,6 +36,14 @@ function writeStored(key, value) {
   }
 }
 
+// Optional start position from a link: &at=lat,lon,zoom (e.g. from a city page).
+function viewFromParam(value) {
+  const [lat, lon, zoom] = String(value || '').split(',').map(Number);
+  return Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 85 && Math.abs(lon) <= 180
+    ? { lat, lon, zoom: Number.isFinite(zoom) ? Math.min(12, Math.max(3, Math.round(zoom))) : 8 }
+    : null;
+}
+
 function SingleRadar() {
   // Product and station live in the URL, so a view can be bookmarked or shared:
   //   /radar?product=site-reflectivity&site=TLX
@@ -44,6 +52,8 @@ function SingleRadar() {
   const station = getStation((params.get('site') || '').toUpperCase());
 
   const [initialView] = useState(() => {
+    const fromLink = viewFromParam(params.get('at'));
+    if (fromLink) return fromLink;
     const v = readStored(VIEW_KEY, DEFAULT_VIEW);
     return Number.isFinite(v?.lat) && Number.isFinite(v?.lon) && Number.isFinite(v?.zoom) ? v : DEFAULT_VIEW;
   });
@@ -200,6 +210,7 @@ function SingleRadar() {
         showStations={product.scope === 'site'}
         station={station}
         onSelectStation={selectStation}
+        keepInitialView={!!viewFromParam(params.get('at'))}
         onTileErrors={setTileErrors}
         onBasemapError={setBasemapError}
         lightning={lightningOn}
@@ -210,7 +221,7 @@ function SingleRadar() {
       {/* Top-left: navigation, product button, status. pointer-events-none lets
           map drags pass through the empty space between controls. */}
       <div className="pointer-events-none absolute top-0 left-0 right-0 z-[1000] p-2 sm:p-3 flex flex-col gap-2 sm:max-w-md">
-        <div className="pointer-events-auto flex items-center gap-2">
+        <div className="pointer-events-auto flex flex-wrap items-center gap-2">
           <Link
             to="/"
             className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 shadow-lg"
@@ -327,6 +338,8 @@ function MultiRadarPage({ layout }) {
   const [params, setParams] = useSearchParams();
   const station = getStation((params.get('site') || '').toUpperCase());
   const [initialView] = useState(() => {
+    const fromLink = viewFromParam(params.get('at'));
+    if (fromLink) return fromLink;
     const v = readStored(VIEW_KEY, DEFAULT_VIEW);
     return Number.isFinite(v?.lat) && Number.isFinite(v?.lon) && Number.isFinite(v?.zoom) ? v : DEFAULT_VIEW;
   });
@@ -386,6 +399,7 @@ function MultiRadarPage({ layout }) {
       onViewChange={onViewChange}
       opacity={opacity}
       now={now}
+      keepInitialView={!!viewFromParam(params.get('at'))}
     />
   );
 }

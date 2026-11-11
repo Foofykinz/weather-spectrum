@@ -215,19 +215,27 @@ function MapSync({ group }) {
 }
 
 function ViewWatcher({ onViewChange }) {
-  useMapEvents({
+  const report = (m) => {
+    const c = m.getCenter();
+    onViewChange?.({ lat: c.lat, lon: c.lng, zoom: m.getZoom() });
+  };
+  const map = useMapEvents({
     moveend(e) {
-      const m = e.target;
-      const c = m.getCenter();
-      onViewChange?.({ lat: c.lat, lon: c.lng, zoom: m.getZoom() });
+      report(e.target);
     },
   });
+  // Also record the opening position (e.g. from a link), not only later moves.
+  useEffect(() => {
+    report(map);
+  }, [map]); // eslint-disable-line react-hooks/exhaustive-deps
   return null;
 }
 
-function FlyToStation({ station }) {
+// keepInitialView: the page opened with an explicit position (e.g. from a
+// city page link), so don't fly away from it for the initially selected radar.
+function FlyToStation({ station, keepInitialView }) {
   const map = useMap();
-  const lastId = useRef(null);
+  const lastId = useRef(keepInitialView ? station?.id : null);
   useEffect(() => {
     if (!station || station.id === lastId.current) return;
     lastId.current = station.id;
@@ -284,6 +292,8 @@ export default function RadarMap({
   syncGroup, // shared view group for multi-panel layouts
   primary = true, // the one panel that owns zoom buttons, fly-to and saved view
   splitBasemap = true,
+  embed = false, // inside a page: no scroll-wheel zoom; touch devices use the zoom buttons
+  keepInitialView = false,
 }) {
   return (
     <MapContainer
@@ -292,6 +302,8 @@ export default function RadarMap({
       minZoom={3}
       maxZoom={12}
       zoomControl={false}
+      scrollWheelZoom={!embed}
+      dragging={!(embed && L.Browser.mobile)}
       preferCanvas
       worldCopyJump
       className="ws-radar-map h-full w-full bg-[#0b0f17]"
@@ -318,7 +330,7 @@ export default function RadarMap({
         />
       )}
       {showStations && <StationMarkers selectedId={station?.id} onSelect={onSelectStation} />}
-      {showStations && primary && <FlyToStation station={station} />}
+      {showStations && primary && <FlyToStation station={station} keepInitialView={keepInitialView} />}
       <ValueProbe product={product} details={layer ? details : null} />
       {lightning && <GlmLayer onStatus={onLightningStatus} />}
       <MapSync group={syncGroup} />
