@@ -115,7 +115,6 @@ export async function fetchLevel3Latest(site, code, colors, signal) {
   };
   cache.set(key, result);
   while (cache.size > CACHE_SIZE) cache.delete(cache.keys().next().value);
-  if (typeof window !== 'undefined') window.__wsLevel3Perf = result.details.perf; // for diagnostics/tests
   return result;
 }
 

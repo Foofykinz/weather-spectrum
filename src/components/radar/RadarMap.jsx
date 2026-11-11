@@ -126,7 +126,6 @@ function ValueProbe({ product, details }) {
       if (!product.probe || !details) return;
       const r = product.probe(details, e.latlng.lat, e.latlng.lng);
       if (!r) return;
-      window.__wsLastProbe = { lat: e.latlng.lat, lon: e.latlng.lng, ...r }; // diagnostics/tests
       const kft = (km) => (km * 3.28084).toFixed(1);
       const where = `${r.groundKm.toFixed(1)} km at ${r.azimuth.toFixed(0)}° from radar`;
       let main;
