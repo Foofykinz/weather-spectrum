@@ -1,0 +1,12 @@
+name = "weather-spectrum-glm"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# Every minute: process new GOES GLM files (each covers 20 seconds).
+[triggers]
+crons = ["* * * * *"]
+
+# Processed flash data. Create once with: npx wrangler r2 bucket create weather-spectrum-glm
+[[r2_buckets]]
+binding = "GLM"
+bucket_name = "weather-spectrum-glm"

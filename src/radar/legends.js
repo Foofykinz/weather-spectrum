@@ -203,20 +203,6 @@ export const LEGENDS = {
   },
 };
 
-// NOAA nowCOAST lightning strike density (overlay). Classes and colors from
-// the service's own color map (WMS GetLegendGraphic, "intervals" type), which
-// is what renders the imagery. The first class (0 to 0.09) is transparent.
-export const LIGHTNING_LEGEND = {
-  units: 'strikes per km² per minute × 1000',
-  classes: [
-    [0.1, '#ffffcc'], [0.25, '#ffec78'], [0.5, '#ffff00'], [0.75, '#ffd600'], [1, '#ffa400'],
-    [2.5, '#ff7800'], [5, '#ff4500'], [10, '#ff0000'], [15, '#bc0025'], [25, '#cc0066'],
-    [50, '#ff00ff'], [75, '#800080'], [100, '#4000c0'], [150, '#0000ff'], [200, '#00c7ff'],
-    [250, '#00a264'], [300, '#00ff00'],
-  ],
-  labels: { 0: '0.1', 4: '1', 7: '10', 12: '100', 16: '300+' },
-};
-
 // Volume Coverage Patterns used in clear-air mode; all others are precipitation mode.
 const CLEAR_AIR_VCPS = new Set([31, 32, 35]);
 export function radarMode(vcp) {

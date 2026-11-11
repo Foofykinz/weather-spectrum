@@ -6,7 +6,7 @@ import RadarLegend from '../components/radar/RadarLegend';
 import RadarStatus from '../components/radar/RadarStatus';
 import ProductPanel from '../components/radar/ProductPanel';
 import TiltSelector from '../components/radar/TiltSelector';
-import LightningStatus from '../components/radar/LightningStatus';
+import GlmStatus from '../components/radar/GlmStatus';
 import { getProduct, DEFAULT_PRODUCT_ID, LEVEL3_TILTS } from '../radar/products';
 import { listLevel3Tilts } from '../radar/providers/level3';
 import { getStation, nearestStation } from '../radar/stations';
@@ -176,7 +176,7 @@ export default function RadarPage() {
             type="button"
             onClick={() => updateParams({ ltg: lightningOn ? null : '1' })}
             aria-pressed={lightningOn}
-            title="Lightning overlay"
+            title="Lightning (GOES GLM satellite flashes)"
             className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
               lightningOn
                 ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
@@ -226,7 +226,7 @@ export default function RadarPage() {
       {/* Bottom-left legend; leaves room for zoom buttons and attribution on the right. */}
       <div className="pointer-events-none absolute left-2 right-16 bottom-10 sm:left-3 sm:right-auto sm:bottom-7 sm:w-96 z-[1000]">
         <div className="pointer-events-auto">
-          {lightningOn && <LightningStatus status={lightningStatus} now={now} />}
+          {lightningOn && <GlmStatus status={lightningStatus} now={now} />}
           <RadarLegend product={product} frame={frame} />
         </div>
       </div>

@@ -1,0 +1,16 @@
+{
+  "name": "weather-spectrum-glm",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Extracts GOES GLM lightning flashes from NOAA's public AWS data and serves compact JSON.",
+  "scripts": {
+    "dev": "wrangler dev --test-scheduled",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "jsfive": "0.4.2"
+  },
+  "devDependencies": {
+    "wrangler": "4.59.2"
+  }
+}

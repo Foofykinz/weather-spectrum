@@ -4,7 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { STATIONS } from '../../radar/stations';
 import VectorBasemap from './VectorBasemap';
-import LightningLayer from './LightningLayer';
+import GlmLayer from './GlmLayer';
 
 // Map layer stacking (bottom to top):
 //   dark basemap  ->  radar  ->  borders & place names  ->  station markers
@@ -242,7 +242,7 @@ export default function RadarMap({
       {showStations && <StationMarkers selectedId={station?.id} onSelect={onSelectStation} />}
       {showStations && <FlyToStation station={station} />}
       <ValueProbe product={product} details={layer ? details : null} />
-      {lightning && <LightningLayer onStatus={onLightningStatus} />}
+      {lightning && <GlmLayer onStatus={onLightningStatus} />}
       <ViewWatcher onViewChange={onViewChange} />
       <ZoomButtons />
     </MapContainer>
