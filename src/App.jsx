@@ -1,9 +1,8 @@
-import HailMapPage from './pages/HailMapPage';
 import Admin from './pages/Admin';
 import { useEffect } from 'react';
 import { initOneSignal } from './utils/oneSignalConfig';
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Zap } from 'lucide-react';
 import Home from './pages/home';
 import CookieConsent from './components/CookieConsent';
@@ -43,10 +42,8 @@ export default function App() {
       <nav className="hidden md:flex gap-8 text-sm font-semibold text-stone-600">
         <Link to="/forecast" className="hover:text-orange-600 transition-colors">Forecasts</Link>
         <Link to="/radar" className="hover:text-orange-600 transition-colors">Radar</Link>
-        <Link to="/hail-map" className="hover:text-orange-600 transition-colors">🧊 Hail Map</Link>
         <Link to="/serenader" className="hover:text-orange-600 transition-colors">Serenader</Link>
         <Link to="/history" className="hover:text-orange-600 transition-colors">History</Link>
-        <Link to="/blog" className="hover:text-orange-600 transition-colors">Blog</Link>
         <Link to="/gallery" className="hover:text-orange-600 transition-colors">Gallery</Link>
       </nav>
 
@@ -78,19 +75,12 @@ export default function App() {
         >
           Forecasts
         </Link>
-        <Link 
-          to="/radar" 
+        <Link
+          to="/radar"
           onClick={() => setMobileMenuOpen(false)}
           className="block px-4 py-3 rounded-lg hover:bg-stone-100 transition-colors font-semibold text-stone-600"
         >
           Radar
-        </Link>
-        <Link 
-          to="/hail-map" 
-          onClick={() => setMobileMenuOpen(false)}
-          className="block px-4 py-3 rounded-lg hover:bg-stone-100 transition-colors font-semibold text-stone-600"
-        >
-          🧊 Hail Map
         </Link>
         <Link 
           to="/serenader" 
@@ -105,13 +95,6 @@ export default function App() {
           className="block px-4 py-3 rounded-lg hover:bg-stone-100 transition-colors font-semibold text-stone-600"
         >
           History
-        </Link>
-        <Link 
-          to="/blog" 
-          onClick={() => setMobileMenuOpen(false)}
-          className="block px-4 py-3 rounded-lg hover:bg-stone-100 transition-colors font-semibold text-stone-600"
-        >
-          Blog
         </Link>
         <Link 
           to="/gallery" 
@@ -129,22 +112,22 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/forecast" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Forecast Page - Coming Soon</h1></div>} />
-            <Route path="/hail-map" element={<HailMapPage />} />
             <Route path="/radar" element={<RadarPage />} />
             <Route path="/serenader" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Storm Serenader Gallery - Coming Soon</h1></div>} />
             <Route path="/history" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Weather History - Coming Soon</h1></div>} />
-            <Route path="/blog" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Blog - Coming Soon</h1></div>} />
             <Route path="/gallery" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Gallery - Coming Soon</h1></div>} />
             <Route path="/about" element={<div className="max-w-4xl mx-auto px-6 py-20"><iframe src="/about.html" className="w-full h-screen border-0" title="About"></iframe></div>} />
             <Route path="/privacy-policy" element={<div className="max-w-4xl mx-auto px-6 py-20"><iframe src="/privacy-policy.html" className="w-full h-screen border-0" title="Privacy Policy"></iframe></div>} />
             <Route path="/terms-of-service" element={<div className="max-w-4xl mx-auto px-6 py-20"><iframe src="/terms-of-service.html" className="w-full h-screen border-0" title="Terms of Service"></iframe></div>} />
             <Route path="/admin" element={<Admin />} />
+            {/* Removed or unknown addresses (e.g. old /hail-map and /blog links) go home instead of a blank page */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
 
           {/* Footer */}
           <footer className="bg-stone-900 border-t border-stone-800 mt-20">
             <div className="max-w-7xl mx-auto px-6 py-12">
-              <div className="grid md:grid-cols-5 gap-8 mb-8">
+              <div className="grid md:grid-cols-4 gap-8 mb-8">
                 <div>
                   <h4 className="font-bold mb-4 text-orange-400 text-sm tracking-wider uppercase">Forecasts</h4>
                   <ul className="space-y-2 text-sm text-stone-400">
@@ -158,19 +141,8 @@ export default function App() {
                   <h4 className="font-bold mb-4 text-orange-400 text-sm tracking-wider uppercase">Content</h4>
                   <ul className="space-y-2 text-sm text-stone-400">
                     <li><Link to="/serenader" className="hover:text-orange-400 transition-colors">Storm Serenader</Link></li>
-                    <li><Link to="/hail-map" className="hover:text-orange-400 transition-colors">Hail Map</Link></li>
                     <li><Link to="/history" className="hover:text-orange-400 transition-colors">Weather History</Link></li>
-                    <li><Link to="/blog" className="hover:text-orange-400 transition-colors">Blog</Link></li>
                     <li><Link to="/gallery" className="hover:text-orange-400 transition-colors">Guest Gallery</Link></li>
-                  </ul>
-                </div>
-                <div>
-                  <h4 className="font-bold mb-4 text-orange-400 text-sm tracking-wider uppercase">Learn</h4>
-                  <ul className="space-y-2 text-sm text-stone-400">
-                    <li><Link to="/blog" className="hover:text-orange-400 transition-colors">Meteorology 101</Link></li>
-                    <li><Link to="/blog" className="hover:text-orange-400 transition-colors">Tornado Safety</Link></li>
-                    <li><Link to="/blog" className="hover:text-orange-400 transition-colors">Storm Chasing</Link></li>
-                    <li><Link to="/blog" className="hover:text-orange-400 transition-colors">Weather Glossary</Link></li>
                   </ul>
                 </div>
                 <div>
