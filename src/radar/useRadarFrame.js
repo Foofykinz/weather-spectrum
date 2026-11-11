@@ -47,7 +47,7 @@ export function useRadarFrame(product, site) {
           validTime,
           details,
           // Keep the same layer object if nothing changed, so the map doesn't redraw.
-          layer: changed || !prev.layer ? product.layer(site, validTime) : prev.layer,
+          layer: changed || !prev.layer ? product.layer(site, validTime, details) : prev.layer,
           checkedAt: new Date(),
           error: null,
         }));

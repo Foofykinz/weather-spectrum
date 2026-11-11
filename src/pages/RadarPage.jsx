@@ -111,6 +111,7 @@ export default function RadarPage() {
       <RadarMap
         product={product}
         layer={frame.status === 'ok' ? frame.layer : null}
+        details={frame.status === 'ok' ? frame.details : null}
         opacity={opacity}
         initialView={initialView}
         onViewChange={onViewChange}

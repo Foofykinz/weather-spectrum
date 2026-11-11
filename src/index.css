@@ -12,3 +12,18 @@
 .ws-radar-map .leaflet-control-attribution a {
   color: #cbd5e1;
 }
+
+/* Radar images we draw ourselves: show true range bins when zoomed in,
+   instead of letting the browser blur neighboring bins together. */
+.ws-radar-crisp {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Tap-to-read value popup */
+.ws-radar-popup .leaflet-popup-content-wrapper,
+.ws-radar-popup .leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.95);
+  color: #e2e8f0;
+  font-size: 12px;
+}

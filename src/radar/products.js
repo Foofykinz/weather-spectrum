@@ -31,6 +31,8 @@
 
 import { fetchIemLatest, iemXyzLayer, IEM_ATTRIBUTION } from './providers/iem';
 import { fetchNwsLatest, nwsWmsLayer, NWS_ATTRIBUTION } from './providers/nws';
+import { fetchLevel3Latest, probeLevel3, LEVEL3_ATTRIBUTION } from './providers/level3';
+import nwsCcColors from './level3/nws-cc-colors.json';
 
 // Shared defaults for single-radar products: a radar finishes a volume scan
 // every ~4-10 minutes depending on its scan strategy (VCP).
@@ -165,6 +167,31 @@ export const RADAR_PRODUCTS = [
     ...SITE_TIMING,
     legend: 'nws-hc',
     attribution: NWS_ATTRIBUTION,
+  },
+  {
+    // Proof of concept: decoded in the browser from NOAA Level III data,
+    // so values are exact and can be read by tapping the map.
+    id: 'site-cc',
+    name: 'Correlation Coefficient',
+    short: 'Site CC',
+    group: 'Dual-Pol',
+    description:
+      'How similar the horizontal and vertical radar returns are. Near 1 = uniform rain or snow; lower = mixed targets such as hail, melting snow, debris or birds. Tap the map to read exact values.',
+    scope: 'site',
+    coverage: 'Single radar, 300 km',
+    elevation: '0.5°',
+    // Level III dual-pol products: 0.25 km range bins, 1° radials.
+    resolution: 'Native Level III (0.25 km × 1°)',
+    source: 'NOAA Level III',
+    layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds }),
+    latest: (site, signal) => fetchLevel3Latest(site, 'N0C', nwsCcColors, signal),
+    probe: probeLevel3,
+    probeFormat: (v) => v.toFixed(3),
+    // Files reach the archive ~3-4 min after the scan; listing checks are ~1 KB.
+    pollSeconds: 60,
+    freshness: SITE_TIMING.freshness,
+    legend: 'nws-cc',
+    attribution: LEVEL3_ATTRIBUTION,
   },
   {
     id: 'mosaic-echo-tops',

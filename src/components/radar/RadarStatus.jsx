@@ -23,7 +23,9 @@ function formatAge(min) {
 // Shows exactly which scan is on screen, how old it is, and any problems.
 export default function RadarStatus({ product, station, frame, now, tileErrors }) {
   const where = product.scope === 'site' ? (station ? `${station.icao} · ${station.name}` : 'No station') : product.coverage;
-  const tilt = product.elevation ? ` · ${product.elevation} tilt` : '';
+  // Prefer the elevation read from the scan itself (Level III products) over the nominal one.
+  const elev = frame.details?.elevation != null ? `${frame.details.elevation}°` : product.elevation;
+  const tilt = elev ? ` · ${elev} tilt` : '';
 
   let body;
   if (frame.status === 'needs-station') {

@@ -30,7 +30,21 @@ function Panes() {
 // Build a Leaflet layer from a product's layer description:
 //   { kind: 'xyz', url }          ready-made map tiles (e.g. IEM)
 //   { kind: 'wms', url, params }  map images rendered on request (e.g. NWS)
+//   { kind: 'canvas', canvas, bounds }  an image we drew ourselves (Level III),
+//                                       already in the map's projection
 function createRadarLayer(spec, { opacity, maxNativeZoom, attribution }) {
+  if (spec.kind === 'canvas') {
+    // Leaflet's element overlay positions any element (here a <canvas>) over
+    // its bounds. "crisp" CSS turns off browser smoothing, so zooming in
+    // shows the true range bins instead of blurring them together.
+    return L.svgOverlay(spec.canvas, L.latLngBounds(spec.bounds), {
+      pane: 'radar',
+      opacity,
+      attribution,
+      interactive: false,
+      className: 'ws-radar-crisp',
+    });
+  }
   const common = {
     pane: 'radar',
     opacity,
@@ -73,6 +87,8 @@ function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors })
       if (previous && map.hasLayer(previous)) map.removeLayer(previous);
     });
     layer.addTo(map);
+    // A drawn canvas is ready immediately — there's nothing to wait for.
+    if (spec.kind === 'canvas' && previous && map.hasLayer(previous)) map.removeLayer(previous);
 
     // Safety net: never leave an old scan on screen for long if the new one is slow.
     const t = setTimeout(() => {
@@ -98,6 +114,35 @@ function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors })
     [map]
   );
 
+  return null;
+}
+
+// Tap/click the map to read the exact value of the radar bin underneath
+// (only for products that carry real data values).
+function ValueProbe({ product, details }) {
+  const map = useMap();
+  useMapEvents({
+    click(e) {
+      if (!product.probe || !details) return;
+      const r = product.probe(details, e.latlng.lat, e.latlng.lng);
+      if (!r) return;
+      window.__wsLastProbe = { lat: e.latlng.lat, lon: e.latlng.lng, ...r }; // diagnostics/tests
+      const kft = (km) => (km * 3.28084).toFixed(1);
+      const where = `${r.groundKm.toFixed(1)} km at ${r.azimuth.toFixed(0)}° from radar`;
+      let main;
+      if (r.status === 'value') main = `<b>${product.short.replace('Site ', '')} ${product.probeFormat(r.value)}</b>`;
+      else if (r.status === 'below-threshold') main = 'No data (below signal threshold)';
+      else if (r.status === 'range-folded') main = 'Range folded (no reliable value)';
+      else main = 'Outside radar coverage';
+      const beam = r.status === 'out-of-range' ? '' : `<br>${r.elevation}° beam ≈ ${kft(r.beamKm)} kft above radar`;
+      L.popup({ className: 'ws-radar-popup', autoPan: false })
+        .setLatLng(e.latlng)
+        .setContent(`${main}<br><span style="color:#94a3b8">${where}${beam}</span>`)
+        .openOn(map);
+    },
+  });
+  // Close any open readout when the product or scan changes.
+  useEffect(() => () => map.closePopup(), [map, product, details]);
   return null;
 }
 
@@ -127,6 +172,8 @@ function FlyToStation({ station }) {
   return null;
 }
 
+// Clicking a radar dot stops the click from reaching the map, so it selects the
+// radar without also opening a value readout underneath.
 function StationMarkers({ selectedId, onSelect }) {
   return STATIONS.map((s) => {
     const selected = s.id === selectedId;
@@ -141,7 +188,7 @@ function StationMarkers({ selectedId, onSelect }) {
           fillColor: selected ? '#f59e0b' : '#334155',
           fillOpacity: 0.9,
         }}
-        eventHandlers={{ click: () => onSelect(s.id) }}
+        eventHandlers={{ click: (e) => { L.DomEvent.stopPropagation(e); onSelect(s.id); } }}
       >
         <Tooltip direction="top" offset={[0, -6]}>
           <span className="font-semibold">{s.icao}</span> · {s.name}, {s.state}
@@ -162,6 +209,7 @@ export default function RadarMap({
   onSelectStation,
   onTileErrors,
   onBasemapError,
+  details,
 }) {
   return (
     <MapContainer
@@ -187,6 +235,7 @@ export default function RadarMap({
       )}
       {showStations && <StationMarkers selectedId={station?.id} onSelect={onSelectStation} />}
       {showStations && <FlyToStation station={station} />}
+      <ValueProbe product={product} details={layer ? details : null} />
       <ViewWatcher onViewChange={onViewChange} />
       <ZoomButtons />
     </MapContainer>

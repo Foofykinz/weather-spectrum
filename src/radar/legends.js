@@ -14,6 +14,7 @@
 
 import nwsSrBvelLegend from './legend-images/nws-sr-bvel.png';
 import nwsBrefQcdLegend from './legend-images/nws-bref-qcd.png';
+import nwsCcColors from './level3/nws-cc-colors.json';
 
 export const LEGENDS = {
   // IEM N0Q / N0B reflectivity. Source: palette embedded in IEM's N0Q
@@ -88,6 +89,19 @@ export const LEGENDS = {
     ],
     ticks: [10, 20, 30, 40, 50, 60],
     note: 'Height of the highest 18 dBZ echo, in thousands of feet above sea level.',
+  },
+
+  // Correlation coefficient, drawn by us from Level III data values using the
+  // official NWS CC color table — the same table the decoder colors with, so
+  // the legend matches the map by construction.
+  'nws-cc': {
+    type: 'gradient',
+    units: 'CC (unitless)',
+    // The NWS table's first entry covers everything below 0.2083; start the bar at 0.2.
+    stops: [[0.2, nwsCcColors.stops[0][1]], ...nwsCcColors.stops.slice(1)],
+    max: 1.05,
+    ticks: [0.2, 0.4, 0.6, 0.8, 0.9, 1.0],
+    note: 'Near 1 = uniform targets (rain, snow) · lower = mixed or irregular targets (hail, melting, debris, birds/insects). Tap the map to read a value.',
   },
 
   // NWS hydrometeor classification (radar.weather.gov "BDHC").

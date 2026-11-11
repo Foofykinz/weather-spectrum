@@ -25,6 +25,7 @@ function GradientLegend({ legend }) {
           </span>
         ))}
       </div>
+      {legend.note && <Note>{legend.note}</Note>}
     </>
   );
 }
