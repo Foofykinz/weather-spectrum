@@ -38,6 +38,10 @@ import nwsZdrColors from './level3/nws-zdr-colors.json';
 import nwsKdpColors from './level3/nws-kdp-colors.json';
 import nwsEetColors from './level3/nws-eet-colors.json';
 import nwsDvlColors from './level3/nws-dvl-colors.json';
+import nwsRefColors from './level3/nws-ref-colors.json';
+import nwsVelColors from './level3/nws-vel-colors.json';
+
+const MS_TO_KT = 1.943844;
 
 // Shared defaults for single-radar products: a radar finishes a volume scan
 // every ~4-10 minutes depending on its scan strategy (VCP).
@@ -57,31 +61,31 @@ const withBounds = (layer, bounds) => ({ ...layer, bounds });
 const NWS_CONUS_BOUNDS = [[20, -130], [55, -60]];
 const MRMS_TIMING = { pollSeconds: 60, freshness: { delayedAfterMin: 10, staleAfterMin: 20 } };
 
-// Elevation tilts published for Level III dual-pol products, lowest first by
-// convention (N0 = lowest). Actual angles depend on the scan strategy and are
-// read from each file, never assumed.
+// Elevation tilts published for Level III products, lowest first by convention
+// (N0 = lowest). Which tilts exist depends on the product (velocity: 3 lowest)
+// and actual angles depend on the scan strategy; both are read from the
+// archive and the files themselves, never assumed.
 export const LEVEL3_TILTS = ['N0', 'NA', 'N1', 'NB', 'N2', 'N3'];
 
-// Dual-polarization products decoded in the browser from NOAA Level III data
-// (product codes 161 CC, 159 ZDR, 163 KDP). Values are exact, tilt-selectable,
-// and can be read by tapping the map. `letter` is the product letter in the
-// file name (N0C, NAX, N1K, ...).
-function dualPol({ id, letter, colors, name, short, description, legend, probeFormat }) {
+// Tilt-selectable products decoded in the browser from NOAA Level III data
+// (153 super-res reflectivity, 154 super-res velocity, 161 CC, 159 ZDR,
+// 163 KDP). Values are exact and can be read by tapping the map. `letter` is
+// the product letter in the file name (N0B, NAG, N1C, ...).
+function level3Tilt({ id, letter, colors, name, short, group = 'Dual-Pol', description, legend, probeFormat, coverage, resolution }) {
   return {
     id,
     name,
     short,
-    group: 'Dual-Pol',
+    group,
     description: `${description} Tap the map to read exact values.`,
     scope: 'site',
-    coverage: 'Single radar, 300 km',
+    coverage: coverage || 'Single radar, 300 km',
     elevation: null, // read from the file
-    // Level III dual-pol products: 0.25 km range bins, 1° radials.
-    resolution: 'Native Level III (0.25 km × 1°)',
+    resolution: resolution || 'Native Level III (0.25 km × 1°)',
     source: 'NOAA Level III',
     tiltLetter: letter,
     layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds }),
-    latest: (site, signal, { tilt = 'N0' } = {}) => fetchLevel3Latest(site, `${tilt}${letter}`, colors, signal),
+    latest: (site, signal, { tilt = 'N0', drawSize } = {}) => fetchLevel3Latest(site, `${tilt}${letter}`, colors, signal, { drawSize }),
     probe: probeLevel3,
     probeFormat,
     // Files reach the archive ~3-4 min after the scan; listing checks are ~1 KB.
@@ -214,7 +218,33 @@ export const RADAR_PRODUCTS = [
     legend: 'nws-hc',
     attribution: NWS_ATTRIBUTION,
   },
-  dualPol({
+  level3Tilt({
+    id: 'site-ref-tilt',
+    letter: 'B',
+    colors: nwsRefColors,
+    name: 'Reflectivity, All Tilts',
+    short: 'Site REF',
+    group: 'Reflectivity',
+    description: 'Super-resolution reflectivity at any of the radar’s published elevation tilts, to look higher into storms.',
+    coverage: 'Single radar, 460 km',
+    resolution: 'Native Level III (0.25 km; 0.5° radials on lower tilts, 1° on upper)',
+    legend: 'nws-ref',
+    probeFormat: (v) => `${v.toFixed(1)} dBZ`,
+  }),
+  level3Tilt({
+    id: 'site-vel-tilt',
+    letter: 'G',
+    // Files store m/s; the NWS color table and display use knots.
+    colors: { ...nwsVelColors, multiplier: MS_TO_KT },
+    name: 'Velocity, All Tilts',
+    short: 'Site VEL',
+    group: 'Velocity',
+    description: 'Super-resolution base velocity at each published tilt (the three lowest). Negative = toward the radar.',
+    resolution: 'Native Level III (0.25 km × 0.5°)',
+    legend: 'nws-vel',
+    probeFormat: (v) => `${(v * MS_TO_KT).toFixed(0)} kt (${v.toFixed(1)} m/s)`,
+  }),
+  level3Tilt({
     id: 'site-cc',
     letter: 'C',
     colors: nwsCcColors,
@@ -225,7 +255,7 @@ export const RADAR_PRODUCTS = [
     legend: 'nws-cc',
     probeFormat: (v) => `CC ${v.toFixed(3)}`,
   }),
-  dualPol({
+  level3Tilt({
     id: 'site-zdr',
     letter: 'X',
     colors: nwsZdrColors,
@@ -236,7 +266,7 @@ export const RADAR_PRODUCTS = [
     legend: 'nws-zdr',
     probeFormat: (v) => `ZDR ${v.toFixed(2)} dB`,
   }),
-  dualPol({
+  level3Tilt({
     id: 'site-kdp',
     letter: 'K',
     colors: nwsKdpColors,
@@ -310,7 +340,7 @@ function level3Volume({ id, code, colors, name, short, description, coverage, re
     resolution,
     source: 'NOAA Level III',
     layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds }),
-    latest: (site, signal) => fetchLevel3Latest(site, code, colors, signal),
+    latest: (site, signal, { drawSize } = {}) => fetchLevel3Latest(site, code, colors, signal, { drawSize }),
     probe: probeLevel3,
     probeFormat,
     pollSeconds: 60,

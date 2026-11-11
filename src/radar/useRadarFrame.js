@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 //   status: 'loading' | 'ok' | 'error' | 'needs-station'
 //   layer:  map layer description from the product (see products.js)
 
-export function useRadarFrame(product, site, tilt) {
+export function useRadarFrame(product, site, tilt, drawSize) {
   const [frame, setFrame] = useState({ status: 'loading' });
   const lastValid = useRef(null);
   const siteId = site?.id;
@@ -37,7 +37,7 @@ export function useRadarFrame(product, site, tilt) {
       controller?.abort();
       controller = new AbortController();
       try {
-        const { validTime, details } = await product.latest(site, controller.signal, { tilt });
+        const { validTime, details } = await product.latest(site, controller.signal, { tilt, drawSize });
         if (cancelled) return;
         const changed = lastValid.current !== validTime.getTime();
         lastValid.current = validTime.getTime();

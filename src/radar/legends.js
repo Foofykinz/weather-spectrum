@@ -19,6 +19,16 @@ import nwsZdrColors from './level3/nws-zdr-colors.json';
 import nwsKdpColors from './level3/nws-kdp-colors.json';
 import nwsEetColors from './level3/nws-eet-colors.json';
 import nwsDvlColors from './level3/nws-dvl-colors.json';
+import nwsRefColors from './level3/nws-ref-colors.json';
+import nwsVelColors from './level3/nws-vel-colors.json';
+
+// Keep only the part of a long color table that falls inside the legend's
+// range; the band that straddles `min` starts at `min`.
+function clipStops(stops, min, max) {
+  const inside = stops.filter(([v]) => v > min && v < max);
+  const below = stops.filter(([v]) => v <= min).pop();
+  return below ? [[min, below[1]], ...inside] : inside;
+}
 
 export const LEGENDS = {
   // IEM N0Q / N0B reflectivity. Source: palette embedded in IEM's N0Q
@@ -106,6 +116,26 @@ export const LEGENDS = {
     max: 1.05,
     ticks: [0.2, 0.4, 0.6, 0.8, 0.9, 1.0],
     note: 'Near 1 = uniform targets (rain, snow) · lower = mixed or irregular targets (hail, melting, debris, birds/insects). Tap the map to read a value.',
+  },
+
+  // Super-res reflectivity at all tilts (Level III 153), official NWS table.
+  'nws-ref': {
+    type: 'gradient',
+    units: 'dBZ',
+    stops: clipStops(nwsRefColors.stops, -30, 80),
+    max: 80,
+    ticks: [-20, 0, 10, 20, 30, 40, 50, 60, 70],
+    note: 'Tap the map to read a value.',
+  },
+
+  // Super-res velocity at all tilts (Level III 154), official NWS table (knots).
+  'nws-vel': {
+    type: 'gradient',
+    units: 'knots',
+    stops: clipStops(nwsVelColors.stops, -100, 100),
+    max: 100,
+    ticks: [-100, -50, -25, 0, 25, 50, 100],
+    note: 'Negative = toward the radar · positive = away · purple = range folded. Tap the map to read a value.',
   },
 
   // Differential reflectivity, drawn from Level III values with the official

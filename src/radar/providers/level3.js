@@ -101,23 +101,39 @@ export async function listLevel3Tilts(site, letter, tilts, signal) {
 
 // Small cache of processed scans (each holds a drawn image, so keep it short).
 const cache = new Map(); // key -> result
-const CACHE_SIZE = 3;
+const CACHE_SIZE = 6; // enough for a quad view plus switching back
 
 // Smaller drawing on small screens to limit memory on phones.
 const drawSize = () => (Math.min(window.innerWidth, window.innerHeight) < 700 ? 1536 : 2048);
 
-export async function fetchLevel3Latest(site, code, colors, signal) {
+// Requests for the same scan at the same drawing size share one download and
+// decode (e.g. two panels showing the same product), even if they overlap in time.
+const inflight = new Map();
+
+export async function fetchLevel3Latest(site, code, colors, signal, { drawSize: size } = {}) {
   const key = await latestKey(site.id, code, signal);
-  if (cache.has(key)) return cache.get(key);
+  const maxSize = size || drawSize();
+  const cacheKey = `${key}@${maxSize}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey);
+  if (!inflight.has(cacheKey)) {
+    const job = processScan(key, colors, maxSize).finally(() => inflight.delete(cacheKey));
+    inflight.set(cacheKey, job);
+  }
+  return inflight.get(cacheKey);
+}
+
+async function processScan(key, colors, maxSize) {
+  const cacheKey = `${key}@${maxSize}`;
 
   const t0 = performance.now();
-  const res = await fetch(`${BUCKET}/${key}`, { signal });
+  // Not cancellable: the result is shared through the cache and in-flight map.
+  const res = await fetch(`${BUCKET}/${key}`);
   if (!res.ok) throw new Error(`Level III archive returned ${res.status}.`);
   const buffer = await res.arrayBuffer();
   const t1 = performance.now();
   const sizeKb = buffer.byteLength / 1024;
 
-  const out = await runWorker(buffer, colors, drawSize());
+  const out = await runWorker(buffer, colors, maxSize);
   const t2 = performance.now();
 
   // Paint the worker's pixels into a canvas the map can display.
@@ -133,6 +149,7 @@ export async function fetchLevel3Latest(site, code, colors, signal) {
     details: {
       vcp: m.vcp,
       elevation: m.elevation,
+      radialDeg: Math.round((360 / m.nrad) * 10) / 10,
       canvas,
       bounds: out.image.bounds,
       radial: { ...m, data: out.data, starts: out.starts, deltas: out.deltas, azTable: buildAzimuthTable(out.starts, out.deltas) },
@@ -148,7 +165,7 @@ export async function fetchLevel3Latest(site, code, colors, signal) {
       },
     },
   };
-  cache.set(key, result);
+  cache.set(cacheKey, result);
   while (cache.size > CACHE_SIZE) cache.delete(cache.keys().next().value);
   return result;
 }

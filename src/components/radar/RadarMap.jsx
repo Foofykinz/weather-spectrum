@@ -35,6 +35,17 @@ function Panes() {
 //                                       already in the map's projection
 function createRadarLayer(spec, { opacity, maxNativeZoom, attribution }) {
   if (spec.kind === 'canvas') {
+    // A decoded scan may be shared by several panels, but one canvas element
+    // can only be on the page once: copy it if it's already displayed.
+    let canvas = spec.canvas;
+    if (canvas.parentNode) {
+      const copy = document.createElement('canvas');
+      copy.width = canvas.width;
+      copy.height = canvas.height;
+      copy.getContext('2d').drawImage(canvas, 0, 0);
+      canvas = copy;
+    }
+    spec = { ...spec, canvas };
     // Leaflet's element overlay positions any element (here a <canvas>) over
     // its bounds. "crisp" CSS turns off browser smoothing, so zooming in
     // shows the true range bins instead of blurring them together.
@@ -178,6 +189,31 @@ function ValueProbe({ product, details }) {
   return null;
 }
 
+// Keeps several maps showing the same place. Each map in a group copies its
+// view to the others while it moves; the shared "syncing" flag stops the
+// copies from echoing back (no synchronization loops).
+function MapSync({ group }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!group) return undefined;
+    group.maps.add(map);
+    const push = () => {
+      if (group.syncing) return;
+      group.syncing = true;
+      for (const other of group.maps) {
+        if (other !== map) other.setView(map.getCenter(), map.getZoom(), { animate: false });
+      }
+      group.syncing = false;
+    };
+    map.on('move zoomend', push);
+    return () => {
+      map.off('move zoomend', push);
+      group.maps.delete(map);
+    };
+  }, [group, map]);
+  return null;
+}
+
 function ViewWatcher({ onViewChange }) {
   useMapEvents({
     moveend(e) {
@@ -245,6 +281,9 @@ export default function RadarMap({
   lightning,
   onLightningStatus,
   animation, // { specs, index, onLoaded } while a loop is playing
+  syncGroup, // shared view group for multi-panel layouts
+  primary = true, // the one panel that owns zoom buttons, fly-to and saved view
+  splitBasemap = true,
 }) {
   return (
     <MapContainer
@@ -258,7 +297,7 @@ export default function RadarMap({
       className="ws-radar-map h-full w-full bg-[#0b0f17]"
     >
       <Panes />
-      <VectorBasemap labelsPane="labels" onError={onBasemapError} />
+      <VectorBasemap labelsPane="labels" onError={onBasemapError} split={splitBasemap} />
       {animation && (
         <AnimationLayers
           specs={animation.specs}
@@ -279,11 +318,12 @@ export default function RadarMap({
         />
       )}
       {showStations && <StationMarkers selectedId={station?.id} onSelect={onSelectStation} />}
-      {showStations && <FlyToStation station={station} />}
+      {showStations && primary && <FlyToStation station={station} />}
       <ValueProbe product={product} details={layer ? details : null} />
       {lightning && <GlmLayer onStatus={onLightningStatus} />}
-      <ViewWatcher onViewChange={onViewChange} />
-      <ZoomButtons />
+      <MapSync group={syncGroup} />
+      {primary && <ViewWatcher onViewChange={onViewChange} />}
+      {primary && <ZoomButtons />}
     </MapContainer>
   );
 }

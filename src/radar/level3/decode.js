@@ -12,7 +12,7 @@ const { decompress } = bz2;
 
 // Range-bin length (km) for the products we support:
 // dual-pol products 0.25 km to 300 km; Digital VIL / Enhanced Echo Tops 1 km.
-const BIN_KM = { 159: 0.25, 161: 0.25, 163: 0.25, 134: 1, 135: 1 };
+const BIN_KM = { 153: 0.25, 154: 0.25, 159: 0.25, 161: 0.25, 163: 0.25, 134: 1, 135: 1 };
 
 export function decodeLevel3(arrayBuffer) {
   const bytes = new Uint8Array(arrayBuffer);

@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Layers, ArrowLeft, Zap, Play } from 'lucide-react';
 import LoopControls from '../components/radar/LoopControls';
+import LayoutSwitch from '../components/radar/LayoutSwitch';
+import MultiRadar from '../components/radar/MultiRadar';
 import RadarMap from '../components/radar/RadarMap';
 import RadarLegend from '../components/radar/RadarLegend';
 import RadarStatus from '../components/radar/RadarStatus';
@@ -34,7 +36,7 @@ function writeStored(key, value) {
   }
 }
 
-export default function RadarPage() {
+function SingleRadar() {
   // Product and station live in the URL, so a view can be bookmarked or shared:
   //   /radar?product=site-reflectivity&site=TLX
   const [params, setParams] = useSearchParams();
@@ -157,6 +159,13 @@ export default function RadarPage() {
 
   const selectStation = (id) => updateParams({ site: id });
 
+  // Dual/quad views are single-radar views: make sure a radar is selected.
+  const setLayout = (n) => {
+    if (n === 1) return;
+    const v = viewRef.current;
+    updateParams({ layout: String(n), site: station?.id || nearestStation(v.lat, v.lon)?.id });
+  };
+
   const onViewChange = useCallback((v) => {
     viewRef.current = v;
     writeStored(VIEW_KEY, v);
@@ -237,6 +246,7 @@ export default function RadarPage() {
             <Zap className="w-4 h-4" />
             <span className="hidden sm:inline">Lightning</span>
           </button>
+          <LayoutSwitch layout={1} onChange={setLayout} />
           {canLoop && !anim && (
             <button
               type="button"
@@ -309,4 +319,79 @@ export default function RadarPage() {
       </div>
     </div>
   );
+}
+
+// Multi-panel layouts (?layout=2 or 4). Shares the URL, saved view and opacity
+// with the single view, so switching back keeps your place.
+function MultiRadarPage({ layout }) {
+  const [params, setParams] = useSearchParams();
+  const station = getStation((params.get('site') || '').toUpperCase());
+  const [initialView] = useState(() => {
+    const v = readStored(VIEW_KEY, DEFAULT_VIEW);
+    return Number.isFinite(v?.lat) && Number.isFinite(v?.lon) && Number.isFinite(v?.zoom) ? v : DEFAULT_VIEW;
+  });
+  const viewRef = useRef(initialView);
+  const opacity = (() => {
+    const o = Number(readStored(OPACITY_KEY, 0.85));
+    return o >= 0.1 && o <= 1 ? o : 0.85;
+  })();
+  const now = useNow();
+
+  const updateParams = useCallback(
+    (changes) => {
+      const next = new URLSearchParams(params);
+      for (const [k, v] of Object.entries(changes)) {
+        if (v) next.set(k, v);
+        else next.delete(k);
+      }
+      setParams(next, { replace: true });
+    },
+    [params, setParams]
+  );
+
+  // A multi-panel view always needs a radar.
+  useEffect(() => {
+    if (!station) {
+      const v = viewRef.current;
+      updateParams({ site: nearestStation(v.lat, v.lon)?.id });
+    }
+  }, [station]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const onViewChange = useCallback((v) => {
+    viewRef.current = v;
+    writeStored(VIEW_KEY, v);
+  }, []);
+
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+  useEffect(() => {
+    document.title = `${station ? station.icao + ' ' : ''}${layout === 4 ? 'Quad' : 'Dual'} view | Radar | Weather Spectrum`;
+  }, [station, layout]);
+
+  if (!station) return <div className="fixed inset-0 z-[55] bg-[#0b0f17]" />;
+  return (
+    <MultiRadar
+      layout={layout}
+      params={params}
+      updateParams={updateParams}
+      station={station}
+      onSelectStation={(id) => updateParams({ site: id })}
+      onLayout={(n) => updateParams({ layout: n === 1 ? null : String(n) })}
+      initialView={initialView}
+      onViewChange={onViewChange}
+      opacity={opacity}
+      now={now}
+    />
+  );
+}
+
+export default function RadarPage() {
+  const [params] = useSearchParams();
+  const n = Number(params.get('layout'));
+  return n === 2 || n === 4 ? <MultiRadarPage layout={n} /> : <SingleRadar />;
 }

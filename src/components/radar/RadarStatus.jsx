@@ -64,6 +64,7 @@ export default function RadarStatus({ product, station, frame, now, tileErrors }
           <p className="text-slate-400 mt-0.5">
             {frame.details.radarsReporting && `${frame.details.radarsReporting} radars reporting`}
             {frame.details.vcp != null && `VCP ${frame.details.vcp}`}
+            {frame.details.radialDeg ? ` · ${frame.details.radialDeg}° radials` : ''}
           </p>
         )}
       </>

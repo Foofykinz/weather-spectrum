@@ -12,7 +12,7 @@ function Header({ title, units }) {
   );
 }
 
-const Note = ({ children }) => <p className="text-[10px] leading-snug text-slate-400 mt-1">{children}</p>;
+const Note = ({ children }) => <p className="ws-legend-note text-[10px] leading-snug text-slate-400 mt-1">{children}</p>;
 
 function GradientLegend({ legend }) {
   return (
@@ -76,7 +76,7 @@ function CategoryLegend({ legend }) {
         type="button"
         onClick={() => setExpanded((e) => !e)}
         aria-expanded={expanded}
-        className="text-[10px] text-amber-300 hover:text-amber-200"
+        className="ws-legend-note text-[10px] text-amber-300 hover:text-amber-200"
       >
         {expanded ? 'Hide category names' : 'Show category names'}
       </button>
@@ -129,11 +129,12 @@ function LevelsLegend({ legend, frame }) {
   );
 }
 
-export default function RadarLegend({ product, frame }) {
+// compact: smaller box without explanatory notes (multi-panel views).
+export default function RadarLegend({ product, frame, compact = false }) {
   const legend = LEGENDS[product.legend];
   if (!legend) return null;
   return (
-    <div className={box}>
+    <div className={compact ? 'ws-legend-compact rounded-md border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2 pt-1 pb-0.5 shadow-lg' : box}>
       <Header title={product.short} units={legend.units} />
       {legend.type === 'gradient' && <GradientLegend legend={legend} />}
       {legend.type === 'image' && <ImageLegend legend={legend} />}

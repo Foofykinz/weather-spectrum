@@ -38,7 +38,9 @@ function splitStyle(style) {
   return { below, above };
 }
 
-export default function VectorBasemap({ labelsPane, onError }) {
+// split=false draws the whole style in one layer (labels under the radar). Used
+// in multi-panel views to halve the number of WebGL contexts per panel.
+export default function VectorBasemap({ labelsPane, onError, split = true }) {
   const map = useMap();
 
   useEffect(() => {
@@ -63,8 +65,13 @@ export default function VectorBasemap({ labelsPane, onError }) {
 
         const { below, above } = splitStyle(style);
         const common = { interactive: false, attributionControl: false };
-        layers.push(maplibreGL({ ...common, style: below, pane: 'tilePane' }).addTo(map));
-        layers.push(maplibreGL({ ...common, style: above, pane: labelsPane }).addTo(map));
+        if (split) {
+          layers.push(maplibreGL({ ...common, style: below, pane: 'tilePane' }).addTo(map));
+          layers.push(maplibreGL({ ...common, style: above, pane: labelsPane }).addTo(map));
+        } else {
+          const whole = { ...style, layers: style.layers.map(legiblePlaceName) };
+          layers.push(maplibreGL({ ...common, style: whole, pane: 'tilePane' }).addTo(map));
+        }
       } catch (err) {
         // The radar still works without a basemap; just report it.
         if (!cancelled) onError?.(err);
@@ -76,7 +83,7 @@ export default function VectorBasemap({ labelsPane, onError }) {
       layers.forEach((l) => map.removeLayer(l));
       map.attributionControl?.removeAttribution(OPENFREEMAP_ATTRIBUTION);
     };
-  }, [map, labelsPane]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, labelsPane, split]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null;
 }

@@ -26,8 +26,9 @@ function buildLut(dec, colors) {
   const stops = colors.stops;
   for (let n = 0; n < 256; n++) {
     if (scaler.flag(n) === 'range-folded') { lut[n] = hexToAbgr(colors.rangeFolded); continue; }
-    const v = scaler.value(n);
-    if (v == null) continue; // below threshold / no data: transparent
+    const raw = scaler.value(n);
+    if (raw == null) continue; // below threshold / no data: transparent
+    const v = raw * (colors.multiplier || 1); // e.g. velocity m/s -> knots for the NWS table
     let c = stops[0][1];
     for (let i = 0; i < stops.length && stops[i][0] <= v; i++) c = stops[i][1];
     lut[n] = hexToAbgr(c);
