@@ -1,20 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, CircleMarker, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, CircleMarker, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { STATIONS } from '../../radar/stations';
+import VectorBasemap from './VectorBasemap';
 
 // Map layer stacking (bottom to top):
-//   dark basemap  ->  radar  ->  place names & roads labels  ->  station markers
+//   dark basemap  ->  radar  ->  borders & place names  ->  station markers
 // Labels sit above the radar so towns stay readable inside heavy precipitation.
 const PANES = { radar: 350, labels: 450 };
 
-// Basemap: Esri "Dark Gray Canvas" (no API key required). The labels come as a
-// separate transparent layer, which lets us draw them above the radar.
-// Note: review Esri's terms before commercial launch; a self-hosted basemap
-// (e.g. Protomaps on Cloudflare R2) is the long-term, zero-licensing option.
-const ESRI = 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas';
-const BASEMAP_ATTRIBUTION = 'Basemap &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors';
 
 function Panes() {
   const map = useMap();
@@ -152,6 +147,7 @@ export default function RadarMap({
   station,
   onSelectStation,
   onTileErrors,
+  onBasemapError,
 }) {
   return (
     <MapContainer
@@ -165,18 +161,7 @@ export default function RadarMap({
       className="ws-radar-map h-full w-full bg-[#0b0f17]"
     >
       <Panes />
-      <TileLayer
-        url={`${ESRI}/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}`}
-        attribution={BASEMAP_ATTRIBUTION}
-        maxNativeZoom={16}
-        maxZoom={18}
-      />
-      <TileLayer
-        url={`${ESRI}/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}`}
-        pane="labels"
-        maxNativeZoom={16}
-        maxZoom={18}
-      />
+      <VectorBasemap labelsPane="labels" onError={onBasemapError} />
       {tileUrl && (
         <RadarTiles
           url={tileUrl}

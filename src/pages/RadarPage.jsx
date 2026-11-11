@@ -48,6 +48,7 @@ export default function RadarPage() {
   });
   const [panelOpen, setPanelOpen] = useState(false);
   const [tileErrors, setTileErrors] = useState(0);
+  const [basemapError, setBasemapError] = useState(null);
 
   const siteId = product.scope === 'site' ? station?.id : undefined;
   const frame = useRadarFrame(product, siteId);
@@ -118,6 +119,7 @@ export default function RadarPage() {
         station={station}
         onSelectStation={selectStation}
         onTileErrors={setTileErrors}
+        onBasemapError={setBasemapError}
       />
 
       {/* Top-left: navigation, product button, status. pointer-events-none lets
@@ -163,6 +165,11 @@ export default function RadarPage() {
         {!panelOpen && (
           <div className="pointer-events-auto">
             <RadarStatus product={product} station={station} frame={frame} now={now} tileErrors={tileErrors} />
+            {basemapError && (
+              <p className="mt-2 rounded-lg border border-amber-700/60 bg-slate-900/85 px-3 py-1.5 text-xs text-amber-300">
+                Background map couldn&apos;t load. Radar data is still shown.
+              </p>
+            )}
           </div>
         )}
       </div>
