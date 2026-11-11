@@ -19,7 +19,7 @@ const comingSoon = (title) => (
 
 const legalPage = (src, title) => (
   <div className="max-w-4xl mx-auto px-6 py-16">
-    <iframe src={src} className="w-full h-screen border-0 rounded-xl bg-white" title={title} />
+    <iframe src={src} className="w-full h-screen border-0 rounded-xl bg-slate-950" title={title} />
   </div>
 );
 
