@@ -43,9 +43,7 @@ function fetchCapabilities(icao) {
   return promise;
 }
 
-// Newest scan time for one product layer at one radar.
-export async function fetchNwsLatest(icao, layer) {
-  const xml = await fetchCapabilities(icao);
+function timeDimension(xml, icao, layer) {
   const name = `${workspace(icao)}_${layer}`;
   const doc = new DOMParser().parseFromString(xml, 'text/xml');
   const layerEl = [...doc.getElementsByTagName('Layer')].find(
@@ -56,7 +54,23 @@ export async function fetchNwsLatest(icao, layer) {
     err.code = 'NO_DATA';
     throw err;
   }
-  const dim = [...layerEl.getElementsByTagName('Dimension')].find((d) => d.getAttribute('name') === 'time');
+  return [...layerEl.getElementsByTagName('Dimension')].find((d) => d.getAttribute('name') === 'time');
+}
+
+// The most recent `count` scan times (for animation), from the same capabilities file.
+export async function fetchNwsTimes(icao, layer, count) {
+  const dim = timeDimension(await fetchCapabilities(icao), icao, layer);
+  return (dim?.textContent || '')
+    .split(',')
+    .map((s) => new Date(s.trim()))
+    .filter((d) => !Number.isNaN(d.getTime()))
+    .sort((a, b) => a - b)
+    .slice(-count);
+}
+
+// Newest scan time for one product layer at one radar.
+export async function fetchNwsLatest(icao, layer) {
+  const dim = timeDimension(await fetchCapabilities(icao), icao, layer);
   const validTime = new Date(dim?.getAttribute('default') || '');
   if (Number.isNaN(validTime.getTime())) throw new Error('NWS radar service returned an unreadable timestamp.');
   return { validTime, details: {} };

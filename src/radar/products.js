@@ -20,7 +20,8 @@
 //   layer         (site, validTime) => map layer description for the renderer
 //                 (with optional `bounds`, where data can exist):
 //                 { kind: 'xyz', url } or { kind: 'wms', url, params }
-//   latest        async (site, signal) => { validTime, details } — newest scan
+//   latest        async (site, signal) => { validTime, details }: newest scan
+//   frames        optional async (site, count, signal) => [Date]: recent scan times, for animation
 //   pollSeconds   how often to check for a new scan (checks are tiny)
 //   freshness     age in minutes after which data is "delayed" / "stale"
 //   legend        key into LEGENDS (see legends.js)
@@ -29,8 +30,8 @@
 //
 // `site` is the station object from stations.js ({ id: 'TLX', icao: 'KTLX', ... }).
 
-import { fetchIemLatest, iemXyzLayer, IEM_ATTRIBUTION } from './providers/iem';
-import { fetchNwsLatest, nwsWmsLayer, NWS_ATTRIBUTION } from './providers/nws';
+import { fetchIemLatest, fetchIemScanTimes, iemXyzLayer, IEM_ATTRIBUTION } from './providers/iem';
+import { fetchNwsLatest, fetchNwsTimes, nwsWmsLayer, NWS_ATTRIBUTION } from './providers/nws';
 import { fetchLevel3Latest, probeLevel3, LEVEL3_ATTRIBUTION } from './providers/level3';
 import nwsCcColors from './level3/nws-cc-colors.json';
 import nwsZdrColors from './level3/nws-zdr-colors.json';
@@ -106,6 +107,7 @@ export const RADAR_PRODUCTS = [
     source: 'IEM',
     layer: (_site, t) => withBounds(iemXyzLayer('USCOMP', 'N0Q', t), MOSAIC_BOUNDS),
     latest: (_site, signal) => fetchIemLatest('USCOMP', 'N0Q', signal),
+    frames: (_site, n, signal) => fetchIemScanTimes('USCOMP', 'N0Q', n, signal),
     // The mosaic is rebuilt every 5 minutes, and takes ~2 minutes to process.
     pollSeconds: 60,
     freshness: { delayedAfterMin: 12, staleAfterMin: 25 },
@@ -127,6 +129,7 @@ export const RADAR_PRODUCTS = [
     source: 'NWS',
     layer: (_site, t) => withBounds(nwsWmsLayer('conus', 'cref_qcd', t), NWS_CONUS_BOUNDS),
     latest: () => fetchNwsLatest('conus', 'cref_qcd'),
+    frames: (_site, n) => fetchNwsTimes('conus', 'cref_qcd', n),
     // MRMS mosaics update every 2 minutes, ~2 minutes after the scan time.
     ...MRMS_TIMING,
     legend: 'nws-cref',
@@ -146,6 +149,7 @@ export const RADAR_PRODUCTS = [
     source: 'IEM',
     layer: (site, t) => withBounds(iemXyzLayer(site.id, 'N0B', t), siteBounds(site)),
     latest: (site, signal) => fetchIemLatest(site.id, 'N0B', signal),
+    frames: (site, n, signal) => fetchIemScanTimes(site.id, 'N0B', n, signal),
     ...SITE_TIMING,
     legend: 'iem-n0q-dbz',
     attribution: IEM_ATTRIBUTION,
@@ -165,6 +169,7 @@ export const RADAR_PRODUCTS = [
     source: 'NWS',
     layer: (site, t) => withBounds(nwsWmsLayer(site.icao, 'sr_bvel', t), siteBounds(site)),
     latest: (site) => fetchNwsLatest(site.icao, 'sr_bvel'),
+    frames: (site, n) => fetchNwsTimes(site.icao, 'sr_bvel', n),
     ...SITE_TIMING,
     legend: 'nws-sr-bvel',
     attribution: NWS_ATTRIBUTION,
@@ -184,6 +189,7 @@ export const RADAR_PRODUCTS = [
     source: 'IEM',
     layer: (site, t) => withBounds(iemXyzLayer(site.id, 'N0S', t), siteBounds(site)),
     latest: (site, signal) => fetchIemLatest(site.id, 'N0S', signal),
+    frames: (site, n, signal) => fetchIemScanTimes(site.id, 'N0S', n, signal),
     ...SITE_TIMING,
     legend: 'iem-n0s',
     attribution: IEM_ATTRIBUTION,
@@ -203,6 +209,7 @@ export const RADAR_PRODUCTS = [
     source: 'NWS',
     layer: (site, t) => withBounds(nwsWmsLayer(site.icao, 'bdhc', t), siteBounds(site)),
     latest: (site) => fetchNwsLatest(site.icao, 'bdhc'),
+    frames: (site, n) => fetchNwsTimes(site.icao, 'bdhc', n),
     ...SITE_TIMING,
     legend: 'nws-hc',
     attribution: NWS_ATTRIBUTION,
@@ -255,6 +262,7 @@ export const RADAR_PRODUCTS = [
     source: 'NWS',
     layer: (_site, t) => withBounds(nwsWmsLayer('conus', 'neet_v18', t), NWS_CONUS_BOUNDS),
     latest: () => fetchNwsLatest('conus', 'neet_v18'),
+    frames: (_site, n) => fetchNwsTimes('conus', 'neet_v18', n),
     ...MRMS_TIMING,
     legend: 'nws-echo-tops',
     attribution: NWS_ATTRIBUTION,

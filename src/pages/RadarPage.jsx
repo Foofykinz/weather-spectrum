@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Layers, ArrowLeft, Zap } from 'lucide-react';
+import { Layers, ArrowLeft, Zap, Play } from 'lucide-react';
+import LoopControls from '../components/radar/LoopControls';
 import RadarMap from '../components/radar/RadarMap';
 import RadarLegend from '../components/radar/RadarLegend';
 import RadarStatus from '../components/radar/RadarStatus';
@@ -76,6 +77,55 @@ export default function RadarPage() {
   }, [tiltKey, scanTime]); // eslint-disable-line react-hooks/exhaustive-deps
   const tilts = tiltInfo.key === tiltKey ? tiltInfo.tilts : [];
 
+  // ---- Radar loop (products with a `frames` list: IEM and NWS imagery).
+  const LOOP_FRAMES = 10;
+  const FRAME_MS = 600;
+  const LAST_FRAME_HOLD = 3; // extra ticks on the newest frame before restarting
+  const site = product.scope === 'site' ? station : null;
+  const canLoop = !!product.frames && (product.scope !== 'site' || !!station);
+  const [anim, setAnim] = useState(null); // { times, specs, index, playing, loaded, hold }
+  const [loopError, setLoopError] = useState(null);
+  const loopReq = useRef(null);
+
+  const stopLoop = useCallback(() => {
+    loopReq.current?.abort();
+    setAnim(null);
+  }, []);
+
+  const startLoop = async () => {
+    loopReq.current?.abort();
+    const controller = new AbortController();
+    loopReq.current = controller;
+    setLoopError(null);
+    try {
+      const times = await product.frames(site, LOOP_FRAMES, controller.signal);
+      if (controller.signal.aborted) return;
+      if (times.length < 2) throw new Error('Not enough recent scans to loop.');
+      setAnim({ times, specs: times.map((t) => product.layer(site, t)), index: 0, playing: true, loaded: 0, hold: 0 });
+    } catch (err) {
+      if (err.name !== 'AbortError') setLoopError(err.message);
+    }
+  };
+
+  // A loop belongs to one product + radar; leaving either returns to live.
+  useEffect(() => stopLoop, [product.id, station?.id, stopLoop]);
+
+  useEffect(() => {
+    if (!anim?.playing) return undefined;
+    const id = setInterval(() => {
+      setAnim((a) => {
+        if (!a?.playing) return a;
+        const last = a.times.length - 1;
+        if (a.index < last) return { ...a, index: a.index + 1 };
+        if (a.hold < LAST_FRAME_HOLD) return { ...a, hold: a.hold + 1 };
+        return { ...a, index: 0, hold: 0 };
+      });
+    }, FRAME_MS);
+    return () => clearInterval(id);
+  }, [anim?.playing]);
+
+  const onFramesLoaded = useCallback((n) => setAnim((a) => (a ? { ...a, loaded: Math.max(a.loaded, n) } : a)), []);
+
   const updateParams = useCallback(
     (changes) => {
       const next = new URLSearchParams(params);
@@ -144,6 +194,7 @@ export default function RadarPage() {
         onTileErrors={setTileErrors}
         onBasemapError={setBasemapError}
         lightning={lightningOn}
+        animation={anim ? { specs: anim.specs, index: anim.index, onLoaded: onFramesLoaded } : null}
         onLightningStatus={setLightningStatus}
       />
 
@@ -186,6 +237,17 @@ export default function RadarPage() {
             <Zap className="w-4 h-4" />
             <span className="hidden sm:inline">Lightning</span>
           </button>
+          {canLoop && !anim && (
+            <button
+              type="button"
+              onClick={startLoop}
+              title="Play the last 10 scans"
+              className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 px-2.5 py-2 text-xs font-semibold text-slate-200 shadow-lg backdrop-blur hover:bg-slate-800"
+            >
+              <Play className="w-4 h-4" />
+              <span className="hidden sm:inline">Loop</span>
+            </button>
+          )}
         </div>
 
         <ProductPanel
@@ -204,6 +266,21 @@ export default function RadarPage() {
         {!panelOpen && (
           <div className="pointer-events-auto">
             <RadarStatus product={product} station={station} frame={frame} now={now} tileErrors={tileErrors} />
+            {anim && (
+              <div className="mt-2">
+                <LoopControls
+                  anim={anim}
+                  onToggle={() => setAnim((a) => ({ ...a, playing: !a.playing }))}
+                  onScrub={(i) => setAnim((a) => ({ ...a, index: i, playing: false, hold: 0 }))}
+                  onLive={stopLoop}
+                />
+              </div>
+            )}
+            {loopError && !anim && (
+              <p className="mt-2 rounded-lg border border-amber-700/60 bg-slate-900/85 px-3 py-1.5 text-xs text-amber-300">
+                Loop unavailable: {loopError}
+              </p>
+            )}
             {product.tiltLetter && station && (
               <div className="mt-2">
                 <TiltSelector

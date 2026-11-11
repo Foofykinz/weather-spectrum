@@ -33,6 +33,18 @@ export function iemTileUrl(site, product, validTime) {
   return `${IEM}/cache/tile.py/1.0.0/ridge::${site}-${product}-${toIemStamp(validTime)}/{z}/{x}/{y}.png`;
 }
 
+// The most recent `count` scan times (for animation), from IEM's scan list.
+export async function fetchIemScanTimes(site, product, count, signal) {
+  const end = new Date();
+  const start = new Date(end.getTime() - 3 * 3600e3);
+  const iso = (d) => d.toISOString().slice(0, 16) + 'Z';
+  const url = `${IEM}/json/radar.py?operation=list&radar=${site}&product=${product}&start=${iso(start)}&end=${iso(end)}`;
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`Radar scan list returned ${res.status}.`);
+  const { scans = [] } = await res.json();
+  return scans.map((s) => new Date(s.ts)).filter((d) => !Number.isNaN(d.getTime())).slice(-count);
+}
+
 // Map layer description for the renderer (see RadarMap).
 export function iemXyzLayer(site, product, validTime) {
   return { kind: 'xyz', url: iemTileUrl(site, product, validTime) };

@@ -2,8 +2,9 @@
 // (glm-worker/), which extracts them from NOAA's public GOES-19/18 Level 2 data.
 //
 // Delivery: the first load fetches the whole last-15-minutes window in one
-// file; after that, a small index is polled every 20 seconds and only new
-// 20-second chunks are downloaded (usually two, a few KB each).
+// file; after that, a small index is checked shortly after each once-a-minute
+// update (see GlmLayer) and only new 20-second chunks are downloaded (about
+// six per minute across both satellites, a few KB each).
 
 export const GLM_BASE = (import.meta.env.VITE_GLM_URL || 'https://weather-spectrum-glm.alysonwalters22.workers.dev').replace(/\/$/, '');
 

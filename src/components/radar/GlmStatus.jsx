@@ -39,8 +39,9 @@ export default function GlmStatus({ status, now }) {
         <span className="ml-auto text-slate-400 tabular-nums">{status?.count != null ? `${status.count} in 15 min` : ''}</span>
       </div>
       <p className="text-[10px] leading-snug text-slate-400 mt-0.5">
-        Satellite-detected total lightning (in-cloud and cloud-to-ground) from {status?.satellites?.length ? status.satellites.join('/') : 'GOES-19/18'} GLM.
-        Locations accurate to about 8-14 km; not exact ground strike points, and some flashes are missed.
+        Satellite-detected total lightning (in-cloud and cloud-to-ground) from {status?.satellites?.length ? status.satellites.join('/') : 'GOES-19/18'} GLM,
+        updated about once a minute. GLM pixels are 8 to 14 km wide; flash positions are typically within about 5 km near
+        the satellite&apos;s center of view and less precise toward the edge. Not exact ground strike points; some flashes are missed.
       </p>
       {status?.error && newest && <p className="text-[10px] text-amber-300">Couldn&apos;t check for newer flashes.</p>}
     </div>

@@ -73,8 +73,21 @@ const FlashCanvas = L.Layer.extend({
   },
 });
 
-const POLL_MS = 20000;
+// The Worker publishes new flashes once a minute, at the top of each minute.
+// Poll shortly after each expected publish (processing takes a few seconds and
+// the edge cache holds the index for up to 10 s) instead of on a fixed timer.
+const PUBLISH_INTERVAL_MS = 60000;
+const PUBLISH_SETTLE_MS = 12000;
+const FALLBACK_POLL_MS = 30000; // when the Worker is behind or a check fails
 const REDRAW_MS = 15000;
+
+function nextPollDelay(generated) {
+  if (!generated) return FALLBACK_POLL_MS;
+  const due = generated.getTime() + PUBLISH_INTERVAL_MS + PUBLISH_SETTLE_MS;
+  const wait = due - Date.now();
+  // A publish older than expected means the Worker is behind: check more often.
+  return wait > 5000 && wait <= PUBLISH_INTERVAL_MS + PUBLISH_SETTLE_MS ? wait : FALLBACK_POLL_MS;
+}
 
 export default function GlmLayer({ onStatus }) {
   const map = useMap();
@@ -99,6 +112,7 @@ export default function GlmLayer({ onStatus }) {
       clearTimeout(timer);
       controller?.abort();
       controller = new AbortController();
+      let delay = FALLBACK_POLL_MS;
       try {
         const s = await store.refresh(controller.signal);
         if (cancelled) return;
@@ -106,11 +120,12 @@ export default function GlmLayer({ onStatus }) {
         layer.setFlashes(s.flashes);
         const recent = s.flashes.filter((f) => Date.now() - f[2] <= GLM_WINDOW_MS).length;
         statusCb.current?.({ ...s, count: recent, error: null, checkedAt: new Date() });
+        delay = nextPollDelay(s.generated);
       } catch (err) {
         if (cancelled || err.name === 'AbortError') return;
         statusCb.current?.((prev) => ({ ...(prev || {}), error: err, checkedAt: new Date() }));
       }
-      if (!cancelled && !document.hidden) timer = setTimeout(check, POLL_MS);
+      if (!cancelled && !document.hidden) timer = setTimeout(check, delay);
     };
 
     // Keep fading current between polls.

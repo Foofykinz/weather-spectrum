@@ -2,7 +2,9 @@
 //
 // Each flash: centroid latitude/longitude and the time of its first optical
 // event. GLM detects TOTAL lightning (in-cloud and cloud-to-ground) from orbit;
-// locations are accurate to roughly one GLM pixel (about 8-14 km).
+// GLM pixels are about 8 km wide near the sub-satellite point and up to 14 km
+// at the edge of view; NOAA validated flash location accuracy at about 5 km or
+// better near the sub-satellite point (less precise toward the edge).
 
 import * as hdf5 from 'jsfive';
 

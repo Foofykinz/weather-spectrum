@@ -118,6 +118,34 @@ function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors })
   return null;
 }
 
+// Radar loop: one layer per frame, all added at once (hidden) so their images
+// download in the background; playback only changes which one is visible.
+function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, onLoaded }) {
+  const map = useMap();
+  const layers = useRef([]);
+  const loadedCb = useRef(onLoaded);
+  loadedCb.current = onLoaded;
+
+  useEffect(() => {
+    let loaded = 0;
+    layers.current = specs.map((spec) => {
+      const l = createRadarLayer(spec, { opacity: 0, maxNativeZoom, attribution });
+      l.once('load', () => loadedCb.current?.(++loaded));
+      return l.addTo(map);
+    });
+    return () => {
+      layers.current.forEach((l) => map.removeLayer(l));
+      layers.current = [];
+    };
+  }, [specs, map, maxNativeZoom, attribution]);
+
+  useEffect(() => {
+    layers.current.forEach((l, i) => l.setOpacity(i === index ? opacity : 0));
+  }, [index, opacity, specs]);
+
+  return null;
+}
+
 // Tap/click the map to read the exact value of the radar bin underneath
 // (only for products that carry real data values).
 function ValueProbe({ product, details }) {
@@ -216,6 +244,7 @@ export default function RadarMap({
   details,
   lightning,
   onLightningStatus,
+  animation, // { specs, index, onLoaded } while a loop is playing
 }) {
   return (
     <MapContainer
@@ -230,7 +259,17 @@ export default function RadarMap({
     >
       <Panes />
       <VectorBasemap labelsPane="labels" onError={onBasemapError} />
-      {layer && (
+      {animation && (
+        <AnimationLayers
+          specs={animation.specs}
+          index={animation.index}
+          opacity={opacity}
+          maxNativeZoom={product.maxNativeZoom}
+          attribution={product.attribution}
+          onLoaded={animation.onLoaded}
+        />
+      )}
+      {layer && !animation && (
         <RadarTiles
           spec={layer}
           opacity={opacity}
