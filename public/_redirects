@@ -1,1 +1,10 @@
-/about.html /about 301
+# Old About page
+/about.html        /about     301
+# Removed sections
+/hail-map          /radar     301
+/blog              /          301
+/blog/*            /          301
+/forecast          /          301
+/serenader         /          301
+/history           /          301
+/gallery           /          301

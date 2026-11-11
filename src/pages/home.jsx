@@ -1,6 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
+import { CITIES, RADARS, STATION_PAGES } from '../seo/places';
+import { cityPath, stationPath } from '../seo/meta';
 
 // Faint 60px grid, drawn as an inline SVG (no extra request).
 const GRID =
@@ -88,6 +90,35 @@ export default function Home() {
               </li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      {/* Local radar pages */}
+      <section className="bg-slate-950 border-t border-white/5">
+        <div className="max-w-5xl mx-auto px-5 sm:px-6 py-14">
+          <h2 className="text-2xl font-bold text-white">Local radar</h2>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            <ul className="space-y-2">
+              {CITIES.map((c) => (
+                <li key={c.slug}>
+                  <Link to={cityPath(c)} className="text-orange-300 hover:text-orange-200 font-medium">
+                    {c.name} weather radar
+                  </Link>
+                  <span className="text-sm text-slate-400"> · {RADARS[c.primary].icao}</span>
+                </li>
+              ))}
+            </ul>
+            <ul className="space-y-2">
+              {STATION_PAGES.map((id) => (
+                <li key={id}>
+                  <Link to={stationPath(RADARS[id])} className="text-orange-300 hover:text-orange-200 font-medium">
+                    {RADARS[id].icao} NEXRAD radar
+                  </Link>
+                  <span className="text-sm text-slate-400"> · {RADARS[id].name}, {RADARS[id].state}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </section>
 

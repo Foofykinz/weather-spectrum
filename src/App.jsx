@@ -1,27 +1,23 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
+import React, { Suspense, lazy, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
 import { Radar } from 'lucide-react';
-import Admin from './pages/Admin';
 import Home from './pages/home';
 import About from './pages/About';
-import RadarPage from './pages/RadarPage';
+import CityRadar from './pages/CityRadar';
+import StationPage from './pages/StationPage';
+import NotFound from './pages/NotFound';
 import CookieConsent from './components/CookieConsent';
 import { initOneSignal } from './utils/oneSignalConfig';
+import { useSeo } from './seo/useSeo';
+import { CITIES } from './seo/places';
+import { cityPath } from './seo/meta';
 
-// Placeholder pages that already existed; kept reachable by URL until their
-// dedicated versions are built, but no longer linked from navigation.
-const comingSoon = (title) => (
-  <div className="max-w-7xl mx-auto px-6 py-24 text-center">
-    <h1 className="text-3xl font-bold text-white">{title}</h1>
-    <p className="mt-3 text-slate-400">Coming soon.</p>
-  </div>
-);
+// The radar application and admin page load on demand, so content pages
+// (home, about, city and station pages) stay light.
+const RadarPage = lazy(() => import('./pages/RadarPage'));
+const Admin = lazy(() => import('./pages/Admin'));
 
-const legalPage = (src, title) => (
-  <div className="max-w-4xl mx-auto px-6 py-16">
-    <iframe src={src} className="w-full h-screen border-0 rounded-xl bg-slate-950" title={title} />
-  </div>
-);
+const loading = <div className="fixed inset-0 z-[55] bg-[#0b0f17]" aria-label="Loading radar" />;
 
 function Header() {
   return (
@@ -58,12 +54,20 @@ function Footer() {
               Independent radar viewer. Not affiliated with NOAA, the National Weather Service or the other data providers listed.
             </p>
           </div>
-          <nav className="flex flex-wrap gap-x-6 gap-y-2 text-slate-300">
-            <Link to="/radar" className="hover:text-white transition-colors">Live Radar</Link>
-            <Link to="/about" className="hover:text-white transition-colors">About</Link>
-            <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
-            <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
-          </nav>
+          <div className="flex flex-col gap-3">
+            <nav aria-label="Site" className="flex flex-wrap gap-x-6 gap-y-2 text-slate-300">
+              <Link to="/radar" className="hover:text-white transition-colors">Live Radar</Link>
+              <Link to="/about" className="hover:text-white transition-colors">About</Link>
+              {/* Legal pages are standalone documents served directly by the host. */}
+              <a href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a>
+              <a href="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</a>
+            </nav>
+            <nav aria-label="Radar by city" className="flex flex-wrap gap-x-6 gap-y-2 text-slate-400">
+              {CITIES.map((c) => (
+                <Link key={c.slug} to={cityPath(c)} className="hover:text-white transition-colors">{c.name} radar</Link>
+              ))}
+            </nav>
+          </div>
         </div>
         <p className="mt-8 text-xs leading-relaxed text-slate-500">
           Radar and lightning data: NOAA / National Weather Service, NOAA NEXRAD Level III (NODD, Unidata), NOAA GOES-19/18 GLM,
@@ -75,34 +79,37 @@ function Footer() {
   );
 }
 
+// Everything inside the router. Shared by the browser (BrowserRouter) and the
+// prerender step (StaticRouter, see entry-server.jsx).
+export function AppShell() {
+  useSeo();
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+      <Header />
+      <main className="flex-1">
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/radar" element={<Suspense fallback={loading}><RadarPage /></Suspense>} />
+          <Route path="/radar/:slug" element={<CityRadar />} />
+          <Route path="/stations/:icao" element={<StationPage />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/admin" element={<Suspense fallback={null}><Admin /></Suspense>} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </main>
+      <Footer />
+      <CookieConsent />
+    </div>
+  );
+}
+
 export default function App() {
   useEffect(() => {
     initOneSignal();
   }, []);
-
   return (
-    <Router>
-      <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
-        <Header />
-        <main className="flex-1">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/radar" element={<RadarPage />} />
-            <Route path="/forecast" element={comingSoon('Forecasts')} />
-            <Route path="/serenader" element={comingSoon('Storm Serenader')} />
-            <Route path="/history" element={comingSoon('Weather History')} />
-            <Route path="/gallery" element={comingSoon('Gallery')} />
-            <Route path="/about" element={<About />} />
-            <Route path="/privacy-policy" element={legalPage('/privacy-policy.html', 'Privacy Policy')} />
-            <Route path="/terms-of-service" element={legalPage('/terms-of-service.html', 'Terms of Service')} />
-            <Route path="/admin" element={<Admin />} />
-            {/* Removed or unknown addresses go home instead of a blank page */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-        <Footer />
-        <CookieConsent />
-      </div>
-    </Router>
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
   );
 }
