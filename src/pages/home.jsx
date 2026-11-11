@@ -14,7 +14,7 @@ const PRODUCTS = [
   'Specific differential phase',
   'Hydrometeor classification',
   'Echo tops and VIL',
-  'Lightning',
+  'Satellite lightning',
 ];
 
 const SOURCES = [
@@ -34,9 +34,9 @@ const SOURCES = [
     href: 'https://mesonet.agron.iastate.edu/',
   },
   {
-    name: 'NOAA nowCOAST',
-    use: 'Lightning strike density, derived by NOAA from ground-based lightning detection networks.',
-    href: 'https://nowcoast.noaa.gov/',
+    name: 'NOAA GOES-19 and GOES-18 GLM',
+    use: 'Satellite-detected lightning flashes from the Geostationary Lightning Mapper, published through the NOAA Open Data Dissemination program (AWS) and processed by Weather Spectrum.',
+    href: 'https://www.goes-r.gov/spacesegment/glm.html',
   },
   {
     name: 'OpenFreeMap',

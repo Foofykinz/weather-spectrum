@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-ro
 import { Radar } from 'lucide-react';
 import Admin from './pages/Admin';
 import Home from './pages/home';
+import About from './pages/About';
 import RadarPage from './pages/RadarPage';
 import CookieConsent from './components/CookieConsent';
 import { initOneSignal } from './utils/oneSignalConfig';
@@ -65,7 +66,7 @@ function Footer() {
           </nav>
         </div>
         <p className="mt-8 text-xs leading-relaxed text-slate-500">
-          Radar and lightning data: NOAA / National Weather Service, NOAA NEXRAD Level III (NODD, Unidata), NOAA nowCOAST,
+          Radar and lightning data: NOAA / National Weather Service, NOAA NEXRAD Level III (NODD, Unidata), NOAA GOES-19/18 GLM,
           Iowa Environmental Mesonet. Basemap: OpenFreeMap, OpenMapTiles, OpenStreetMap contributors.
         </p>
         <p className="mt-2 text-xs text-slate-500">© {new Date().getFullYear()} Weather Spectrum</p>
@@ -91,7 +92,7 @@ export default function App() {
             <Route path="/serenader" element={comingSoon('Storm Serenader')} />
             <Route path="/history" element={comingSoon('Weather History')} />
             <Route path="/gallery" element={comingSoon('Gallery')} />
-            <Route path="/about" element={legalPage('/about.html', 'About')} />
+            <Route path="/about" element={<About />} />
             <Route path="/privacy-policy" element={legalPage('/privacy-policy.html', 'Privacy Policy')} />
             <Route path="/terms-of-service" element={legalPage('/terms-of-service.html', 'Terms of Service')} />
             <Route path="/admin" element={<Admin />} />

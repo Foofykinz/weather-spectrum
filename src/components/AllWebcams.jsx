@@ -27,36 +27,7 @@ export default function AllWebcams({ lat, lon, maxDistance = 100 }) {
         setLoading(true);
         let combinedCams = [];
 
-        // 1. Fetch Windy cams
-        try {
-          const API_KEY = process.env.REACT_APP_WINDY_KEY;
-          const windyResponse = await fetch(
-            `https://api.windy.com/api/webcams/v2/list/nearby=${lat},${lon},${maxDistance}?show=webcams:image,location&key=${API_KEY}`
-          );
-          
-          if (windyResponse.ok) {
-            const windyData = await windyResponse.json();
-            if (windyData.result && windyData.result.webcams) {
-              const windyCams = windyData.result.webcams.map(cam => ({
-                id: `windy-${cam.id}`,
-                title: cam.title,
-                image: cam.image.current.preview,
-                city: cam.location.city,
-                state: cam.location.region,
-                latitude: cam.location.latitude,
-                longitude: cam.location.longitude,
-                distance: calculateDistance(lat, lon, cam.location.latitude, cam.location.longitude),
-                source: 'Windy',
-                type: 'live'
-              }));
-              combinedCams.push(...windyCams);
-            }
-          }
-        } catch (err) {
-          console.error('Windy fetch failed:', err);
-        }
-
-        // 2. Add custom webcams from JSON
+        // Curated webcams from JSON. (The Windy webcam API integration was removed.)
         const customCams = customWebcams.custom
           .map(cam => ({
             ...cam,
@@ -67,7 +38,7 @@ export default function AllWebcams({ lat, lon, maxDistance = 100 }) {
         
         combinedCams.push(...customCams);
 
-        // 3. Sort by distance
+        // Sort by distance
         combinedCams.sort((a, b) => a.distance - b.distance);
 
         setAllCams(combinedCams);
@@ -178,7 +149,7 @@ export default function AllWebcams({ lat, lon, maxDistance = 100 }) {
       </div>
 
       <div className="mt-8 text-center text-sm text-stone-500">
-        <p>Webcams from Windy.com and curated sources</p>
+        <p>Curated webcams</p>
       </div>
     </section>
   );
