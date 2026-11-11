@@ -7,6 +7,7 @@ import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
 import { Zap } from 'lucide-react';
 import Home from './pages/home';
 import CookieConsent from './components/CookieConsent';
+import RadarPage from './pages/RadarPage';
 
 export default function App() {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -41,6 +42,7 @@ export default function App() {
       {/* Desktop Nav */}
       <nav className="hidden md:flex gap-8 text-sm font-semibold text-stone-600">
         <Link to="/forecast" className="hover:text-orange-600 transition-colors">Forecasts</Link>
+        <Link to="/radar" className="hover:text-orange-600 transition-colors">Radar</Link>
         <Link to="/hail-map" className="hover:text-orange-600 transition-colors">🧊 Hail Map</Link>
         <Link to="/serenader" className="hover:text-orange-600 transition-colors">Serenader</Link>
         <Link to="/history" className="hover:text-orange-600 transition-colors">History</Link>
@@ -75,6 +77,13 @@ export default function App() {
           className="block px-4 py-3 rounded-lg hover:bg-stone-100 transition-colors font-semibold text-stone-600"
         >
           Forecasts
+        </Link>
+        <Link 
+          to="/radar" 
+          onClick={() => setMobileMenuOpen(false)}
+          className="block px-4 py-3 rounded-lg hover:bg-stone-100 transition-colors font-semibold text-stone-600"
+        >
+          Radar
         </Link>
         <Link 
           to="/hail-map" 
@@ -121,6 +130,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/forecast" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Forecast Page - Coming Soon</h1></div>} />
             <Route path="/hail-map" element={<HailMapPage />} />
+            <Route path="/radar" element={<RadarPage />} />
             <Route path="/serenader" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Storm Serenader Gallery - Coming Soon</h1></div>} />
             <Route path="/history" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Weather History - Coming Soon</h1></div>} />
             <Route path="/blog" element={<div className="max-w-7xl mx-auto px-6 py-20 text-center"><h1 className="text-4xl font-bold">Blog - Coming Soon</h1></div>} />
@@ -140,7 +150,7 @@ export default function App() {
                   <ul className="space-y-2 text-sm text-stone-400">
                     <li><Link to="/forecast" className="hover:text-orange-400 transition-colors">Current Conditions</Link></li>
                     <li><Link to="/forecast" className="hover:text-orange-400 transition-colors">7-Day Forecast</Link></li>
-                    <li><Link to="/" className="hover:text-orange-400 transition-colors">Radar</Link></li>
+                    <li><Link to="/radar" className="hover:text-orange-400 transition-colors">Radar</Link></li>
                     <li><Link to="/forecast" className="hover:text-orange-400 transition-colors">Severe Weather</Link></li>
                   </ul>
                 </div>

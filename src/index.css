@@ -1,3 +1,14 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Radar page: dark styling for Leaflet's built-in attribution (data credits). */
+.ws-radar-map .leaflet-control-attribution {
+  background: rgba(15, 23, 42, 0.8);
+  color: #94a3b8;
+  font-size: 10px;
+  line-height: 1.4;
+}
+.ws-radar-map .leaflet-control-attribution a {
+  color: #cbd5e1;
+}

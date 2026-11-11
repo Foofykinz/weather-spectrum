@@ -3,6 +3,7 @@ import AlertTypesSection from "../components/AlertTypesSection";
 import AllWebcams from '../components/AllWebcams';
 import WeatherAlerts from '../components/weatheralerts';
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Cloud, CloudRain, Sun, Wind, Calendar, Play, ChevronRight, MapPin, Zap, Loader, Search } from 'lucide-react';
 
 export default function Home() {
@@ -240,7 +241,12 @@ export default function Home() {
       </section>
       {/* Radar Map Section */}
       <section className="max-w-7xl mx-auto px-6 py-16">
-        <h3 className="text-4xl font-bold mb-10 text-stone-900">Live Radar</h3>
+        <div className="flex flex-wrap items-end justify-between gap-4 mb-10">
+          <h3 className="text-4xl font-bold text-stone-900">Live Radar</h3>
+          <Link to="/radar" className="inline-flex items-center gap-1 font-semibold text-orange-600 hover:text-orange-700">
+            Open full-screen NEXRAD radar <ChevronRight className="w-4 h-4" />
+          </Link>
+        </div>
         <div className="relative overflow-hidden rounded-3xl shadow-2xl border border-stone-200">
           <iframe
             src="https://embed.windy.com/embed2.html?lat=32.755&lon=-97.331&detailLat=32.755&detailLon=-97.331&width=650&height=450&zoom=8&level=surface&overlay=radar&product=radar&menu=&message=&marker=&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=default&metricTemp=default&radarRange=-1"
