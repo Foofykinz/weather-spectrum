@@ -49,11 +49,11 @@ export default function CookieConsent() {
   if (!showBanner) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-stone-900 text-white p-4 shadow-lg z-[1100] border-t-2 border-orange-500">
+    <div className="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur text-white p-4 shadow-lg z-[1100] border-t border-white/10">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex-1 text-sm">
-          <p className="font-semibold mb-1">🍪 We use cookies</p>
-          <p className="text-stone-300">
+          <p className="font-semibold mb-1">Cookies</p>
+          <p className="text-slate-300">
             We use essential cookies for site functionality and analytics cookies to understand how you use our site. 
             By clicking "Accept", you consent to our use of cookies. 
             <a href="/privacy-policy" className="text-orange-400 hover:text-orange-300 ml-1 underline">
@@ -64,13 +64,13 @@ export default function CookieConsent() {
         <div className="flex gap-3 flex-shrink-0">
           <button
             onClick={handleDecline}
-            className="px-4 py-2 text-sm border border-stone-600 rounded-lg hover:bg-stone-800 transition-colors"
+            className="px-4 py-2 text-sm border border-slate-600 rounded-lg hover:bg-slate-800 transition-colors"
           >
             Decline
           </button>
           <button
             onClick={handleAccept}
-            className="px-4 py-2 text-sm bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors font-semibold"
+            className="px-4 py-2 text-sm bg-orange-500 text-slate-950 rounded-lg hover:bg-orange-400 transition-colors font-semibold"
           >
             Accept All
           </button>
