@@ -1,3 +1,23 @@
+// Checks the "Authorization: Bearer <password>" header against the
+// ADMIN_PASSWORD Worker secret (set with `wrangler secret put ADMIN_PASSWORD`).
+// Both values are hashed first so the comparison takes the same time no matter
+// how much of the password is right (prevents timing attacks).
+async function isAuthorizedAdmin(request, env) {
+  const expected = env.ADMIN_PASSWORD;
+  if (!expected) return false; // fail closed if the secret is missing
+
+  const header = request.headers.get('Authorization') || '';
+  const match = header.match(/^Bearer (.+)$/);
+  if (!match) return false;
+
+  const encoder = new TextEncoder();
+  const [given, wanted] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(match[1])),
+    crypto.subtle.digest('SHA-256', encoder.encode(expected)),
+  ]);
+  return crypto.subtle.timingSafeEqual(given, wanted);
+}
+
 export default {
   async fetch(request, env) {
     // Handle CORS preflight
@@ -6,7 +26,8 @@ export default {
         headers: {
           'Access-Control-Allow-Origin': '*',
           'Access-Control-Allow-Methods': 'POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'Content-Type',
+          // Authorization is needed so the admin panel can send its password.
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
       });
     }
@@ -20,6 +41,17 @@ export default {
 
     // Endpoint: /send-notification
     if (url.pathname === '/send-notification') {
+      // Only the admin may push notifications to every subscriber.
+      if (!(await isAuthorizedAdmin(request, env))) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
+      }
+
       try {
         const body = await request.json();
         const { title, message, url: notificationUrl, segments } = body;
