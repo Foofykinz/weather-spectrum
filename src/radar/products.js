@@ -356,10 +356,40 @@ export function getProduct(id) {
   return RADAR_PRODUCTS.find((p) => p.id === id) || RADAR_PRODUCTS[0];
 }
 
-// Group products for the menu, preserving registry order.
+// Super-res reflectivity and velocity: the lowest tilt is the base product
+// (imagery, loopable); higher tilts come from the Level III all-tilt product.
+// Menus show one entry with a Tilt submenu instead of two entries.
+export const TILT_VARIANTS = { 'site-reflectivity': 'site-ref-tilt', 'site-velocity': 'site-vel-tilt' };
+const TILT_PARENTS = Object.fromEntries(Object.entries(TILT_VARIANTS).map(([a, b]) => [b, a]));
+
+// Menu entry a product belongs to.
+export const menuProductId = (id) => TILT_PARENTS[id] || id;
+
+// Product whose files list the tilts for a menu entry (null: no tilts).
+export function tiltSourceOf(p) {
+  if (TILT_VARIANTS[p.id]) return getProduct(TILT_VARIANTS[p.id]);
+  return p.tiltLetter ? p : null;
+}
+
+// Selected tilt letter for a menu entry, given the current product and tilt param.
+export function selectedTiltFor(menuId, productId, tiltParam) {
+  if (menuProductId(productId) !== menuId) return null;
+  if (TILT_VARIANTS[productId]) return 'N0';
+  return LEVEL3_TILTS.includes(tiltParam) ? tiltParam : 'N0';
+}
+
+// Product id and tilt URL param to use when a tilt is picked from a menu entry.
+export function productForTilt(menuId, tilt) {
+  if (TILT_VARIANTS[menuId]) return tilt === 'N0' ? { product: menuId, tilt: null } : { product: TILT_VARIANTS[menuId], tilt };
+  return { product: menuId, tilt: tilt === 'N0' ? null : tilt };
+}
+
+// Group products for the menu, preserving registry order. Tilt variants are
+// reached through their parent's Tilt submenu, so they are left out.
 export function productGroups() {
   const groups = new Map();
   for (const p of RADAR_PRODUCTS) {
+    if (TILT_PARENTS[p.id]) continue;
     if (!groups.has(p.group)) groups.set(p.group, []);
     groups.get(p.group).push(p);
   }

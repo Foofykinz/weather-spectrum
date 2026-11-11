@@ -8,10 +8,8 @@ import RadarMap from '../components/radar/RadarMap';
 import RadarLegend from '../components/radar/RadarLegend';
 import RadarStatus from '../components/radar/RadarStatus';
 import ProductPanel from '../components/radar/ProductPanel';
-import TiltSelector from '../components/radar/TiltSelector';
 import GlmStatus from '../components/radar/GlmStatus';
 import { getProduct, DEFAULT_PRODUCT_ID, LEVEL3_TILTS } from '../radar/products';
-import { listLevel3Tilts } from '../radar/providers/level3';
 import { getStation, nearestStation } from '../radar/stations';
 import { useRadarFrame, useNow } from '../radar/useRadarFrame';
 
@@ -74,20 +72,6 @@ function SingleRadar() {
 
   const frame = useRadarFrame(product, product.scope === 'site' ? station : null, tilt);
   const now = useNow();
-
-  // Which tilts exist right now (and their real angles). Refreshed when a new scan arrives.
-  const [tiltInfo, setTiltInfo] = useState({ key: null, tilts: [] });
-  const tiltKey = product.tiltLetter && station ? `${station.id}:${product.tiltLetter}` : null;
-  const scanTime = frame.validTime?.getTime();
-  useEffect(() => {
-    if (!tiltKey) return undefined;
-    const controller = new AbortController();
-    listLevel3Tilts(station, product.tiltLetter, LEVEL3_TILTS, controller.signal)
-      .then((tilts) => setTiltInfo({ key: tiltKey, tilts }))
-      .catch(() => {}); // the selector simply stays hidden if this fails
-    return () => controller.abort();
-  }, [tiltKey, scanTime]); // eslint-disable-line react-hooks/exhaustive-deps
-  const tilts = tiltInfo.key === tiltKey ? tiltInfo.tilts : [];
 
   // ---- Radar loop (products with a `frames` list: IEM and NWS imagery).
   const LOOP_FRAMES = 10;
@@ -156,15 +140,18 @@ function SingleRadar() {
     if (s) updateParams({ site: s.id });
   }, [updateParams]);
 
-  const selectProduct = (id) => {
+  // Picked from the menu: a product, plus a tilt when chosen from its Tilt menu.
+  const selectProduct = (id, tiltValue = null) => {
     const p = getProduct(id);
-    const changes = { product: id };
+    const changes = { product: id, tilt: tiltValue };
     // Single-site products need a radar: default to the one nearest the map center.
     if (p.scope === 'site' && !station) {
       const v = viewRef.current;
       changes.site = nearestStation(v.lat, v.lon)?.id;
     }
     updateParams(changes);
+    // On phones the menu covers the map: close it so the choice is visible.
+    if (window.innerWidth < 640) setPanelOpen(false);
   };
 
   const selectStation = (id) => updateParams({ site: id });
@@ -220,7 +207,7 @@ function SingleRadar() {
 
       {/* Top-left: navigation, product button, status. pointer-events-none lets
           map drags pass through the empty space between controls. */}
-      <div className="pointer-events-none absolute top-0 left-0 right-0 z-[1000] p-2 sm:p-3 flex flex-col gap-2 sm:max-w-md">
+      <div className="pointer-events-none absolute top-0 left-0 right-0 z-[1000] p-2 sm:p-3 flex flex-col gap-2 max-h-[100dvh] sm:max-w-2xl">
         <div className="pointer-events-auto flex flex-wrap items-center gap-2">
           <Link
             to="/"
@@ -275,6 +262,7 @@ function SingleRadar() {
           open={panelOpen}
           onClose={() => setPanelOpen(false)}
           productId={product.id}
+          tiltParam={tilt}
           onSelectProduct={selectProduct}
           product={product}
           station={station}
@@ -285,7 +273,7 @@ function SingleRadar() {
         />
 
         {!panelOpen && (
-          <div className="pointer-events-auto">
+          <div className="pointer-events-auto sm:max-w-md">
             <RadarStatus product={product} station={station} frame={frame} now={now} tileErrors={tileErrors} />
             {anim && (
               <div className="mt-2">
@@ -302,16 +290,6 @@ function SingleRadar() {
                 Loop unavailable: {loopError}
               </p>
             )}
-            {product.tiltLetter && station && (
-              <div className="mt-2">
-                <TiltSelector
-                  tilts={tilts}
-                  selected={tilt}
-                  onSelect={(t) => updateParams({ tilt: t === 'N0' ? null : t })}
-                  loading={!tilts.length}
-                />
-              </div>
-            )}
             {basemapError && (
               <p className="mt-2 rounded-lg border border-amber-700/60 bg-slate-900/85 px-3 py-1.5 text-xs text-amber-300">
                 Background map couldn&apos;t load. Radar data is still shown.
@@ -321,8 +299,14 @@ function SingleRadar() {
         )}
       </div>
 
-      {/* Bottom-left legend; leaves room for zoom buttons and attribution on the right. */}
-      <div className="pointer-events-none absolute left-2 right-16 bottom-10 sm:left-3 sm:right-auto sm:bottom-7 sm:w-96 z-[1000]">
+      {/* Bottom-left legend; leaves room for zoom buttons and attribution on the right.
+          While the product panel is open it moves beside the panel on wide screens and
+          steps aside on narrower ones, so the two never overlap. */}
+      <div
+        className={`pointer-events-none absolute left-2 right-16 bottom-6 sm:left-3 sm:right-auto sm:bottom-7 sm:w-96 z-[1000] ${
+          panelOpen ? 'hidden lg:block lg:left-[22rem]' : ''
+        }`}
+      >
         <div className="pointer-events-auto">
           {lightningOn && <GlmStatus status={lightningStatus} now={now} />}
           <RadarLegend product={product} frame={frame} />

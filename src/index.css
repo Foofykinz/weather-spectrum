@@ -3,13 +3,13 @@
 @tailwind utilities;
 
 /* Radar page: dark styling for Leaflet's built-in attribution (data credits). */
-.ws-radar-map .leaflet-control-attribution {
+.ws-radar-map.leaflet-container .leaflet-control-attribution {
   background: rgba(15, 23, 42, 0.8);
   color: #94a3b8;
   font-size: 10px;
   line-height: 1.4;
 }
-.ws-radar-map .leaflet-control-attribution a {
+.ws-radar-map.leaflet-container .leaflet-control-attribution a {
   color: #cbd5e1;
 }
 
@@ -29,4 +29,51 @@
 }
 
 /* Compact legends in multi-panel radar views: keep the scale, drop the notes. */
-.ws-legend-compact .ws-legend-note { display: none; }
+.ws-legend-compact .ws-legend-note,
+.ws-legend-compact .ws-legend-more,
+.ws-legend-hide-notes .ws-legend-note { display: none; }
+
+/* Native dropdowns: draw the open list in dark mode (otherwise group headers
+   render as white bars on Windows and some Android browsers). */
+select {
+  color-scheme: dark;
+}
+select optgroup {
+  background: #0f172a;
+  color: #94a3b8;
+}
+select option {
+  background: #0f172a;
+  color: #e2e8f0;
+}
+
+/* Data credits: one line on phones and in multi-panel views (scroll sideways
+   to read all of it) instead of wrapping over the map. */
+@media (max-width: 640px) {
+  .ws-radar-map .leaflet-bottom.leaflet-right {
+    left: 0;
+  }
+  .ws-radar-map.leaflet-container .leaflet-control-attribution {
+    max-width: 100%;
+    white-space: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+}
+.ws-multi-panel .ws-radar-map .leaflet-bottom.leaflet-right {
+  left: 0;
+}
+.ws-multi-panel .ws-radar-map.leaflet-container .leaflet-control-attribution {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+  font-size: 9px;
+}
+.ws-radar-map .leaflet-control-attribution::-webkit-scrollbar,
+.ws-no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.ws-no-scrollbar {
+  scrollbar-width: none;
+}

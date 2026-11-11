@@ -1,13 +1,25 @@
 import React, { useState } from 'react';
+import { Info } from 'lucide-react';
 import { LEGENDS, legendGradient, rampGradient, tickPosition, radarMode } from '../../radar/legends';
 
 const box = 'rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 pt-2 pb-1.5 shadow-lg';
 
-function Header({ title, units }) {
+function Header({ title, units, info, onInfo }) {
   return (
-    <div className="flex items-baseline justify-between text-[11px] text-slate-400 mb-1">
+    <div className="flex items-center gap-2 text-[11px] text-slate-400 mb-1">
       <span className="font-semibold text-slate-200">{title}</span>
-      {units && <span>{units}</span>}
+      {units && <span className="ml-auto">{units}</span>}
+      {onInfo && (
+        <button
+          type="button"
+          onClick={onInfo}
+          aria-expanded={info}
+          aria-label="About this legend"
+          className={`${units ? '' : 'ml-auto '}shrink-0 rounded p-0.5 ${info ? 'text-amber-300' : 'text-slate-400 hover:text-slate-200'}`}
+        >
+          <Info className="w-3.5 h-3.5" />
+        </button>
+      )}
     </div>
   );
 }
@@ -76,7 +88,7 @@ function CategoryLegend({ legend }) {
         type="button"
         onClick={() => setExpanded((e) => !e)}
         aria-expanded={expanded}
-        className="ws-legend-note text-[10px] text-amber-300 hover:text-amber-200"
+        className="ws-legend-more text-[10px] text-amber-300 hover:text-amber-200"
       >
         {expanded ? 'Hide category names' : 'Show category names'}
       </button>
@@ -129,13 +141,19 @@ function LevelsLegend({ legend, frame }) {
   );
 }
 
-// compact: smaller box without explanatory notes (multi-panel views).
+// Notes sit behind an info button so the color scale is all that shows by default.
+// compact: smaller box with no notes at all (multi-panel views, embeds).
 export default function RadarLegend({ product, frame, compact = false }) {
+  const [info, setInfo] = useState(false);
   const legend = LEGENDS[product.legend];
   if (!legend) return null;
+  const hasNote = !compact && (legend.note || legend.type === 'levels');
+  const cls = compact
+    ? 'ws-legend-compact rounded-md border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2 pt-1 pb-0.5 shadow-lg'
+    : `${box}${info ? '' : ' ws-legend-hide-notes'}`;
   return (
-    <div className={compact ? 'ws-legend-compact rounded-md border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2 pt-1 pb-0.5 shadow-lg' : box}>
-      <Header title={product.short} units={legend.units} />
+    <div className={cls}>
+      <Header title={product.short} units={legend.units} info={info} onInfo={hasNote ? () => setInfo((v) => !v) : null} />
       {legend.type === 'gradient' && <GradientLegend legend={legend} />}
       {legend.type === 'image' && <ImageLegend legend={legend} />}
       {legend.type === 'ramps' && <RampLegend legend={legend} />}

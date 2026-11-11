@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Zap, Play } from 'lucide-react';
+import { ArrowLeft, Zap, Play, ChevronDown } from 'lucide-react';
 import RadarMap from './RadarMap';
 import RadarLegend from './RadarLegend';
-import TiltSelector from './TiltSelector';
+import ProductMenu from './ProductMenu';
 import GlmStatus from './GlmStatus';
 import LoopControls from './LoopControls';
 import LayoutSwitch from './LayoutSwitch';
-import { RADAR_PRODUCTS, getProduct, productGroups, LEVEL3_TILTS } from '../../radar/products';
+import { RADAR_PRODUCTS, getProduct, productGroups, LEVEL3_TILTS, menuProductId } from '../../radar/products';
 import { STATIONS } from '../../radar/stations';
-import { listLevel3Tilts } from '../../radar/providers/level3';
 import { useRadarFrame, freshnessOf } from '../../radar/useRadarFrame';
 
 // Multi-panel radar: 2 or 4 synchronized maps. Each panel picks its own
@@ -48,23 +48,25 @@ function useDrawSize(ref) {
   return size;
 }
 
-function RadarPanel({ index, product, tilt, station, onProduct, onTilt, onSelectStation, shared, loop }) {
+function RadarPanel({ index, product, tilt, station, onPick, onSelectStation, shared, loop }) {
   const box = useRef(null);
   const drawSize = useDrawSize(box);
   const tiltKey = product.tiltLetter ? tilt || 'N0' : undefined;
   const frame = useRadarFrame(product, product.scope === 'site' ? station : null, tiltKey, drawSize);
   const groups = useMemo(() => productGroups().map(([g, list]) => [g, list.filter((p) => p.scope === 'site')]).filter(([, l]) => l.length), []);
 
-  // Available tilts with their real angles, refreshed with each new scan.
-  const [tilts, setTilts] = useState({ key: null, list: [] });
-  const tk = product.tiltLetter && station ? `${station.id}:${product.tiltLetter}` : null;
-  const scanTime = frame.validTime?.getTime();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const dropRef = useRef(null);
   useEffect(() => {
-    if (!tk) return undefined;
-    const c = new AbortController();
-    listLevel3Tilts(station, product.tiltLetter, LEVEL3_TILTS, c.signal).then((list) => setTilts({ key: tk, list })).catch(() => {});
-    return () => c.abort();
-  }, [tk, scanTime]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!menuOpen) return undefined;
+    // Close on a press outside the menu (the tilt pop-out lives in <body>, so ignore menus there too).
+    const down = (e) => {
+      if (!menuRef.current?.contains(e.target) && !dropRef.current?.contains(e.target) && !e.target.closest?.('[role="menu"]')) setMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', down, true);
+    return () => document.removeEventListener('pointerdown', down, true);
+  }, [menuOpen]);
 
   const looping = loop && loop.specs;
   const shownTime = looping ? loop.times[loop.index] : frame.validTime;
@@ -72,7 +74,7 @@ function RadarPanel({ index, product, tilt, station, onProduct, onTilt, onSelect
   const elev = frame.details?.elevation ? `${frame.details.elevation}°` : product.elevation;
 
   return (
-    <div ref={box} className="relative min-h-0 min-w-0 overflow-hidden bg-[#0b0f17]">
+    <div ref={box} className="ws-multi-panel relative min-h-0 min-w-0 overflow-hidden bg-[#0b0f17]">
       <RadarMap
         product={product}
         layer={frame.status === 'ok' ? frame.layer : null}
@@ -95,23 +97,40 @@ function RadarPanel({ index, product, tilt, station, onProduct, onTilt, onSelect
       />
 
       <div className="pointer-events-none absolute top-0 left-0 right-0 z-[1000] p-1.5 flex flex-col items-start gap-1">
-        <div className="pointer-events-auto flex max-w-full items-center gap-1 rounded-md border border-slate-700/80 bg-slate-900/90 backdrop-blur px-1.5 py-1 shadow-lg">
-          <select
-            value={product.id}
-            onChange={(e) => onProduct(e.target.value)}
+        <div ref={menuRef} className="pointer-events-auto relative max-w-full">
+          <button
+            type="button"
+            onClick={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              setMenuOpen((o) => (o ? false : { left: r.left, top: r.bottom + 4 }));
+            }}
+            aria-expanded={!!menuOpen}
             aria-label={`Panel ${index + 1} product`}
-            className="max-w-[9.5rem] sm:max-w-[13rem] truncate bg-transparent text-xs font-semibold text-slate-100 focus:outline-none"
+            className="flex max-w-[11rem] sm:max-w-[15rem] items-center gap-1 rounded-md border border-slate-700/80 bg-slate-900/90 backdrop-blur px-2 py-1 text-xs font-semibold text-slate-100 shadow-lg hover:bg-slate-800"
           >
-            {groups.map(([g, list]) => (
-              <optgroup key={g} label={g}>
-                {list.map((p) => (
-                  <option key={p.id} value={p.id} className="bg-slate-900">
-                    {p.name}
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
+            <span className="truncate">{getProduct(menuProductId(product.id)).name}</span>
+            <ChevronDown className="w-3.5 h-3.5 shrink-0 text-slate-400" aria-hidden />
+          </button>
+          {menuOpen &&
+            createPortal(
+            <div
+              ref={dropRef}
+              style={{ left: Math.min(menuOpen.left, window.innerWidth - 264), top: menuOpen.top, maxHeight: window.innerHeight - menuOpen.top - 8 }}
+              className="fixed z-[2000] w-64 max-w-[calc(100vw-1rem)] overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 shadow-2xl text-sm text-slate-200 pb-1">
+              <ProductMenu
+                groups={groups}
+                productId={product.id}
+                tiltParam={tiltKey}
+                station={station}
+                showDetails={false}
+                onPick={(id, t) => {
+                  setMenuOpen(false);
+                  onPick(id, t);
+                }}
+              />
+            </div>,
+            document.body
+          )}
         </div>
         <div className="pointer-events-auto rounded-md border border-slate-700/80 bg-slate-900/90 backdrop-blur px-2 py-1 text-[11px] leading-tight shadow-lg tabular-nums">
           {frame.status === 'ok' && shownTime ? (
@@ -128,11 +147,6 @@ function RadarPanel({ index, product, tilt, station, onProduct, onTilt, onSelect
           )}
           {loop && !looping && frame.status === 'ok' && <span className="block text-amber-300">Latest scan, not animated</span>}
         </div>
-        {product.tiltLetter && tilts.key === tk && tilts.list.length > 0 && (
-          <div className="pointer-events-auto scale-90 origin-top-left">
-            <TiltSelector tilts={tilts.list} selected={tiltKey} onSelect={onTilt} />
-          </div>
-        )}
       </div>
 
       <div className="pointer-events-none absolute left-1.5 right-12 bottom-6 z-[1000] sm:right-auto sm:w-72">
@@ -215,13 +229,12 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
   };
 
   const shared = { now, opacity, initialView, onViewChange, lightningOn, onLightningStatus: setLightningStatus, syncGroup, keepInitialView };
-  const setPanel = (i, id) => updateParams({ [PANEL_KEYS[i]]: id });
-  const setTilt = (i, t) => updateParams({ [TILT_KEYS[i]]: t === 'N0' ? null : t });
+  const pickPanel = (i, id, t) => updateParams({ [PANEL_KEYS[i]]: id, [TILT_KEYS[i]]: t });
   const canLoop = panels.some((p) => p.frames);
 
   return (
     <div className="fixed inset-0 z-[55] flex flex-col bg-[#0b0f17] text-slate-200">
-      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-white/10 bg-slate-900/95 px-2 py-1.5">
+      <div className="ws-no-scrollbar flex items-center gap-1.5 overflow-x-auto border-b border-white/10 bg-slate-900/95 px-2 py-1.5">
         <Link to="/" aria-label="Weather Spectrum home" className="flex items-center gap-1 rounded-md border border-slate-700/80 px-2 py-1.5 text-xs font-semibold hover:bg-slate-800">
           <ArrowLeft className="w-4 h-4" />
         </Link>
@@ -256,27 +269,6 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
         )}
       </div>
 
-      {(anim || loopError || lightningOn) && (
-        <div className="pointer-events-none absolute right-2 top-14 z-[1100] w-[calc(100%-1rem)] max-w-sm space-y-2">
-          {anim && (
-            <div className="pointer-events-auto">
-              <LoopControls
-                anim={{ times: anim.ref, index: anim.index, playing: anim.playing, loaded: Math.min(anim.loaded, anim.ref.length) }}
-                onToggle={() => setAnim((a) => ({ ...a, playing: !a.playing }))}
-                onScrub={(i) => setAnim((a) => ({ ...a, index: i, playing: false, hold: 0 }))}
-                onLive={stopLoop}
-              />
-            </div>
-          )}
-          {loopError && !anim && <p className="pointer-events-auto rounded-lg border border-amber-700/60 bg-slate-900/90 px-3 py-1.5 text-xs text-amber-300">Loop unavailable: {loopError}</p>}
-          {lightningOn && (
-            <div className="pointer-events-auto">
-              <GlmStatus status={lightningStatus} now={now} />
-            </div>
-          )}
-        </div>
-      )}
-
       <div className={`grid flex-1 min-h-0 gap-px bg-slate-700 ${layout === 4 ? 'grid-cols-2 grid-rows-2' : 'grid-rows-2 md:grid-rows-1 md:grid-cols-2'}`}>
         {panels.map((p, i) => (
           <RadarPanel
@@ -285,14 +277,35 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
             product={p}
             tilt={tilts[i]}
             station={station}
-            onProduct={(id) => setPanel(i, id)}
-            onTilt={(t) => setTilt(i, t)}
+            onPick={(id, t) => pickPanel(i, id, t)}
             onSelectStation={onSelectStation}
             shared={shared}
             loop={loopFor(i)}
           />
         ))}
       </div>
+
+      {/* Loop and lightning status sit in a strip under the panels instead of over them. */}
+      {(anim || loopError || lightningOn) && (
+        <div className="flex flex-col gap-1.5 border-t border-white/10 bg-slate-950 p-1.5 sm:flex-row sm:items-start">
+          {anim && (
+            <div className="sm:flex-1 sm:max-w-xl">
+              <LoopControls
+                anim={{ times: anim.ref, index: anim.index, playing: anim.playing, loaded: Math.min(anim.loaded, anim.ref.length) }}
+                onToggle={() => setAnim((a) => ({ ...a, playing: !a.playing }))}
+                onScrub={(i) => setAnim((a) => ({ ...a, index: i, playing: false, hold: 0 }))}
+                onLive={stopLoop}
+              />
+            </div>
+          )}
+          {loopError && !anim && <p className="rounded-lg border border-amber-700/60 bg-slate-900/90 px-3 py-1.5 text-xs text-amber-300">Loop unavailable: {loopError}</p>}
+          {lightningOn && (
+            <div className="sm:w-80">
+              <GlmStatus status={lightningStatus} now={now} compact />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

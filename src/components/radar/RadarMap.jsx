@@ -334,10 +334,31 @@ export default function RadarMap({
       <ValueProbe product={product} details={layer ? details : null} />
       {lightning && <GlmLayer onStatus={onLightningStatus} />}
       <MapSync group={syncGroup} />
+      <AutoResize />
       {primary && <ViewWatcher onViewChange={onViewChange} />}
       {primary && <ZoomButtons />}
     </MapContainer>
   );
+}
+
+// Leaflet only notices window resizes. Panels also change size when the loop
+// or lightning strip appears, so watch the container itself (keeps the center).
+function AutoResize() {
+  const map = useMap();
+  useEffect(() => {
+    const el = map.getContainer();
+    let frame = 0;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => map.invalidateSize());
+    });
+    ro.observe(el);
+    return () => {
+      cancelAnimationFrame(frame);
+      ro.disconnect();
+    };
+  }, [map]);
+  return null;
 }
 
 function ZoomButtons() {
