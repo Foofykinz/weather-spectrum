@@ -22,7 +22,7 @@ export const stationPath = (r) => `/stations/${r.icao.toLowerCase()}`;
 
 const STATIC = {
   '/': {
-    title: 'Weather Spectrum | Live NEXRAD Radar for Storm Chasers',
+    title: 'Weather Spectrum | Live NEXRAD Weather Radar',
     description:
       'Live NEXRAD weather radar: super-resolution reflectivity and velocity, dual-polarization products, echo tops and GOES satellite lightning from NOAA data.',
     jsonLd: [

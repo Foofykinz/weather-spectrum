@@ -57,11 +57,11 @@ export default function Home() {
         <div className="absolute -bottom-32 right-0 w-96 h-96 rounded-full bg-orange-500 opacity-10 blur-3xl" aria-hidden />
 
         <div className="relative max-w-5xl mx-auto px-5 sm:px-6 pt-24 pb-28 sm:pt-32 sm:pb-36 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">Live NEXRAD radar</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">Weather Spectrum</p>
           <h1 className="mt-5 text-4xl sm:text-6xl md:text-7xl font-bold leading-[1.05] tracking-tight text-white">
-            Weather radar for
+            Live weather radar
             <span className="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-yellow-400 to-orange-500">
-              storm chasers
+              from NOAA NEXRAD
             </span>
           </h1>
           <p className="mt-6 text-base sm:text-lg leading-relaxed text-gray-300 max-w-2xl mx-auto">

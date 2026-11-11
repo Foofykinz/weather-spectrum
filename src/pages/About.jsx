@@ -17,7 +17,7 @@ export default function About() {
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">About</p>
         <h1 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight text-white">Weather Spectrum</h1>
         <p className="mt-5 text-lg leading-relaxed text-gray-300">
-          Weather Spectrum is a radar viewer for storm chasers, spotters and anyone who follows severe weather closely.
+          Weather Spectrum is a radar viewer for anyone who follows severe weather closely.
           It brings NEXRAD radar products and satellite lightning together on one fast map, using real observations
           published by NOAA and its partners.
         </p>
