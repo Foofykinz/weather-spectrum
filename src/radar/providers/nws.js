@@ -13,7 +13,9 @@ const NWS = 'https://opengeo.ncep.noaa.gov/geoserver';
 export const NWS_ATTRIBUTION =
   'Radar: <a href="https://radar.weather.gov/" target="_blank" rel="noopener noreferrer">NOAA/NWS</a>';
 
-// NWS uses lowercase 4-letter call signs as workspace names (ktlx, pahg, tjua).
+// NWS groups layers into "workspaces": one per radar, named by lowercase call
+// sign (ktlx, pahg, tjua), plus national mosaics ("conus"). The `icao`
+// parameters below accept either.
 const workspace = (icao) => icao.toLowerCase();
 
 // Short-lived cache so switching between products at the same radar

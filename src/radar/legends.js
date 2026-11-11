@@ -10,8 +10,10 @@
 //   image       the provider's official legend image, shown as-is
 //   categories  labeled color swatches for classified (non-numeric) data
 //   levels      a fixed set of data levels whose values depend on the scan
+//   ramps       continuous color ramps per value band, hard edges between bands
 
 import nwsSrBvelLegend from './legend-images/nws-sr-bvel.png';
+import nwsBrefQcdLegend from './legend-images/nws-bref-qcd.png';
 
 export const LEGENDS = {
   // IEM N0Q / N0B reflectivity. Source: palette embedded in IEM's N0Q
@@ -47,6 +49,45 @@ export const LEGENDS = {
     src: nwsSrBvelLegend,
     alt: 'NWS base velocity color scale from -100 to +100 knots, with range folded (RF) at the left',
     note: 'Negative (green/blue) = toward the radar · positive (red) = away · RF = range folded',
+  },
+
+  // NWS national composite reflectivity (radar.weather.gov "CREF.QCD").
+  // NWS uses its base reflectivity legend for this product
+  // (https://www.weather.gov/images/nws/radarfaq/BREFQCD_CT.png, per
+  // https://www.weather.gov/radarfaq). Live CREF imagery matches it closely
+  // (median color difference 0, 95% of pixels within 2 RGB units).
+  'nws-cref': {
+    type: 'image',
+    units: 'dBZ',
+    src: nwsBrefQcdLegend,
+    alt: 'NWS reflectivity color scale from about -30 to 75 dBZ',
+    note: 'Highest reflectivity found anywhere in each vertical column, from all radar tilts.',
+  },
+
+  // NWS national echo tops (radar.weather.gov "NEET.V18").
+  // NWS's published legend image does NOT match the live imagery, so it is
+  // not used. Instead the color→height mapping was measured by pairing every
+  // pixel of the NWS image with NOAA MRMS EchoTop_18 data (km MSL) for the
+  // same 2-minute timestamp on the identical 0.01° grid: 530 colors, no
+  // overlapping height ranges, confirmed on a second scan. Within each
+  // 10 kft band the color ramps from dark to bright.
+  'nws-echo-tops': {
+    type: 'ramps',
+    units: 'kft MSL',
+    min: 0,
+    max: 65,
+    ramps: [
+      [0, 10, '#49b7b9', '#07f9fd'],
+      [10, 20, '#020080', '#0200fc'],
+      [20, 30, '#018001', '#02fb02'],
+      [30, 40, '#807d01', '#faf602'],
+      [40, 50, '#810000', '#f50000'],
+      [50, 60, '#c0c0c0', '#f7f7f7'],
+      // Only one sample above 60 kft was observed; shown as a single color.
+      [60, 65, '#dc00e0', '#dc00e0'],
+    ],
+    ticks: [10, 20, 30, 40, 50, 60],
+    note: 'Height of the highest 18 dBZ echo, in thousands of feet above sea level.',
   },
 
   // NWS hydrometeor classification (radar.weather.gov "BDHC").
@@ -124,6 +165,13 @@ export function legendGradient(scale) {
 }
 
 export function tickPosition(scale, value) {
-  const min = scale.stops[0][0];
+  const min = scale.min ?? scale.stops[0][0];
   return ((value - min) / (scale.max - min)) * 100;
+}
+
+// Smooth inside each band, hard edge between bands.
+export function rampGradient(legend) {
+  const pos = (v) => (((v - legend.min) / (legend.max - legend.min)) * 100).toFixed(2);
+  const parts = legend.ramps.flatMap(([from, to, c1, c2]) => [`${c1} ${pos(from)}%`, `${c2} ${pos(to)}%`]);
+  return `linear-gradient(to right, ${parts.join(', ')})`;
 }

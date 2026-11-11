@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LEGENDS, legendGradient, tickPosition, radarMode } from '../../radar/legends';
+import { LEGENDS, legendGradient, rampGradient, tickPosition, radarMode } from '../../radar/legends';
 
 const box = 'rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 pt-2 pb-1.5 shadow-lg';
 
@@ -25,6 +25,22 @@ function GradientLegend({ legend }) {
           </span>
         ))}
       </div>
+    </>
+  );
+}
+
+function RampLegend({ legend }) {
+  return (
+    <>
+      <div className="h-3 rounded-sm" style={{ background: rampGradient(legend) }} />
+      <div className="relative h-4 text-[10px] text-slate-300 tabular-nums">
+        {legend.ticks.map((t) => (
+          <span key={t} className="absolute -translate-x-1/2" style={{ left: `${tickPosition(legend, t)}%` }}>
+            {t}
+          </span>
+        ))}
+      </div>
+      {legend.note && <Note>{legend.note}</Note>}
     </>
   );
 }
@@ -120,6 +136,7 @@ export default function RadarLegend({ product, frame }) {
       <Header title={product.short} units={legend.units} />
       {legend.type === 'gradient' && <GradientLegend legend={legend} />}
       {legend.type === 'image' && <ImageLegend legend={legend} />}
+      {legend.type === 'ramps' && <RampLegend legend={legend} />}
       {legend.type === 'categories' && <CategoryLegend legend={legend} />}
       {legend.type === 'levels' && <LevelsLegend legend={legend} frame={frame} />}
     </div>

@@ -46,11 +46,14 @@ function siteBounds(site, km = 470) {
   return [[site.lat - dLat, site.lon - dLon], [site.lat + dLat, site.lon + dLon]];
 }
 const withBounds = (layer, bounds) => ({ ...layer, bounds });
+// Extent of NWS's national ("conus") MRMS layers, from their capabilities file.
+const NWS_CONUS_BOUNDS = [[20, -130], [55, -60]];
+const MRMS_TIMING = { pollSeconds: 60, freshness: { delayedAfterMin: 10, staleAfterMin: 20 } };
 
 export const RADAR_PRODUCTS = [
   {
     id: 'mosaic-reflectivity',
-    name: 'National Reflectivity Mosaic',
+    name: 'Base Reflectivity (National)',
     short: 'Mosaic BREF',
     group: 'Reflectivity',
     description:
@@ -68,6 +71,25 @@ export const RADAR_PRODUCTS = [
     legend: 'iem-n0q-dbz',
     attribution: IEM_ATTRIBUTION,
     maxNativeZoom: 10,
+  },
+  {
+    id: 'mosaic-composite',
+    name: 'Composite Reflectivity (National)',
+    short: 'Mosaic CREF',
+    group: 'Reflectivity',
+    description:
+      'The strongest echo at any height in each column, from all radar tilts — not just the lowest. Reveals cores aloft, but can overstate what reaches the ground.',
+    scope: 'mosaic',
+    coverage: 'Continental U.S.',
+    elevation: null,
+    resolution: 'National mosaic (MRMS, 0.01°)',
+    source: 'NWS',
+    layer: (_site, t) => withBounds(nwsWmsLayer('conus', 'cref_qcd', t), NWS_CONUS_BOUNDS),
+    latest: () => fetchNwsLatest('conus', 'cref_qcd'),
+    // MRMS mosaics update every 2 minutes, ~2 minutes after the scan time.
+    ...MRMS_TIMING,
+    legend: 'nws-cref',
+    attribution: NWS_ATTRIBUTION,
   },
   {
     id: 'site-reflectivity',
@@ -142,6 +164,25 @@ export const RADAR_PRODUCTS = [
     latest: (site) => fetchNwsLatest(site.icao, 'bdhc'),
     ...SITE_TIMING,
     legend: 'nws-hc',
+    attribution: NWS_ATTRIBUTION,
+  },
+  {
+    id: 'mosaic-echo-tops',
+    name: 'Echo Tops (National, 18 dBZ)',
+    short: 'Mosaic ET',
+    group: 'Storm structure',
+    // Not the single-radar Level III Enhanced Echo Tops (EET) product.
+    description:
+      'Height of the highest 18 dBZ echo in each column — a quick read on storm depth. National mosaic; not the single-radar Enhanced Echo Tops (EET) product.',
+    scope: 'mosaic',
+    coverage: 'Continental U.S.',
+    elevation: null,
+    resolution: 'National mosaic (MRMS, 0.01°)',
+    source: 'NWS',
+    layer: (_site, t) => withBounds(nwsWmsLayer('conus', 'neet_v18', t), NWS_CONUS_BOUNDS),
+    latest: () => fetchNwsLatest('conus', 'neet_v18'),
+    ...MRMS_TIMING,
+    legend: 'nws-echo-tops',
     attribution: NWS_ATTRIBUTION,
   },
 ];
