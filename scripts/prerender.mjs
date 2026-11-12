@@ -26,7 +26,7 @@ for (const path of Object.keys(pages)) {
   const html = template
     .replace('</head>', `    ${headTags(path)}\n  </head>`)
     .replace('<div id="root"></div>', `<div id="root">${body}</div>`);
-  const out = path === '/' ? join(dist, 'index.html') : path === '/404' ? join(dist, '404.html') : join(dist, path, 'index.html');
+  const out = path === '/' ? join(dist, 'index.html') : path === '/404' ? join(dist, '404.html') : join(dist, `${path.slice(1)}.html`);
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, html);
   written.push(`${path} -> ${out.slice(root.length + 1)} (${Math.round(html.length / 1024)} KB)`);
