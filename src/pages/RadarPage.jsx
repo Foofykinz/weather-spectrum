@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Layers, ArrowLeft, Zap, Play } from 'lucide-react';
+import { Layers, ArrowLeft, Zap, Play, AlertTriangle } from 'lucide-react';
 import LoopControls from '../components/radar/LoopControls';
 import LayoutSwitch from '../components/radar/LayoutSwitch';
 import MultiRadar from '../components/radar/MultiRadar';
@@ -9,9 +9,11 @@ import RadarLegend from '../components/radar/RadarLegend';
 import RadarStatus from '../components/radar/RadarStatus';
 import ProductPanel from '../components/radar/ProductPanel';
 import GlmStatus from '../components/radar/GlmStatus';
+import WarningsStatus from '../components/radar/WarningsStatus';
 import { getProduct, DEFAULT_PRODUCT_ID, LEVEL3_TILTS } from '../radar/products';
 import { getStation, nearestStation } from '../radar/stations';
 import { useRadarFrame, useNow } from '../radar/useRadarFrame';
+import { useWarningsHistory } from '../radar/useWarningsHistory';
 
 // Per-viewer conveniences only (last map view & opacity). Safe if storage is blocked.
 const VIEW_KEY = 'ws.radar.view';
@@ -69,6 +71,8 @@ function SingleRadar() {
   const tilt = product.tiltLetter ? (LEVEL3_TILTS.includes(tiltParam) ? tiltParam : 'N0') : undefined;
   const lightningOn = params.get('ltg') === '1';
   const [lightningStatus, setLightningStatus] = useState(null);
+  const warningsOn = params.get('warn') !== '0'; // on unless turned off
+  const [warningsStatus, setWarningsStatus] = useState(null);
 
   const frame = useRadarFrame(product, product.scope === 'site' ? station : null, tilt);
   const now = useNow();
@@ -82,6 +86,7 @@ function SingleRadar() {
   const [anim, setAnim] = useState(null); // { times, specs, index, playing, loaded, hold }
   const [loopError, setLoopError] = useState(null);
   const loopReq = useRef(null);
+  const warningsAtTime = useWarningsHistory(anim?.times, warningsOn && !!anim);
 
   const stopLoop = useCallback(() => {
     loopReq.current?.abort();
@@ -203,6 +208,9 @@ function SingleRadar() {
         lightning={lightningOn}
         animation={anim ? { specs: anim.specs, index: anim.index, onLoaded: onFramesLoaded } : null}
         onLightningStatus={setLightningStatus}
+        warnings={warningsOn}
+        warningsFrame={anim ? warningsAtTime(anim.times[anim.index]) : undefined}
+        onWarningsStatus={setWarningsStatus}
       />
 
       {/* Top-left: navigation, product button, status. pointer-events-none lets
@@ -243,6 +251,20 @@ function SingleRadar() {
           >
             <Zap className="w-4 h-4" />
             <span className="hidden sm:inline">Lightning</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => updateParams({ warn: warningsOn ? '0' : null })}
+            aria-pressed={warningsOn}
+            title="NWS warning polygons (tornado, severe thunderstorm, flash flood and more)"
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
+              warningsOn
+                ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
+                : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <AlertTriangle className="w-4 h-4" />
+            <span className="hidden sm:inline">Warnings</span>
           </button>
           <LayoutSwitch layout={1} onChange={setLayout} />
           {canLoop && !anim && (
@@ -308,6 +330,7 @@ function SingleRadar() {
         }`}
       >
         <div className="pointer-events-auto">
+          {warningsOn && <WarningsStatus status={warningsStatus} now={now} />}
           {lightningOn && <GlmStatus status={lightningStatus} now={now} />}
           <RadarLegend product={product} frame={frame} />
         </div>

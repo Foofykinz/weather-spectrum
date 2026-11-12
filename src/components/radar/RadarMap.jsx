@@ -5,6 +5,8 @@ import 'leaflet/dist/leaflet.css';
 import { STATIONS } from '../../radar/stations';
 import VectorBasemap from './VectorBasemap';
 import GlmLayer from './GlmLayer';
+import WarningsLayer from './WarningsLayer';
+import { warningsAt, watchesAtPoint } from '../../radar/providers/warnings';
 import { renderLevel3View } from '../../radar/providers/level3';
 
 // Map layer stacking (bottom to top):
@@ -251,28 +253,73 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
 
 // Tap/click the map to read the exact value of the radar bin underneath
 // (only for products that carry real data values).
+const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const fmtTime = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });
+};
+
+const fullText = (text, link) =>
+  text
+    ? `<details style="margin-top:2px"><summary style="cursor:pointer;color:#fbbf24">Full text</summary><div style="max-height:180px;overflow:auto;white-space:pre-wrap;font-size:11px;color:#cbd5e1;margin-top:4px">${esc(text)}</div></details>`
+    : link
+      ? `<a href="${esc(link)}" target="_blank" rel="noopener" style="color:#fbbf24">Full text (IEM archive)</a>`
+      : '';
+
+// Warning details exactly as the NWS issued them (tags from the warning text).
+function warningHtml(w) {
+  const tags = [];
+  if (w.danger === 'emergency') tags.push(w.type.phen === 'FF' ? 'FLASH FLOOD EMERGENCY' : 'TORNADO EMERGENCY');
+  if (w.tornadoThreat && w.tornadoThreat !== 'CATASTROPHIC') tags.push(`Tornado damage threat: ${w.tornadoThreat}`);
+  if (w.tornado) tags.push(`Tornado: ${w.tornado}`);
+  if (w.stormThreat) tags.push(`Damage threat: ${w.stormThreat}`);
+  if (w.floodThreat && w.floodThreat !== 'CATASTROPHIC') tags.push(`Flash flood damage threat: ${w.floodThreat}`);
+  if (w.hail) tags.push(`Max hail: ${w.hail}`);
+  if (w.wind) tags.push(`Max wind: ${w.wind}`);
+  return `<div style="border-left:3px solid ${w.type.color};padding-left:6px;margin-bottom:6px">`
+    + `<b>${esc(w.type.event)}</b> until ${esc(fmtTime(w.ends))}`
+    + (tags.length ? `<br>${tags.map((t) => (/EMERGENCY/.test(t) ? `<b style="color:#f87171">${esc(t)}</b>` : esc(t))).join('<br>')}` : '')
+    + `<br><span style="color:#94a3b8">${esc(w.office)}. Issued ${esc(fmtTime(w.sent))}</span>`
+    + fullText(w.text, w.link)
+    + '</div>';
+}
+
+function watchHtml(w) {
+  return `<div style="border-left:3px solid ${w.type.color};padding-left:6px;margin-bottom:6px">`
+    + `<b>${esc(w.type.event)} ${w.number || ''}</b> until ${esc(fmtTime(w.ends))}`
+    + `<br><span style="color:#94a3b8">${esc(w.office)}</span>`
+    + fullText(w.text)
+    + '</div>';
+}
+
 function ValueProbe({ product, details }) {
   const map = useMap();
   useMapEvents({
     click(e) {
-      if (!product.probe || !details) return;
-      const r = product.probe(details, e.latlng.lat, e.latlng.lng);
-      if (!r) return;
-      const kft = (km) => (km * 3.28084).toFixed(1);
-      const where = `${r.groundKm.toFixed(1)} km at ${r.azimuth.toFixed(0)}° from radar`;
-      let main;
-      if (r.status === 'value') {
-        main = `<b>${product.probeFormat(r.value)}</b>`;
-        if (r.topped) main += '<br>Topped: echo continues above the highest scanned tilt, so the true top may be higher';
-      } else if (r.status === 'below-threshold') main = 'No data (below signal threshold)';
-      else if (r.status === 'range-folded') main = 'Range folded (no reliable value)';
-      else if (r.status === 'no-data') main = 'No data (flagged by the radar)';
-      else main = 'Outside radar coverage';
-      // Volume products (elevation 0 in the file) combine all tilts, so there is no single beam height.
-      const beam = r.status === 'out-of-range' || !r.elevation ? '' : `<br>${r.elevation}° beam ≈ ${kft(r.beamKm)} kft above radar`;
-      L.popup({ className: 'ws-radar-popup', autoPan: false })
+      const ws = map._wsWarnings || {};
+      const warns = warningsAt(ws.warnings || [], e.latlng.lat, e.latlng.lng);
+      const watches = watchesAtPoint(ws.watches || [], ws.shapes, e.latlng.lat, e.latlng.lng);
+      const r = product.probe && details ? product.probe(details, e.latlng.lat, e.latlng.lng) : null;
+      if (!r && !warns.length && !watches.length) return;
+      let html = warns.map(warningHtml).join('') + watches.map(watchHtml).join('');
+      if (r) {
+        const kft = (km) => (km * 3.28084).toFixed(1);
+        const where = `${r.groundKm.toFixed(1)} km at ${r.azimuth.toFixed(0)}° from radar`;
+        let main;
+        if (r.status === 'value') {
+          main = `<b>${product.probeFormat(r.value)}</b>`;
+          if (r.topped) main += '<br>Topped: echo continues above the highest scanned tilt, so the true top may be higher';
+        } else if (r.status === 'below-threshold') main = 'No data (below signal threshold)';
+        else if (r.status === 'range-folded') main = 'Range folded (no reliable value)';
+        else if (r.status === 'no-data') main = 'No data (flagged by the radar)';
+        else main = 'Outside radar coverage';
+        // Volume products (elevation 0 in the file) combine all tilts, so there is no single beam height.
+        const beam = r.status === 'out-of-range' || !r.elevation ? '' : `<br>${r.elevation}° beam ≈ ${kft(r.beamKm)} kft above radar`;
+        html += `${main}<br><span style="color:#94a3b8">${where}${beam}</span>`;
+      }
+      L.popup({ className: 'ws-radar-popup', autoPan: false, maxWidth: 280 })
         .setLatLng(e.latlng)
-        .setContent(`${main}<br><span style="color:#94a3b8">${where}${beam}</span>`)
+        .setContent(html)
         .openOn(map);
     },
   });
@@ -380,6 +427,9 @@ export default function RadarMap({
   details,
   lightning,
   onLightningStatus,
+  warnings = false,
+  warningsFrame, // undefined = live; loop frame state otherwise
+  onWarningsStatus,
   animation, // { specs, index, onLoaded } while a loop is playing
   syncGroup, // shared view group for multi-panel layouts
   primary = true, // the one panel that owns zoom buttons, fly-to and saved view
@@ -425,6 +475,7 @@ export default function RadarMap({
       {showStations && primary && <FlyToStation station={station} keepInitialView={keepInitialView} />}
       <ValueProbe product={product} details={layer ? details : null} />
       {lightning && <GlmLayer onStatus={onLightningStatus} />}
+      {warnings && <WarningsLayer frame={warningsFrame} onStatus={onWarningsStatus} />}
       <MapSync group={syncGroup} />
       <AutoResize />
       {primary && <ViewWatcher onViewChange={onViewChange} />}

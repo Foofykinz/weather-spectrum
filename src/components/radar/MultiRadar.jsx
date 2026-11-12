@@ -1,13 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Zap, Play, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Zap, Play, ChevronDown, AlertTriangle } from 'lucide-react';
 import RadarMap from './RadarMap';
 import RadarLegend from './RadarLegend';
 import ProductMenu from './ProductMenu';
 import GlmStatus from './GlmStatus';
+import WarningsStatus from './WarningsStatus';
 import LoopControls from './LoopControls';
 import LayoutSwitch from './LayoutSwitch';
+import { useWarningsHistory } from '../../radar/useWarningsHistory';
 import { RADAR_PRODUCTS, getProduct, productGroups, LEVEL3_TILTS, menuProductId } from '../../radar/products';
 import { STATIONS } from '../../radar/stations';
 import { useRadarFrame, freshnessOf } from '../../radar/useRadarFrame';
@@ -89,6 +91,9 @@ function RadarPanel({ index, product, tilt, station, onPick, onSelectStation, sh
         onBasemapError={() => {}}
         lightning={shared.lightningOn}
         onLightningStatus={index === 0 ? shared.onLightningStatus : undefined}
+        warnings={shared.warningsOn}
+        warningsFrame={shared.warningsFrame}
+        onWarningsStatus={index === 0 ? shared.onWarningsStatus : undefined}
         animation={looping ? { specs: loop.specs, index: loop.index, onLoaded: loop.onLoaded } : null}
         syncGroup={shared.syncGroup}
         primary={index === 0}
@@ -166,12 +171,15 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
   const tilts = TILT_KEYS.slice(0, layout).map((k) => (LEVEL3_TILTS.includes(params.get(k)) ? params.get(k) : 'N0'));
   const lightningOn = params.get('ltg') === '1';
   const [lightningStatus, setLightningStatus] = useState(null);
+  const warningsOn = params.get('warn') !== '0';
+  const [warningsStatus, setWarningsStatus] = useState(null);
   const syncGroup = useMemo(() => ({ maps: new Set(), syncing: false }), []);
 
   // ---- synchronized loop
   const [anim, setAnim] = useState(null); // { ref: [Date], perPanel: [{ times, specs } | null], index, playing, loaded, hold }
   const [loopError, setLoopError] = useState(null);
   const req = useRef(null);
+  const warningsAtTime = useWarningsHistory(anim?.ref, warningsOn && !!anim);
   const panelKey = panels.map((p) => p.id).join(',');
   const stopLoop = useCallback(() => {
     req.current?.abort();
@@ -228,7 +236,7 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
     return { specs: pp.specs, times: pp.times, index: idx, onLoaded };
   };
 
-  const shared = { now, opacity, initialView, onViewChange, lightningOn, onLightningStatus: setLightningStatus, syncGroup, keepInitialView };
+  const shared = { now, opacity, initialView, onViewChange, lightningOn, onLightningStatus: setLightningStatus, warningsOn, onWarningsStatus: setWarningsStatus, warningsFrame: anim ? warningsAtTime(anim.ref[anim.index]) : undefined, syncGroup, keepInitialView };
   const pickPanel = (i, id, t) => updateParams({ [PANEL_KEYS[i]]: id, [TILT_KEYS[i]]: t });
   const canLoop = panels.some((p) => p.frames);
 
@@ -261,6 +269,16 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
           <Zap className="w-4 h-4" />
           <span className="hidden sm:inline">Lightning</span>
         </button>
+        <button
+          type="button"
+          onClick={() => updateParams({ warn: warningsOn ? '0' : null })}
+          aria-pressed={warningsOn}
+          title="NWS warning polygons (tornado, severe thunderstorm, flash flood and more)"
+          className={`flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-semibold ${warningsOn ? 'border-amber-500/70 bg-amber-500/15 text-amber-200' : 'border-slate-700/80 hover:bg-slate-800'}`}
+        >
+          <AlertTriangle className="w-4 h-4" />
+          <span className="hidden sm:inline">Warnings</span>
+        </button>
         {canLoop && !anim && (
           <button type="button" onClick={startLoop} title="Play the last 10 scans in all panels" className="flex items-center gap-1 whitespace-nowrap rounded-md border border-slate-700/80 px-2 py-1.5 text-xs font-semibold hover:bg-slate-800">
             <Play className="w-4 h-4" />
@@ -286,7 +304,7 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
       </div>
 
       {/* Loop and lightning status sit in a strip under the panels instead of over them. */}
-      {(anim || loopError || lightningOn) && (
+      {(anim || loopError || lightningOn || warningsOn) && (
         <div className="flex flex-col gap-1.5 border-t border-white/10 bg-slate-950 p-1.5 sm:flex-row sm:items-start">
           {anim && (
             <div className="sm:flex-1 sm:max-w-xl">
@@ -299,6 +317,11 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
             </div>
           )}
           {loopError && !anim && <p className="rounded-lg border border-amber-700/60 bg-slate-900/90 px-3 py-1.5 text-xs text-amber-300">Loop unavailable: {loopError}</p>}
+          {warningsOn && (
+            <div className="sm:w-80">
+              <WarningsStatus status={warningsStatus} now={now} compact />
+            </div>
+          )}
           {lightningOn && (
             <div className="sm:w-80">
               <GlmStatus status={lightningStatus} now={now} compact />
