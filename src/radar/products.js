@@ -38,7 +38,7 @@ import nwsZdrColors from './level3/nws-zdr-colors.json';
 import nwsKdpColors from './level3/nws-kdp-colors.json';
 import nwsEetColors from './level3/nws-eet-colors.json';
 import nwsDvlColors from './level3/nws-dvl-colors.json';
-import nwsRefColors from './level3/nws-ref-colors.json';
+import { LEGENDS } from './legends';
 import nwsVelColors from './level3/nws-vel-colors.json';
 
 const MS_TO_KT = 1.943844;
@@ -67,6 +67,10 @@ const MRMS_TIMING = { pollSeconds: 60, freshness: { delayedAfterMin: 10, staleAf
 // archive and the files themselves, never assumed.
 export const LEVEL3_TILTS = ['N0', 'NA', 'N1', 'NB', 'N2', 'N3'];
 
+// Site reflectivity is drawn with the same color scale as the national
+// mosaic and IEM loop frames, so colors mean the same thing everywhere.
+const IEM_REF_COLORS = { stops: LEGENDS['iem-n0q-dbz'].stops, belowFirstTransparent: true };
+
 // Tilt-selectable products decoded in the browser from NOAA Level III data
 // (153 super-res reflectivity, 154 super-res velocity, 161 CC, 159 ZDR,
 // 163 KDP). Values are exact and can be read by tapping the map. `letter` is
@@ -84,7 +88,7 @@ function level3Tilt({ id, letter, colors, name, short, group = 'Dual-Pol', descr
     resolution: resolution || 'Native Level III (0.25 km × 1°)',
     source: 'NOAA Level III',
     tiltLetter: letter,
-    layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds }),
+    layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds, radial: details.radial }),
     latest: (site, signal, { tilt = 'N0', drawSize } = {}) => fetchLevel3Latest(site, `${tilt}${letter}`, colors, signal, { drawSize }),
     probe: probeLevel3,
     probeFormat,
@@ -149,14 +153,24 @@ export const RADAR_PRODUCTS = [
     scope: 'site',
     coverage: 'Single radar, ~230 km range',
     elevation: '0.5°',
-    resolution: 'Super-resolution',
-    source: 'IEM',
-    layer: (site, t) => withBounds(iemXyzLayer(site.id, 'N0B', t), siteBounds(site)),
-    latest: (site, signal) => fetchIemLatest(site.id, 'N0B', signal),
+    resolution: 'Native Level III (0.25 km × 0.5°); loop frames from IEM imagery (about 1 km)',
+    source: 'NOAA Level III',
+    // Live view: the NOAA Level III file itself (N0B, product 153), decoded in
+    // the browser, so it stays sharp when zoomed in and can be tapped for
+    // values. Loop frames use IEM's rendering of the same product (coarser,
+    // about 1 km pixels) with the same color scale.
+    layer: (site, t, details) =>
+      details?.canvas
+        ? { kind: 'canvas', canvas: details.canvas, bounds: details.bounds, radial: details.radial }
+        : withBounds(iemXyzLayer(site.id, 'N0B', t), siteBounds(site)),
+    latest: (site, signal, { drawSize } = {}) => fetchLevel3Latest(site, 'N0B', IEM_REF_COLORS, signal, { drawSize }),
     frames: (site, n, signal) => fetchIemScanTimes(site.id, 'N0B', n, signal),
+    probe: probeLevel3,
+    probeFormat: (v) => `${v.toFixed(1)} dBZ`,
     ...SITE_TIMING,
+    pollSeconds: 60,
     legend: 'iem-n0q-dbz',
-    attribution: IEM_ATTRIBUTION,
+    attribution: `${LEVEL3_ATTRIBUTION}; loop: ${IEM_ATTRIBUTION.replace(/^Radar: /, '')}`,
     maxNativeZoom: 11,
   },
   {
@@ -221,14 +235,14 @@ export const RADAR_PRODUCTS = [
   level3Tilt({
     id: 'site-ref-tilt',
     letter: 'B',
-    colors: nwsRefColors,
+    colors: IEM_REF_COLORS,
     name: 'Reflectivity, All Tilts',
     short: 'Site REF',
     group: 'Reflectivity',
     description: 'Super-resolution reflectivity at any of the radar’s published elevation tilts, to look higher into storms.',
     coverage: 'Single radar, 460 km',
     resolution: 'Native Level III (0.25 km; 0.5° radials on lower tilts, 1° on upper)',
-    legend: 'nws-ref',
+    legend: 'iem-n0q-dbz',
     probeFormat: (v) => `${v.toFixed(1)} dBZ`,
   }),
   level3Tilt({

@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { STATIONS } from '../../radar/stations';
 import VectorBasemap from './VectorBasemap';
 import GlmLayer from './GlmLayer';
+import { renderLevel3View } from '../../radar/providers/level3';
 
 // Map layer stacking (bottom to top):
 //   dark basemap  ->  radar  ->  borders & place names  ->  station markers
@@ -77,9 +78,94 @@ function createRadarLayer(spec, { opacity, maxNativeZoom, attribution }) {
   return L.tileLayer(spec.url, { ...common, maxNativeZoom });
 }
 
+// Sharp zoom for scans we decode ourselves: the overview image of the whole
+// scan has a fixed number of pixels, so when zoomed in past that, redraw just
+// the area on screen at screen resolution (same exact bins, no stretching).
+// The overview is hidden only once the sharp image is ready.
+function attachSharpZoom(map, base, spec, getOpacity) {
+  const scanBounds = L.latLngBounds(spec.bounds);
+  let overlay = null;
+  let seq = 0;
+  let timer = 0;
+  let dead = false;
+
+  const clear = () => {
+    seq += 1;
+    if (overlay) map.removeLayer(overlay);
+    overlay = null;
+    base.setOpacity(getOpacity());
+  };
+
+  const run = async () => {
+    if (dead) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const a = map.latLngToContainerPoint(scanBounds.getNorthWest());
+    const b = map.latLngToContainerPoint(scanBounds.getSouthEast());
+    if (((b.x - a.x) * dpr) / spec.canvas.width <= 1.2) return clear(); // overview is sharp enough
+    const view = map.getBounds().pad(0.25);
+    const s = Math.max(view.getSouth(), scanBounds.getSouth());
+    const n = Math.min(view.getNorth(), scanBounds.getNorth());
+    const w = Math.max(view.getWest(), scanBounds.getWest());
+    const e = Math.min(view.getEast(), scanBounds.getEast());
+    if (s >= n || w >= e) return clear(); // radar out of view
+    const box = L.latLngBounds([s, w], [n, e]);
+    const p1 = map.latLngToContainerPoint(box.getNorthWest());
+    const p2 = map.latLngToContainerPoint(box.getSouthEast());
+    let width = Math.max(1, Math.round((p2.x - p1.x) * dpr));
+    let height = Math.max(1, Math.round((p2.y - p1.y) * dpr));
+    const limit = 6e6 / (width * height); // keep memory and draw time bounded
+    if (limit < 1) {
+      width = Math.floor(width * Math.sqrt(limit));
+      height = Math.floor(height * Math.sqrt(limit));
+    }
+    const mine = ++seq;
+    let img;
+    try {
+      img = await renderLevel3View(spec.radial, [[s, w], [n, e]], width, height);
+    } catch {
+      return; // keep showing the overview
+    }
+    if (dead || mine !== seq) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').putImageData(new ImageData(img.rgba, width, height), 0, 0);
+    const next = L.svgOverlay(canvas, box, { pane: 'radar', opacity: getOpacity(), interactive: false });
+    next.addTo(map);
+    if (overlay) map.removeLayer(overlay);
+    overlay = next;
+    base.setOpacity(0);
+  };
+
+  const update = () => {
+    clearTimeout(timer);
+    timer = setTimeout(run, 80);
+  };
+  map.on('moveend zoomend resize', update);
+  update();
+
+  return {
+    setOpacity(o) {
+      if (overlay) overlay.setOpacity(o);
+      else base.setOpacity(o);
+    },
+    detach() {
+      dead = true;
+      clearTimeout(timer);
+      map.off('moveend zoomend resize', update);
+      if (overlay) map.removeLayer(overlay);
+      overlay = null;
+      base.setOpacity(getOpacity());
+    },
+  };
+}
+
 function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors }) {
   const map = useMap();
   const current = useRef(null);
+  const sharp = useRef(null);
+  const opacityRef = useRef(opacity);
+  opacityRef.current = opacity;
   const errorCb = useRef(onTileErrors);
   errorCb.current = onTileErrors;
 
@@ -101,17 +187,23 @@ function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors })
     layer.addTo(map);
     // A drawn canvas is ready immediately — there's nothing to wait for.
     if (spec.kind === 'canvas' && previous && map.hasLayer(previous)) map.removeLayer(previous);
+    sharp.current = spec.kind === 'canvas' && spec.radial ? attachSharpZoom(map, layer, spec, () => opacityRef.current) : null;
+    const sharpNow = sharp.current;
 
     // Safety net: never leave an old scan on screen for long if the new one is slow.
     const t = setTimeout(() => {
       if (previous && map.hasLayer(previous)) map.removeLayer(previous);
     }, 8000);
 
-    return () => clearTimeout(t);
+    return () => {
+      clearTimeout(t);
+      sharpNow?.detach();
+    };
   }, [spec, map, maxNativeZoom, attribution]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    current.current?.setOpacity(opacity);
+    if (sharp.current) sharp.current.setOpacity(opacity);
+    else current.current?.setOpacity(opacity);
   }, [opacity]);
 
   // Remove all radar imagery when this component goes away (e.g. product

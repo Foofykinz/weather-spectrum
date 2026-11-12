@@ -46,6 +46,50 @@ function runWorker(buffer, colors, maxSize) {
   });
 }
 
+// Second worker for sharp zoomed-in redraws, so they never wait behind a
+// scan being decoded (and vice versa).
+let viewWorker = null;
+const viewPending = new Map();
+const viewSent = new WeakSet(); // scans this worker already has
+let viewCurrent = null;
+function getViewWorker() {
+  if (!viewWorker) {
+    viewWorker = new Worker(new URL('../level3/worker.js', import.meta.url), { type: 'module' });
+    viewWorker.onmessage = (e) => {
+      const job = viewPending.get(e.data.id);
+      if (!job) return;
+      viewPending.delete(e.data.id);
+      if (e.data.ok) job.resolve(e.data.image);
+      else job.reject(new Error(e.data.error));
+    };
+  }
+  return viewWorker;
+}
+
+// Draw a decoded scan for one map area at the given pixel size (the area on
+// screen when zoomed in). Same bin-exact drawing as the overview image.
+export function renderLevel3View(radial, bounds, width, height) {
+  const w = getViewWorker();
+  const id = nextId++;
+  // The worker keeps one scan; send the data only when it changes.
+  let scan = null;
+  if (viewCurrent !== radial || !viewSent.has(radial)) {
+    const { scaler, colors, key, ...rest } = radial; // eslint-disable-line no-unused-vars
+    scan = rest;
+    viewSent.add(radial);
+    viewCurrent = radial;
+  }
+  return new Promise((resolve, reject) => {
+    viewPending.set(id, { resolve, reject });
+    w.postMessage({ type: 'view', id, key: radial.key, scan, colors: radial.colors, bounds, width, height });
+  }).catch((err) => {
+    if (err.message !== 'missing-scan') throw err;
+    viewSent.delete(radial); // worker was given another scan meanwhile: resend
+    viewCurrent = null;
+    return renderLevel3View(radial, bounds, width, height);
+  });
+}
+
 // ---- newest file for a radar + product, e.g. ("TLX", "N0C")
 const pad = (n) => String(n).padStart(2, '0');
 const hourPrefix = (site, code, d) =>
@@ -152,7 +196,7 @@ async function processScan(key, colors, maxSize) {
       radialDeg: Math.round((360 / m.nrad) * 10) / 10,
       canvas,
       bounds: out.image.bounds,
-      radial: { ...m, data: out.data, starts: out.starts, deltas: out.deltas, azTable: buildAzimuthTable(out.starts, out.deltas) },
+      radial: { ...m, key, colors, data: out.data, starts: out.starts, deltas: out.deltas, azTable: buildAzimuthTable(out.starts, out.deltas) },
       perf: {
         file: key,
         downloadKb: Math.round(sizeKb),
