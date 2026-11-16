@@ -70,6 +70,7 @@ function liveWarning(f) {
     type: WARN_BY_EVENT.get(p.event),
     geometry: f.geometry,
     office: p.senderName,
+    area: p.areaDesc || null,
     sent: p.sent,
     ends: p.ends || first(p, 'eventEndingTime') || p.expires,
     tornado: upper(first(p, 'tornadoDetection')),
@@ -239,7 +240,8 @@ function pastWarning(f) {
     floodThreat: upper(p.floodtag_damage),
     hail: p.hailtag != null ? `${p.hailtag} in` : null,
     wind: p.windtag != null ? `${p.windtag} mph` : null,
-    link: p.product_id ? `https://mesonet.agron.iastate.edu/p.php?pid=${encodeURIComponent(p.product_id)}` : null,
+    event: { wfo: p.wfo, year: p.year, phen: p.phenomena, sig: p.significance, etn: p.eventid },
+    link: p.product_id ?`https://mesonet.agron.iastate.edu/p.php?pid=${encodeURIComponent(p.product_id)}` : null,
   };
   w.danger = p.is_emergency ? 'emergency' : p.is_pds ? 'high' : dangerOf(w);
   return w;

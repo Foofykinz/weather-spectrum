@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Layers, ArrowLeft, Zap, Play, AlertTriangle, History } from 'lucide-react';
+import { Layers, ArrowLeft, Zap, Play, AlertTriangle, History, Image as ImageIcon } from 'lucide-react';
+import PostMaker from '../components/radar/PostMaker';
 import LoopControls from '../components/radar/LoopControls';
 import LayoutSwitch from '../components/radar/LayoutSwitch';
 import MultiRadar from '../components/radar/MultiRadar';
@@ -100,6 +101,8 @@ function SingleRadar() {
           ? { status: 'error', past: true, error: archive.error }
           : { status: 'loading', past: true, progress: archive.progress };
   const now = useNow();
+  const mapRef = useRef(null);
+  const [post, setPost] = useState(null); // null | { busy: true } | { snap, base } | { error }
 
   // ---- Radar loop (products with a `frames` list: IEM and NWS imagery).
   const LOOP_FRAMES = 10;
@@ -190,6 +193,26 @@ function SingleRadar() {
     updateParams({ time: d ? timeToParam(d) : null });
   };
 
+  // Post maker: pause any loop, then copy the map as it is on screen.
+  const scanTime = anim ? anim.times[anim.index] : frame.status === 'ok' ? frame.validTime : null;
+  const openPost = async () => {
+    const map = mapRef.current;
+    if (!map || !scanTime) return;
+    setAnim((a) => (a ? { ...a, playing: false } : a));
+    setPastAnim((a) => ({ ...a, playing: false }));
+    setPost({ busy: true });
+    try {
+      const { snapshotMap } = await import('../radar/snapshot');
+      const snap = await snapshotMap(map);
+      setPost({
+        snap,
+        base: { product, station: product.scope === 'site' ? station : null, time: scanTime, past, frame, alerts: warningsOn ? map._wsWarnings : null },
+      });
+    } catch (err) {
+      setPost({ error: err.message || 'The map picture could not be made.' });
+    }
+  };
+
   const pickNearest = useCallback(() => {
     const v = viewRef.current;
     const s = nearestStation(v.lat, v.lon);
@@ -268,7 +291,10 @@ function SingleRadar() {
         warnings={warningsOn}
         warningsFrame={warnTimes && (pastFrames || anim) ? warningsAtTime(warnTimes[warnIndex]) : undefined}
         onWarningsStatus={setWarningsStatus}
+        mapRef={mapRef}
       />
+
+      {post?.snap && <PostMaker snap={post.snap} base={post.base} onClose={() => setPost(null)} />}
 
       {/* Top-left: navigation, product button, status. pointer-events-none lets
           map drags pass through the empty space between controls. */}
@@ -339,6 +365,16 @@ function SingleRadar() {
             <History className="w-4 h-4" />
             <span className="hidden sm:inline">Past</span>
           </button>
+          <button
+            type="button"
+            onClick={openPost}
+            disabled={!scanTime || post?.busy}
+            title="Make an image and caption for a social media post"
+            className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 px-2.5 py-2 text-xs font-semibold text-slate-200 shadow-lg backdrop-blur hover:bg-slate-800 disabled:opacity-40"
+          >
+            <ImageIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">{post?.busy ? 'Preparing...' : 'Post'}</span>
+          </button>
           {!past && <LayoutSwitch layout={1} onChange={setLayout} />}
           {canLoop && !anim && !past && (
             <button
@@ -407,6 +443,11 @@ function SingleRadar() {
             {loopError && !anim && (
               <p className="mt-2 rounded-lg border border-amber-700/60 bg-slate-900/85 px-3 py-1.5 text-xs text-amber-300">
                 Loop unavailable: {loopError}
+              </p>
+            )}
+            {post?.error && (
+              <p className="mt-2 rounded-lg border border-amber-700/60 bg-slate-900/85 px-3 py-1.5 text-xs text-amber-300">
+                Couldn&apos;t make the post image: {post.error}
               </p>
             )}
             {basemapError && (

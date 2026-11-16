@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+﻿import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 
 // Dark basemap from OpenFreeMap (https://openfreemap.org/): free, no API key,
@@ -6,7 +6,7 @@ import { useMap } from 'react-leaflet';
 //
 // OpenFreeMap serves *vector* map data, which Leaflet can't draw on its own,
 // so MapLibre GL renders it inside the Leaflet map. MapLibre is large, so it's
-// loaded only when the radar page opens — the rest of the site stays light.
+// loaded only when the radar page opens â€” the rest of the site stays light.
 //
 // The style is split into two layers so the radar sits in between:
 //   below radar: land, water, roads           (Leaflet "tilePane")
@@ -72,6 +72,7 @@ export default function VectorBasemap({ labelsPane, onError, split = true }) {
           const whole = { ...style, layers: style.layers.map(legiblePlaceName) };
           layers.push(maplibreGL({ ...common, style: whole, pane: 'tilePane' }).addTo(map));
         }
+        map._wsBasemaps = layers; // read by the post maker's snapshot
       } catch (err) {
         // The radar still works without a basemap; just report it.
         if (!cancelled) onError?.(err);
@@ -80,6 +81,7 @@ export default function VectorBasemap({ labelsPane, onError, split = true }) {
 
     return () => {
       cancelled = true;
+      delete map._wsBasemaps;
       layers.forEach((l) => map.removeLayer(l));
       map.attributionControl?.removeAttribution(OPENFREEMAP_ATTRIBUTION);
     };

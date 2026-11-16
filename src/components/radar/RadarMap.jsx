@@ -438,6 +438,7 @@ export default function RadarMap({
   splitBasemap = true,
   embed = false, // inside a page: no scroll-wheel zoom; touch devices use the zoom buttons
   keepInitialView = false,
+  mapRef, // gets the Leaflet map (used by the post maker)
 }) {
   return (
     <MapContainer
@@ -453,6 +454,7 @@ export default function RadarMap({
       className="ws-radar-map h-full w-full bg-[#0b0f17]"
     >
       <Panes />
+      {mapRef && <MapHandle mapRef={mapRef} />}
       <VectorBasemap labelsPane="labels" onError={onBasemapError} split={splitBasemap} />
       {animation && (
         <AnimationLayers
@@ -484,6 +486,17 @@ export default function RadarMap({
       {primary && <ZoomButtons />}
     </MapContainer>
   );
+}
+
+function MapHandle({ mapRef }) {
+  const map = useMap();
+  useEffect(() => {
+    mapRef.current = map;
+    return () => {
+      if (mapRef.current === map) mapRef.current = null;
+    };
+  }, [map, mapRef]);
+  return null;
 }
 
 // Leaflet only notices window resizes. Panels also change size when the loop
