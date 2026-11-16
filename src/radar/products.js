@@ -66,6 +66,7 @@ const MRMS_TIMING = { pollSeconds: 60, freshness: { delayedAfterMin: 10, staleAf
 // and actual angles depend on the scan strategy; both are read from the
 // archive and the files themselves, never assumed.
 export const LEVEL3_TILTS = ['N0', 'NA', 'N1', 'NB', 'N2', 'N3'];
+const OLD_LETTER = { B: 'Q', G: 'U' };
 
 // Site reflectivity is drawn with the same color scale as the national
 // mosaic and IEM loop frames, so colors mean the same thing everywhere.
@@ -90,6 +91,8 @@ function level3Tilt({ id, letter, colors, name, short, group = 'Dual-Pol', descr
     tiltLetter: letter,
     layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds, radial: details.radial }),
     latest: (site, signal, { tilt = 'N0', drawSize } = {}) => fetchLevel3Latest(site, `${tilt}${letter}`, colors, signal, { drawSize }),
+    // Before spring 2022 the archive has the older 1 km reflectivity (Q) and 1° velocity (U) forms.
+    archive: { level3: (tilt = 'N0') => [`${tilt}${letter}`, ...(OLD_LETTER[letter] ? [`${tilt}${OLD_LETTER[letter]}`] : [])], colors },
     probe: probeLevel3,
     probeFormat,
     // Files reach the archive ~3-4 min after the scan; listing checks are ~1 KB.
@@ -116,6 +119,7 @@ export const RADAR_PRODUCTS = [
     layer: (_site, t) => withBounds(iemXyzLayer('USCOMP', 'N0Q', t), MOSAIC_BOUNDS),
     latest: (_site, signal) => fetchIemLatest('USCOMP', 'N0Q', signal),
     frames: (_site, n, signal) => fetchIemScanTimes('USCOMP', 'N0Q', n, signal),
+    archive: { times: (_site, end, n, signal) => fetchIemScanTimes('USCOMP', 'N0Q', n, signal, end) },
     // The mosaic is rebuilt every 5 minutes, and takes ~2 minutes to process.
     pollSeconds: 60,
     freshness: { delayedAfterMin: 12, staleAfterMin: 25 },
@@ -164,6 +168,7 @@ export const RADAR_PRODUCTS = [
         ? { kind: 'canvas', canvas: details.canvas, bounds: details.bounds, radial: details.radial }
         : withBounds(iemXyzLayer(site.id, 'N0B', t), siteBounds(site)),
     latest: (site, signal, { drawSize } = {}) => fetchLevel3Latest(site, 'N0B', IEM_REF_COLORS, signal, { drawSize }),
+    archive: { level3: () => ['N0B', 'N0Q'], colors: IEM_REF_COLORS },
     frames: (site, n, signal) => fetchIemScanTimes(site.id, 'N0B', n, signal),
     probe: probeLevel3,
     probeFormat: (v) => `${v.toFixed(1)} dBZ`,
@@ -355,6 +360,7 @@ function level3Volume({ id, code, colors, name, short, description, coverage, re
     source: 'NOAA Level III',
     layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds }),
     latest: (site, signal, { drawSize } = {}) => fetchLevel3Latest(site, code, colors, signal, { drawSize }),
+    archive: { level3: () => [code], colors },
     probe: probeLevel3,
     probeFormat,
     pollSeconds: 60,
@@ -408,4 +414,17 @@ export function productGroups() {
     groups.get(p.group).push(p);
   }
   return [...groups.entries()];
+}
+
+// Past radar: products with no archive switch to the closest one that has one.
+// (NWS imagery and IEM single-site images aren't kept for past dates.)
+const ARCHIVE_FALLBACK = {
+  'mosaic-composite': 'mosaic-reflectivity',
+  'mosaic-echo-tops': 'mosaic-reflectivity',
+  'site-velocity': 'site-vel-tilt', // same data (Level III super-res velocity, lowest tilt)
+  'site-srv': 'site-vel-tilt',
+  'site-hc': 'site-reflectivity',
+};
+export function archiveProductId(id) {
+  return getProduct(id).archive ? id : ARCHIVE_FALLBACK[id] || 'site-reflectivity';
 }

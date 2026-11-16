@@ -109,6 +109,42 @@ async function latestKey(site, code, signal) {
   throw err;
 }
 
+// ---- archived scans: the `count` newest files at or before `end`
+// File names carry the scan time: TLX_N0B_2024_05_06_19_58_31
+export function level3KeyTime(key) {
+  const m = /_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$/.exec(key);
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) : NaN;
+}
+const listingCache = new Map(); // hour prefix -> keys (only hours that are over)
+
+async function listHour(prefix, hourEnd, signal) {
+  if (listingCache.has(prefix)) return listingCache.get(prefix);
+  const res = await fetch(`${BUCKET}/?list-type=2&prefix=${prefix}`, { signal });
+  if (!res.ok) throw new Error(`Level III archive returned ${res.status}.`);
+  const keys = [...(await res.text()).matchAll(/<Key>([^<]+)<\/Key>/g)].map((m) => m[1]);
+  if (hourEnd < Date.now() - 600e3) listingCache.set(prefix, keys);
+  return keys;
+}
+
+export async function listLevel3Before(siteId, code, end, count, signal) {
+  const endMs = end.getTime();
+  let found = [];
+  // Walk back hour by hour (a radar can be down for a while; give up after 6 h).
+  for (let h = 0; h < 6 && found.length < count; h++) {
+    const d = new Date(endMs - h * 3600e3);
+    const hourEnd = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours() + 1);
+    const keys = (await listHour(hourPrefix(siteId, code, d), hourEnd, signal)).filter((k) => level3KeyTime(k) <= endMs);
+    found = keys.concat(found);
+  }
+  found.sort((a, b) => level3KeyTime(a) - level3KeyTime(b));
+  if (!found.length) {
+    const err = new Error('No scans for this product at this radar around that time.');
+    err.code = 'NO_DATA';
+    throw err;
+  }
+  return found.slice(-count);
+}
+
 // ---- which elevation tilts exist right now, and their real angles
 // One ~1 KB listing per tilt, plus the first 400 bytes of each newest file
 // (enough to read the elevation angle from its header). Results are cached
@@ -156,6 +192,11 @@ const inflight = new Map();
 
 export async function fetchLevel3Latest(site, code, colors, signal, { drawSize: size } = {}) {
   const key = await latestKey(site.id, code, signal);
+  return fetchLevel3Key(key, colors, { drawSize: size });
+}
+
+// One specific archived file (e.g. from listLevel3Before), decoded and drawn.
+export function fetchLevel3Key(key, colors, { drawSize: size } = {}) {
   const maxSize = size || drawSize();
   const cacheKey = `${key}@${maxSize}`;
   if (cache.has(cacheKey)) return cache.get(cacheKey);

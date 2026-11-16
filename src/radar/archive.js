@@ -1,0 +1,86 @@
+import { useEffect, useState } from 'react';
+import { listLevel3Before, fetchLevel3Key } from './providers/level3';
+
+// Past radar: the real scans at or before a chosen time.
+//  - Single-radar products: the archived NOAA Level III files themselves,
+//    decoded and drawn exactly like live scans.
+//  - National mosaic: IEM's archived mosaic images for those times.
+// Nothing is interpolated between scans; each frame is one real scan.
+
+export const ARCHIVE_FRAMES = 10;
+// Oldest data: NOAA Level III archive (AWS) starts April 2020.
+export const ARCHIVE_START = new Date('2020-04-01T00:00:00Z');
+const ARCHIVE_DRAW_SIZE = 1024; // overview per frame; zooming in redraws the shown scan at full detail
+const CONCURRENCY = 3;
+
+// URL value <-> Date. Stored as UTC minutes: 2024-05-06T20:00Z
+export function timeFromParam(v) {
+  if (!v || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$/.test(v)) return null;
+  const d = new Date(v.replace('Z', ':00Z'));
+  return Number.isNaN(d.getTime()) || d > new Date() || d < ARCHIVE_START ? null : d;
+}
+export const timeToParam = (d) => d.toISOString().slice(0, 16) + 'Z';
+
+async function loadArchive(product, site, tilt, end, signal, onProgress) {
+  const a = product.archive;
+  if (a.times) {
+    const times = await a.times(site, end, ARCHIVE_FRAMES, signal);
+    if (!times.length) {
+      const err = new Error('No mosaic images around that time.');
+      err.code = 'NO_DATA';
+      throw err;
+    }
+    return times.map((t) => ({ validTime: t, details: null, layer: product.layer(site, t) }));
+  }
+  // Try each file code in turn (newest product form first).
+  let keys = null;
+  for (const code of a.level3(tilt)) {
+    try {
+      keys = await listLevel3Before(site.id, code, end, ARCHIVE_FRAMES, signal);
+      break;
+    } catch (err) {
+      if (err.code !== 'NO_DATA') throw err;
+    }
+  }
+  if (!keys) {
+    const err = new Error('No scans for this product at this radar around that time.');
+    err.code = 'NO_DATA';
+    throw err;
+  }
+  const frames = new Array(keys.length);
+  let next = 0;
+  let done = 0;
+  const worker = async () => {
+    while (next < keys.length) {
+      const i = next++;
+      if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+      const { validTime, details } = await fetchLevel3Key(keys[i], a.colors, { drawSize: ARCHIVE_DRAW_SIZE });
+      frames[i] = { validTime, details, layer: product.layer(site, validTime, details) };
+      onProgress(++done, keys.length);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, keys.length) }, worker));
+  if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
+  return frames;
+}
+
+// { status: 'idle' | 'loading' | 'ok' | 'error', frames, progress: [done, total], error }
+export function useArchive(product, site, tilt, end) {
+  const [state, setState] = useState({ status: 'idle' });
+  const key = end && product?.archive && (product.scope !== 'site' || site) ? `${product.id}|${site?.id || ''}|${tilt || ''}|${end.getTime()}` : '';
+  useEffect(() => {
+    if (!key) {
+      setState({ status: 'idle' });
+      return undefined;
+    }
+    const c = new AbortController();
+    setState({ status: 'loading', key, progress: [0, 0] });
+    loadArchive(product, site, tilt, end, c.signal, (done, total) => !c.signal.aborted && setState((s) => ({ ...s, progress: [done, total] })))
+      .then((frames) => !c.signal.aborted && setState({ status: 'ok', key, frames }))
+      .catch((error) => {
+        if (!c.signal.aborted && error.name !== 'AbortError') setState({ status: 'error', key, error });
+      });
+    return () => c.abort();
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  return state.key === key ? state : { status: key ? 'loading' : 'idle', progress: [0, 0] };
+}

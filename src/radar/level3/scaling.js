@@ -23,9 +23,13 @@ export function float16(v) {
 export function makeScaler(m) {
   const t = m.thresholds;
   switch (m.product) {
-    // 153 super-res reflectivity (dBZ), 154 super-res velocity (m/s):
+    // 153 super-res reflectivity (dBZ), 154 super-res velocity (m/s), and
+    // their older archive forms 94 (reflectivity, 1 km x 1 deg) and 99
+    // (velocity, 0.25 km x 1 deg), all encoded the same way:
     // halfword 31 = minimum value x10 (signed), 32 = increment x10;
     // level 0 = below threshold, 1 = range folded, 2.. = data.
+    case 94:
+    case 99:
     case 153:
     case 154: {
       const min = (t[0] > 32767 ? t[0] - 65536 : t[0]) / 10;
@@ -33,7 +37,7 @@ export function makeScaler(m) {
       return {
         value: (n) => (n < 2 ? null : min + (n - 2) * inc),
         // Reflectivity is not range folded; its level 1 carries no data.
-        flag: (n) => (n === 0 ? 'below-threshold' : n === 1 ? (m.product === 154 ? 'range-folded' : 'no-data') : null),
+        flag: (n) => (n === 0 ? 'below-threshold' : n === 1 ? (m.product === 154 || m.product === 99 ? 'range-folded' : 'no-data') : null),
         topped: () => false,
       };
     }

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { X, Crosshair } from 'lucide-react';
-import { productGroups } from '../../radar/products';
+import { productGroups, TILT_VARIANTS, getProduct } from '../../radar/products';
 import { STATIONS } from '../../radar/stations';
 import ProductMenu from './ProductMenu';
 
@@ -19,8 +19,16 @@ export default function ProductPanel({
   onNearestStation,
   opacity,
   onOpacity,
+  pastMode = false,
 }) {
-  const groups = useMemo(() => productGroups(), []);
+  // Past mode: only products with an archive (velocity via its Level III tilt version).
+  const groups = useMemo(
+    () =>
+      productGroups()
+        .map(([g, list]) => [g, pastMode ? list.filter((p) => p.archive || (TILT_VARIANTS[p.id] && getProduct(TILT_VARIANTS[p.id]).archive)) : list])
+        .filter(([, list]) => list.length),
+    [pastMode]
+  );
   const stationsByState = useMemo(() => {
     const m = new Map();
     for (const s of STATIONS) {

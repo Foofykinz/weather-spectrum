@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Layers, ArrowLeft, Zap, Play, AlertTriangle } from 'lucide-react';
+import { Layers, ArrowLeft, Zap, Play, AlertTriangle, History } from 'lucide-react';
 import LoopControls from '../components/radar/LoopControls';
 import LayoutSwitch from '../components/radar/LayoutSwitch';
 import MultiRadar from '../components/radar/MultiRadar';
@@ -10,7 +10,9 @@ import RadarStatus from '../components/radar/RadarStatus';
 import ProductPanel from '../components/radar/ProductPanel';
 import GlmStatus from '../components/radar/GlmStatus';
 import WarningsStatus from '../components/radar/WarningsStatus';
-import { getProduct, DEFAULT_PRODUCT_ID, LEVEL3_TILTS } from '../radar/products';
+import PastPicker from '../components/radar/PastPicker';
+import { useArchive, timeFromParam, timeToParam } from '../radar/archive';
+import { getProduct, DEFAULT_PRODUCT_ID, LEVEL3_TILTS, archiveProductId } from '../radar/products';
 import { getStation, nearestStation } from '../radar/stations';
 import { useRadarFrame, useNow } from '../radar/useRadarFrame';
 import { useWarningsHistory } from '../radar/useWarningsHistory';
@@ -44,6 +46,8 @@ function viewFromParam(value) {
     : null;
 }
 
+const noop = () => {};
+
 function SingleRadar() {
   // Product and station live in the URL, so a view can be bookmarked or shared:
   //   /radar?product=site-reflectivity&site=TLX
@@ -74,7 +78,27 @@ function SingleRadar() {
   const warningsOn = params.get('warn') !== '0'; // on unless turned off
   const [warningsStatus, setWarningsStatus] = useState(null);
 
-  const frame = useRadarFrame(product, product.scope === 'site' ? station : null, tilt);
+  // Past radar (&time=2024-05-06T20:00Z): real archived scans up to that time.
+  const pastTime = timeFromParam(params.get('time'));
+  const past = !!pastTime;
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const liveFrame = useRadarFrame(product, product.scope === 'site' ? station : null, tilt, undefined, past);
+  const archive = useArchive(past ? product : null, product.scope === 'site' ? station : null, tilt, pastTime);
+  const pastFrames = past && archive.status === 'ok' ? archive.frames : null;
+  const [pastAnim, setPastAnim] = useState({ index: 0, playing: false, hold: 0 });
+  useEffect(() => {
+    if (pastFrames) setPastAnim({ index: pastFrames.length - 1, playing: false, hold: 0 });
+  }, [pastFrames]);
+  const shown = pastFrames ? pastFrames[Math.min(pastAnim.index, pastFrames.length - 1)] : null;
+  const frame = !past
+    ? liveFrame
+    : product.scope === 'site' && !station
+      ? { status: 'needs-station' }
+      : shown
+        ? { status: 'ok', past: true, validTime: shown.validTime, details: shown.details, layer: shown.layer }
+        : archive.status === 'error'
+          ? { status: 'error', past: true, error: archive.error }
+          : { status: 'loading', past: true, progress: archive.progress };
   const now = useNow();
 
   // ---- Radar loop (products with a `frames` list: IEM and NWS imagery).
@@ -86,7 +110,28 @@ function SingleRadar() {
   const [anim, setAnim] = useState(null); // { times, specs, index, playing, loaded, hold }
   const [loopError, setLoopError] = useState(null);
   const loopReq = useRef(null);
-  const warningsAtTime = useWarningsHistory(anim?.times, warningsOn && !!anim);
+  const pastSpecs = React.useMemo(() => pastFrames?.map((f) => f.layer), [pastFrames]);
+  const warnTimes = pastFrames ? pastFrames.map((f) => f.validTime) : anim?.times;
+  const warningsAtTime = useWarningsHistory(warnTimes, warningsOn && (pastFrames ? true : !!anim));
+  const warnIndex = pastFrames ? Math.min(pastAnim.index, pastFrames.length - 1) : anim?.index;
+
+  // Past mode: products with no archive switch to the closest one that has one.
+  useEffect(() => {
+    if (past && !product.archive) updateParamsRef.current({ product: archiveProductId(product.id), tilt: null });
+  }, [past, product]);
+  // Past loop playback (same pacing as the live loop).
+  useEffect(() => {
+    if (!pastAnim.playing || !pastFrames) return undefined;
+    const id = setInterval(() => {
+      setPastAnim((a) => {
+        if (!a.playing) return a;
+        if (a.index < pastFrames.length - 1) return { ...a, index: a.index + 1 };
+        if (a.hold < LAST_FRAME_HOLD) return { ...a, hold: a.hold + 1 };
+        return { ...a, index: 0, hold: 0 };
+      });
+    }, FRAME_MS);
+    return () => clearInterval(id);
+  }, [pastAnim.playing, pastFrames]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stopLoop = useCallback(() => {
     loopReq.current?.abort();
@@ -138,6 +183,12 @@ function SingleRadar() {
     },
     [params, setParams]
   );
+  const updateParamsRef = useRef(updateParams);
+  updateParamsRef.current = updateParams;
+  const showPast = (d) => {
+    stopLoop();
+    updateParams({ time: d ? timeToParam(d) : null });
+  };
 
   const pickNearest = useCallback(() => {
     const v = viewRef.current;
@@ -205,11 +256,17 @@ function SingleRadar() {
         keepInitialView={!!viewFromParam(params.get('at'))}
         onTileErrors={setTileErrors}
         onBasemapError={setBasemapError}
-        lightning={lightningOn}
-        animation={anim ? { specs: anim.specs, index: anim.index, onLoaded: onFramesLoaded } : null}
+        lightning={lightningOn && !past}
+        animation={
+          pastFrames && pastAnim.playing
+            ? { specs: pastSpecs, index: pastAnim.index, onLoaded: noop }
+            : anim
+              ? { specs: anim.specs, index: anim.index, onLoaded: onFramesLoaded }
+              : null
+        }
         onLightningStatus={setLightningStatus}
         warnings={warningsOn}
-        warningsFrame={anim ? warningsAtTime(anim.times[anim.index]) : undefined}
+        warningsFrame={warnTimes && (pastFrames || anim) ? warningsAtTime(warnTimes[warnIndex]) : undefined}
         onWarningsStatus={setWarningsStatus}
       />
 
@@ -242,9 +299,10 @@ function SingleRadar() {
             type="button"
             onClick={() => updateParams({ ltg: lightningOn ? null : '1' })}
             aria-pressed={lightningOn}
-            title="Lightning (GOES GLM satellite flashes)"
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
-              lightningOn
+            disabled={past}
+            title={past ? "Lightning isn't available for past dates" : 'Lightning (GOES GLM satellite flashes)'}
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur disabled:opacity-40 ${
+              lightningOn && !past
                 ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
@@ -266,8 +324,23 @@ function SingleRadar() {
             <AlertTriangle className="w-4 h-4" />
             <span className="hidden sm:inline">Warnings</span>
           </button>
-          <LayoutSwitch layout={1} onChange={setLayout} />
-          {canLoop && !anim && (
+          <button
+            type="button"
+            onClick={() => setPickerOpen((o) => !o)}
+            aria-pressed={past}
+            aria-expanded={pickerOpen}
+            title="Past radar: pick a date and time"
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
+              past || pickerOpen
+                ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
+                : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <History className="w-4 h-4" />
+            <span className="hidden sm:inline">Past</span>
+          </button>
+          {!past && <LayoutSwitch layout={1} onChange={setLayout} />}
+          {canLoop && !anim && !past && (
             <button
               type="button"
               onClick={startLoop}
@@ -292,11 +365,35 @@ function SingleRadar() {
           onNearestStation={pickNearest}
           opacity={opacity}
           onOpacity={setOpacity}
+          pastMode={past}
         />
+
+        {pickerOpen && !panelOpen && (
+          <PastPicker
+            key={pastTime ? pastTime.getTime() : 'live'}
+            time={pastTime}
+            onShow={(d) => showPast(d)}
+            onLive={() => {
+              showPast(null);
+              setPickerOpen(false);
+            }}
+            onClose={() => setPickerOpen(false)}
+          />
+        )}
 
         {!panelOpen && (
           <div className="pointer-events-auto sm:max-w-md">
             <RadarStatus product={product} station={station} frame={frame} now={now} tileErrors={tileErrors} />
+            {pastFrames && (
+              <div className="mt-2">
+                <LoopControls
+                  anim={{ times: pastFrames.map((f) => f.validTime), index: Math.min(pastAnim.index, pastFrames.length - 1), playing: pastAnim.playing, loaded: pastFrames.length }}
+                  onToggle={() => setPastAnim((a) => ({ ...a, playing: !a.playing }))}
+                  onScrub={(i) => setPastAnim((a) => ({ ...a, index: i, playing: false, hold: 0 }))}
+                  onLive={() => showPast(null)}
+                />
+              </div>
+            )}
             {anim && (
               <div className="mt-2">
                 <LoopControls
@@ -331,7 +428,7 @@ function SingleRadar() {
       >
         <div className="pointer-events-auto">
           {warningsOn && <WarningsStatus status={warningsStatus} now={now} />}
-          {lightningOn && <GlmStatus status={lightningStatus} now={now} />}
+          {lightningOn && !past && <GlmStatus status={lightningStatus} now={now} />}
           <RadarLegend product={product} frame={frame} />
         </div>
       </div>
@@ -414,5 +511,6 @@ function MultiRadarPage({ layout }) {
 export default function RadarPage() {
   const [params] = useSearchParams();
   const n = Number(params.get('layout'));
-  return n === 2 || n === 4 ? <MultiRadarPage layout={n} /> : <SingleRadar />;
+  // Past radar is single-view only.
+  return (n === 2 || n === 4) && !params.get('time') ? <MultiRadarPage layout={n} /> : <SingleRadar />;
 }

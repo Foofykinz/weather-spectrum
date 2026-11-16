@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 //   status: 'loading' | 'ok' | 'error' | 'needs-station'
 //   layer:  map layer description from the product (see products.js)
 
-export function useRadarFrame(product, site, tilt, drawSize) {
+export function useRadarFrame(product, site, tilt, drawSize, paused = false) {
   const [frame, setFrame] = useState({ status: 'loading' });
   const lastValid = useRef(null);
   const siteId = site?.id;
@@ -21,6 +21,10 @@ export function useRadarFrame(product, site, tilt, drawSize) {
   const needsStation = product.scope === 'site' && !site;
 
   useEffect(() => {
+    if (paused) {
+      setFrame({ status: 'idle', key });
+      return undefined;
+    }
     if (needsStation) {
       setFrame({ status: 'needs-station', key });
       return undefined;
@@ -73,7 +77,7 @@ export function useRadarFrame(product, site, tilt, drawSize) {
       controller?.abort();
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [product, siteId, tilt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [product, siteId, tilt, paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (frame.key !== key) return { status: needsStation ? 'needs-station' : 'loading', key };
   return frame;

@@ -30,9 +30,43 @@ export default function RadarStatus({ product, station, frame, now, tileErrors }
   const tilt = elev ? ` · ${elev} tilt` : '';
 
   let body;
-  if (frame.status === 'needs-station') {
+  if (frame.past && frame.status !== 'needs-station') {
+    // Past radar: archived scans, no freshness rating.
+    if (frame.status === 'loading') {
+      const [done, total] = frame.progress || [0, 0];
+      body = <p className="text-slate-300">Loading past scans{total ? ` ${done}/${total}` : ''}…</p>;
+    } else if (frame.status === 'error') {
+      const msg =
+        frame.error?.code === 'NO_DATA'
+          ? `No ${product.name} scans${station ? ` from ${station.icao}` : ''} in the 6 hours before that time. The radar may have been offline. Try another time, radar or product.`
+          : `Past radar couldn't load (${frame.error?.message || 'unknown error'}).`;
+      body = <p className="text-red-300">{msg}</p>;
+    } else {
+      const file = frame.details?.perf?.file;
+      const older = /_N.[QU]_/.test(file || '');
+      body = (
+        <>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="inline-block w-2 h-2 rounded-full bg-sky-400" aria-hidden />
+            <span className="font-semibold text-sky-300">Past</span>
+            <span className="text-slate-100 tabular-nums">
+              {frame.validTime.toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}{' '}
+              <span className="text-slate-400">({formatZulu(frame.validTime)})</span>
+            </span>
+          </div>
+          {older && <p className="text-slate-400 mt-0.5">Older archive format: 1 km reflectivity / 1° velocity (super-res files start in 2022).</p>}
+          {frame.details?.vcp != null && (
+            <p className="text-slate-400 mt-0.5">
+              VCP {frame.details.vcp}
+              {frame.details.radialDeg ? ` · ${frame.details.radialDeg}° radials` : ''}
+            </p>
+          )}
+        </>
+      );
+    }
+  } else if (frame.status === 'needs-station') {
     body = <p className="text-amber-300">Choose a radar station from the menu or tap one on the map.</p>;
-  } else if (frame.status === 'loading') {
+  } else if (frame.status === 'loading' || frame.status === 'idle') {
     body = <p className="text-slate-300">Checking for the latest scan…</p>;
   } else if (frame.status === 'error') {
     const msg =

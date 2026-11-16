@@ -34,8 +34,7 @@ export function iemTileUrl(site, product, validTime) {
 }
 
 // The most recent `count` scan times (for animation), from IEM's scan list.
-export async function fetchIemScanTimes(site, product, count, signal) {
-  const end = new Date();
+export async function fetchIemScanTimes(site, product, count, signal, end = new Date()) {
   const start = new Date(end.getTime() - 3 * 3600e3);
   const iso = (d) => d.toISOString().slice(0, 16) + 'Z';
   const url = `${IEM}/json/radar.py?operation=list&radar=${site}&product=${product}&start=${iso(start)}&end=${iso(end)}`;
