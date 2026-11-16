@@ -301,7 +301,9 @@ function ValueProbe({ product, details }) {
       const watches = watchesAtPoint(ws.watches || [], ws.shapes, e.latlng.lat, e.latlng.lng);
       const r = product.probe && details ? product.probe(details, e.latlng.lat, e.latlng.lng) : null;
       if (!r && !warns.length && !watches.length) return;
-      let html = warns.map(warningHtml).join('') + watches.map(watchHtml).join('');
+      const n = warns.length + watches.length;
+      let html = (n > 1 ? `<div style="color:#94a3b8;font-size:11px;margin-bottom:4px">${n} alerts at this spot, most urgent first</div>` : '')
+        + warns.map(warningHtml).join('') + watches.map(watchHtml).join('');
       if (r) {
         const kft = (km) => (km * 3.28084).toFixed(1);
         const where = `${r.groundKm.toFixed(1)} km at ${r.azimuth.toFixed(0)}° from radar`;
@@ -317,7 +319,7 @@ function ValueProbe({ product, details }) {
         const beam = r.status === 'out-of-range' || !r.elevation ? '' : `<br>${r.elevation}° beam ≈ ${kft(r.beamKm)} kft above radar`;
         html += `${main}<br><span style="color:#94a3b8">${where}${beam}</span>`;
       }
-      L.popup({ className: 'ws-radar-popup', autoPan: false, maxWidth: 280 })
+      L.popup({ className: 'ws-radar-popup', maxWidth: 280, maxHeight: 280, autoPan: true, autoPanPadding: [12, 64] })
         .setLatLng(e.latlng)
         .setContent(html)
         .openOn(map);

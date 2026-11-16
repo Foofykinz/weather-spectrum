@@ -13,17 +13,19 @@ const NWS = 'https://api.weather.gov/alerts';
 const IEM_SBW = 'https://mesonet.agron.iastate.edu/geojson/sbw.py';
 const POLL_MS = 60000;
 
-// Polygon warnings, with the NWS's own map colors (weather.gov hazard map),
+// Polygon warnings, in the NWS's map colors (weather.gov hazard map) except
+// flash flood (bright green, as most radar apps show it; NWS uses dark red)
+// and flood (darker green, so the two stay distinct),
 // most urgent first. Drawing order is the reverse, so tornado warnings sit on top.
 export const WARNING_TYPES = [
   { event: 'Tornado Warning', phen: 'TO', short: 'Tornado', color: '#FF0000' },
   { event: 'Extreme Wind Warning', phen: 'EW', short: 'Extreme wind', color: '#FF8C00' },
   { event: 'Severe Thunderstorm Warning', phen: 'SV', short: 'Severe t-storm', color: '#FFA500' },
-  { event: 'Flash Flood Warning', phen: 'FF', short: 'Flash flood', color: '#8B0000' },
+  { event: 'Flash Flood Warning', phen: 'FF', short: 'Flash flood', color: '#00FF00' },
   { event: 'Snow Squall Warning', phen: 'SQ', short: 'Snow squall', color: '#C71585' },
   { event: 'Special Marine Warning', phen: 'MA', short: 'Special marine', color: '#FFA500' },
   { event: 'Dust Storm Warning', phen: 'DS', short: 'Dust storm', color: '#FFE4C4' },
-  { event: 'Flood Warning', phen: 'FA', short: 'Flood', color: '#00FF00' },
+  { event: 'Flood Warning', phen: 'FA', short: 'Flood', color: '#2E8B57' },
 ];
 // Watches (county / marine zone based), NWS colors.
 export const WATCH_TYPES = [
