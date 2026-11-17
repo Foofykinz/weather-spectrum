@@ -69,6 +69,14 @@ export function makeScaler(m) {
         topped: (n) => (n & toppedMask) !== 0,
       };
     }
+    // Level II moments (REF, VEL, RHO): value = (code - offset) / scale from
+    // each moment block; code 0 = below threshold, 1 = range folded.
+    case 'L2':
+      return {
+        value: (n) => (n < 2 ? null : (n - m.offset) / m.scale),
+        flag: (n) => (n === 0 ? 'below-threshold' : n === 1 ? (m.moment === 'VEL' ? 'range-folded' : 'no-data') : null),
+        topped: () => false,
+      };
     default:
       throw new Error(`No scaling defined for product ${m.product}.`);
   }

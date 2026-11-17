@@ -33,6 +33,7 @@
 import { fetchIemLatest, fetchIemScanTimes, iemXyzLayer, IEM_ATTRIBUTION } from './providers/iem';
 import { fetchNwsLatest, fetchNwsTimes, nwsWmsLayer, NWS_ATTRIBUTION } from './providers/nws';
 import { fetchLevel3Latest, probeLevel3, LEVEL3_ATTRIBUTION } from './providers/level3';
+import { fetchLevel2Latest, listLevel2Tilts, LEVEL2_ATTRIBUTION } from './providers/level2';
 import nwsCcColors from './level3/nws-cc-colors.json';
 import nwsZdrColors from './level3/nws-zdr-colors.json';
 import nwsKdpColors from './level3/nws-kdp-colors.json';
@@ -342,7 +343,65 @@ export const RADAR_PRODUCTS = [
     legend: 'nws-dvl',
     probeFormat: (v) => `VIL ${v.toFixed(1)} kg/m²`,
   }),
+  level2Product({
+    id: 'l2-ref',
+    moment: 'REF',
+    colors: IEM_REF_COLORS,
+    name: 'Level II Reflectivity',
+    short: 'L2 REF',
+    description: 'Full-resolution reflectivity straight from the radar’s raw volume scan, at every tilt it scanned.',
+    legend: 'iem-n0q-dbz',
+    probeFormat: (v) => `${v.toFixed(1)} dBZ`,
+  }),
+  level2Product({
+    id: 'l2-vel',
+    moment: 'VEL',
+    colors: { ...nwsVelColors, multiplier: MS_TO_KT },
+    name: 'Level II Velocity',
+    short: 'L2 VEL',
+    description: 'Full-resolution radial velocity from the raw volume scan, at every tilt. Negative = toward the radar.',
+    legend: 'nws-vel',
+    probeFormat: (v) => `${(v * MS_TO_KT).toFixed(0)} kt (${v.toFixed(1)} m/s)`,
+  }),
+  level2Product({
+    id: 'l2-cc',
+    moment: 'RHO',
+    colors: nwsCcColors,
+    name: 'Level II Correlation Coefficient',
+    short: 'L2 CC',
+    description: 'Correlation coefficient from the raw volume scan, at every tilt. Low values in a hook can mean tornado debris.',
+    legend: 'nws-cc',
+    probeFormat: (v) => `CC ${v.toFixed(3)}`,
+  }),
 ];
+
+// Level II products: the raw volume scan, decoded in the browser, any tilt.
+// `tilt` is the elevation angle as a string ('0.5', '1.3', ...) from the
+// latest volume's own list; empty = the lowest.
+function level2Product({ id, moment, colors, name, short, description, legend, probeFormat }) {
+  return {
+    id,
+    name,
+    short,
+    group: 'Level II (raw volume)',
+    description: `${description} Tap the map to read exact values.`,
+    scope: 'site',
+    coverage: 'Single radar, up to 460 km',
+    elevation: null, // read from the volume
+    resolution: 'Native Level II (0.25 km × 0.5° on low tilts, 1° above)',
+    source: 'NOAA Level II',
+    listTilts: (site, signal) => listLevel2Tilts(site, moment, signal),
+    layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds, radial: details.radial }),
+    latest: (site, signal, { tilt, drawSize } = {}) => fetchLevel2Latest(site, moment, colors, signal, { tilt, drawSize }),
+    probe: probeLevel3,
+    probeFormat,
+    // A volume reaches the archive only once it's complete: 5-15 minutes.
+    pollSeconds: 60,
+    freshness: { delayedAfterMin: 18, staleAfterMin: 30 },
+    legend,
+    attribution: LEVEL2_ATTRIBUTION,
+  };
+}
 
 // Level III products computed from the whole volume scan (all tilts), so they
 // have no single elevation angle. Decoded in the browser like the dual-pol products.
@@ -388,12 +447,13 @@ export const menuProductId = (id) => TILT_PARENTS[id] || id;
 // Product whose files list the tilts for a menu entry (null: no tilts).
 export function tiltSourceOf(p) {
   if (TILT_VARIANTS[p.id]) return getProduct(TILT_VARIANTS[p.id]);
-  return p.tiltLetter ? p : null;
+  return p.tiltLetter || p.listTilts ? p : null;
 }
 
 // Selected tilt letter for a menu entry, given the current product and tilt param.
 export function selectedTiltFor(menuId, productId, tiltParam) {
   if (menuProductId(productId) !== menuId) return null;
+  if (getProduct(menuId).listTilts) return tiltParam || ''; // '' = lowest
   if (TILT_VARIANTS[productId]) return 'N0';
   return LEVEL3_TILTS.includes(tiltParam) ? tiltParam : 'N0';
 }
@@ -401,6 +461,7 @@ export function selectedTiltFor(menuId, productId, tiltParam) {
 // Product id and tilt URL param to use when a tilt is picked from a menu entry.
 export function productForTilt(menuId, tilt) {
   if (TILT_VARIANTS[menuId]) return tilt === 'N0' ? { product: menuId, tilt: null } : { product: TILT_VARIANTS[menuId], tilt };
+  if (getProduct(menuId).listTilts) return { product: menuId, tilt };
   return { product: menuId, tilt: tilt === 'N0' ? null : tilt };
 }
 
@@ -424,6 +485,10 @@ const ARCHIVE_FALLBACK = {
   'site-velocity': 'site-vel-tilt', // same data (Level III super-res velocity, lowest tilt)
   'site-srv': 'site-vel-tilt',
   'site-hc': 'site-reflectivity',
+  // Level II past radar comes in a later stage; until then, the Level III equivalents.
+  'l2-ref': 'site-reflectivity',
+  'l2-vel': 'site-vel-tilt',
+  'l2-cc': 'site-cc',
 };
 export function archiveProductId(id) {
   return getProduct(id).archive ? id : ARCHIVE_FALLBACK[id] || 'site-reflectivity';

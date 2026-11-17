@@ -14,7 +14,7 @@ const POP_W = 176;
 // in its latest volume, with the angle read from each file. Rendered into
 // <body> so it isn't clipped by the scrolling product list.
 function TiltPopover({ anchor, station, source, selected, onPick, onClose }) {
-  const key = station ? `${station.id}:${source.tiltLetter}` : null;
+  const key = station ? `${station.id}:${source.tiltLetter || source.id}` : null;
   const [state, setState] = useState(() => ({ status: key ? 'loading' : 'no-station', list: seen.get(key) || [] }));
   const ref = useRef(null);
   const [pos, setPos] = useState(null);
@@ -22,7 +22,7 @@ function TiltPopover({ anchor, station, source, selected, onPick, onClose }) {
   useEffect(() => {
     if (!key) return undefined;
     const c = new AbortController();
-    listLevel3Tilts(station, source.tiltLetter, LEVEL3_TILTS, c.signal)
+    (source.listTilts ? source.listTilts(station, c.signal) : listLevel3Tilts(station, source.tiltLetter, LEVEL3_TILTS, c.signal))
       .then((list) => {
         seen.set(key, list);
         setState({ status: list.length ? 'ok' : 'empty', list });
@@ -82,7 +82,7 @@ function TiltPopover({ anchor, station, source, selected, onPick, onClose }) {
       {state.status === 'empty' && <p className="px-3 py-2 text-xs text-slate-400">No tilts published right now.</p>}
       {state.status === 'error' && !list.length && <p className="px-3 py-2 text-xs text-red-300">Couldn&apos;t load tilts.</p>}
       {list.map((t, i) => {
-        const active = t.tilt === selected;
+        const active = t.tilt === selected || (selected === '' && i === 0); // '' = lowest
         return (
           <button
             key={t.tilt}
@@ -117,7 +117,7 @@ export default function ProductMenu({ groups, productId, tiltParam, station, onP
               const sel = selectedTiltFor(p.id, productId, tiltParam);
               const active = sel !== null;
               const source = tiltSourceOf(p);
-              const known = source && station ? seen.get(`${station.id}:${source.tiltLetter}`) : null;
+              const known = source && station ? seen.get(`${station.id}:${source.tiltLetter || source.id}`) : null;
               const idx = known && sel ? known.findIndex((t) => t.tilt === sel) : -1;
               const tiltLabel = active && idx > 0 ? `Tilt ${idx + 1}` : 'Tilt';
               const isOpen = open?.id === p.id;

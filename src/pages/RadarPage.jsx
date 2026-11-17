@@ -73,7 +73,10 @@ function SingleRadar() {
 
   // Elevation tilt (Level III products only), also kept in the URL: &tilt=NA
   const tiltParam = params.get('tilt');
-  const tilt = product.tiltLetter ? (LEVEL3_TILTS.includes(tiltParam) ? tiltParam : 'N0') : undefined;
+  // Level II products take the elevation angle itself: &tilt=1.3 (empty = lowest).
+  const tilt = product.tiltLetter
+    ? LEVEL3_TILTS.includes(tiltParam) ? tiltParam : 'N0'
+    : product.listTilts && /^\d{1,2}\.\d$/.test(tiltParam || '') ? tiltParam : undefined;
   const lightningOn = params.get('ltg') === '1';
   const [lightningStatus, setLightningStatus] = useState(null);
   const warningsOn = params.get('warn') !== '0'; // on unless turned off

@@ -261,8 +261,8 @@ export function probeLevel3(details, lat, lon) {
   if (!r) return null;
   const { km, az } = groundDistAz(r.lat, r.lon, lat, lon);
   const slant = slantRangeKm(km, r.elevation);
-  const bin = Math.floor(slant / r.binKm) - r.firstBin;
-  const base = { azimuth: az, groundKm: km, slantKm: slant, beamKm: beamHeightKm(slant, r.elevation), elevation: r.elevation };
+  const bin = Math.floor(slant / r.binKm - r.firstBin); // firstBin may be fractional (Level II)
+  const base = { azimuth: az, groundKm: km, slantKm: slant, beamKm: beamHeightKm(slant, r.elevation), elevation: Math.round(r.elevation * 10) / 10 };
   if (bin < 0 || bin >= r.nbins) return { ...base, status: 'out-of-range' };
   const rad = r.azTable[Math.floor(az * 10) % 3600];
   if (rad < 0) return { ...base, status: 'no-radial' };

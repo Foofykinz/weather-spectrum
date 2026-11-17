@@ -38,7 +38,7 @@ uniform float uHeight;      // canvas height in device px
 uniform vec2 uRadar;        // radar lat, lon (deg)
 uniform float uElev;        // elevation angle (deg)
 uniform float uBinKm;
-uniform int uFirstBin;
+uniform float uFirstBin;
 uniform int uNbins;
 out vec4 outColor;
 const float PI = 3.141592653589793;
@@ -61,7 +61,7 @@ void main() {
   float km = 2.0 * EARTH * asin(min(1.0, sqrt(a)));
   float phi = km / KE;
   float slant = KE * sin(phi) / cos(uElev * RAD + phi);
-  int bin = int(floor(slant / uBinKm)) - uFirstBin;
+  int bin = int(floor(slant / uBinKm - uFirstBin)); // uFirstBin may be fractional (Level II)
   if (bin < 0 || bin >= uNbins) discard;
   // azimuth, written to stay precise near the radar
   float y = sin(dl) * cos(p2);
@@ -242,7 +242,7 @@ export const GLRadarLayer = L.Layer.extend({
     gl.uniform2f(u.uRadar, r.lat, r.lon);
     gl.uniform1f(u.uElev, r.elevation);
     gl.uniform1f(u.uBinKm, r.binKm);
-    gl.uniform1i(u.uFirstBin, r.firstBin);
+    gl.uniform1f(u.uFirstBin, r.firstBin);
     gl.uniform1i(u.uNbins, r.nbins);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   },

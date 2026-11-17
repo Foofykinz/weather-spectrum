@@ -72,7 +72,8 @@ export function renderBox(dec, lut, bounds, width, height) {
   // Ground distance (10 m steps) -> range bin index, via the beam model.
   const binTable = new Int16Array(Math.ceil(maxGround * 100) + 1);
   for (let i = 0; i < binTable.length; i++) {
-    const b = Math.floor(slantRangeKm(i / 100, dec.elevation) / dec.binKm) - dec.firstBin;
+    // firstBin may be fractional (Level II gates start half a gate in).
+    const b = Math.floor(slantRangeKm(i / 100, dec.elevation) / dec.binKm - dec.firstBin);
     binTable[i] = b >= 0 && b < dec.nbins ? b : -1;
   }
 
