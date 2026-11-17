@@ -8,6 +8,7 @@ import StationPage from './pages/StationPage';
 import NotFound from './pages/NotFound';
 import EventPage from './pages/EventPage';
 import EventsIndex from './pages/EventsIndex';
+import TornadoWarnings from './pages/TornadoWarnings';
 import CookieConsent from './components/CookieConsent';
 import { initOneSignal } from './utils/oneSignalConfig';
 import { useSeo } from './seo/useSeo';
@@ -63,6 +64,7 @@ function Footer() {
             <nav aria-label="Site" className="flex flex-wrap gap-x-6 gap-y-2 text-slate-300">
               <Link to="/radar" className="hover:text-white transition-colors">Live Radar</Link>
               <Link to="/events" className="hover:text-white transition-colors">Tornado radar replays</Link>
+              <Link to="/tornado-warnings" className="hover:text-white transition-colors">Tornado warnings by year</Link>
               <Link to="/about" className="hover:text-white transition-colors">About</Link>
               {/* Legal pages are standalone documents served directly by the host. */}
               <a href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a>
@@ -101,6 +103,7 @@ export function AppShell() {
           <Route path="/about" element={<About />} />
           <Route path="/events" element={<EventsIndex />} />
           <Route path="/events/:slug" element={<EventPage />} />
+          <Route path="/tornado-warnings" element={<TornadoWarnings />} />
           <Route path="/admin" element={<Suspense fallback={null}><Admin /></Suspense>} />
           <Route path="/broadcast" element={<Suspense fallback={loading}><BroadcastPage /></Suspense>} />
           <Route path="*" element={<NotFound />} />

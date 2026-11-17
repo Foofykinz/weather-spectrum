@@ -48,6 +48,15 @@ const STATIC = {
       'Replay historic tornadoes like Moore 2013 and Joplin 2011 on the real archived NEXRAD radar: reflectivity, velocity and correlation coefficient loops with the NWS warning timeline.',
     jsonLd: [{ '@type': 'CollectionPage', name: 'Tornado radar replays', url: `${SITE}/events` }],
   },
+  '/tornado-warnings': {
+    title: 'Tornado Warnings by Year, Month or Week: Nationwide Map | Weather Spectrum',
+    description:
+      'Every National Weather Service tornado warning issued across the U.S. in any year, month or week since 2002, on a map with counts by state, office and day, and links to the radar at the time.',
+    jsonLd: [
+      { '@type': 'WebPage', name: 'Tornado warnings by year, month or week', url: `${SITE}/tornado-warnings` },
+      breadcrumbs([['Home', '/'], ['Tornado warnings', '/tornado-warnings']]),
+    ],
+  },
   '/admin': { title: 'Admin | Weather Spectrum', description: 'Administration.', noindex: true },
   '/broadcast': { title: 'Broadcast | Weather Spectrum', description: 'Weather Spectrum live broadcast screen.', noindex: true },
   '/404': { title: 'Page not found | Weather Spectrum', description: 'This page does not exist.', noindex: true },
