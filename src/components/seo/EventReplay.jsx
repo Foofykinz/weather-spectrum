@@ -11,19 +11,26 @@ import { useWarningsHistory } from '../../radar/useWarningsHistory';
 // (Level II) from one radar, with the warnings and storm markers in effect at
 // each scan. Loaded in the browser after the page itself.
 
-const PRODUCTS = [
-  ['l2-ref', 'Reflectivity'],
-  ['l2-vel', 'Velocity'],
-  ['l2-cc', 'Correlation coefficient'],
-];
+// From April 2020 the Level III archive has every low-level scan, including
+// the mid-volume rescans (a frame every 1-2 minutes, small files). Earlier
+// events use Level II, one lowest-tilt scan per volume (every 4-5 minutes,
+// which is how often radars scanned it then).
+const LEVEL3_FROM = '2020-04-01';
+const PRODUCTS = {
+  level3: [['site-reflectivity', 'Reflectivity', undefined], ['site-vel-tilt', 'Velocity', 'N0'], ['site-cc', 'Correlation coefficient', 'N0']],
+  level2: [['l2-ref', 'Reflectivity'], ['l2-vel', 'Velocity'], ['l2-cc', 'Correlation coefficient']],
+};
 const noop = () => {};
 
 export default function EventReplay({ event }) {
-  const [pid, setPid] = useState('l2-ref');
+  const level3 = event.date >= LEVEL3_FROM;
+  const options = level3 ? PRODUCTS.level3 : PRODUCTS.level2;
+  const [pid, setPid] = useState(options[0][0]);
   const product = getProduct(pid);
+  const tilt = options.find((o) => o[0] === pid)?.[2];
   const station = getStation(event.radar);
   const end = useMemo(() => new Date(event.end.replace('Z', ':00Z')), [event.end]);
-  const arch = useArchive(product, station, undefined, end);
+  const arch = useArchive(product, station, tilt, end, level3 ? 20 : 10);
   const frames = arch.status === 'ok' ? arch.frames : null;
   const times = useMemo(() => frames?.map((f) => f.validTime), [frames]);
   const specs = useMemo(() => frames?.map((f) => f.layer), [frames]);
@@ -75,7 +82,7 @@ export default function EventReplay({ event }) {
         embed
       />
       <div className="absolute left-2 top-2 z-[1000] flex flex-wrap gap-1">
-        {PRODUCTS.map(([id, label]) => (
+        {options.map(([id, label]) => (
           <button
             key={id}
             type="button"
@@ -130,7 +137,7 @@ export default function EventReplay({ event }) {
         </div>
       </div>
       <a
-        href={`/radar?product=${pid}&site=${station.id}&time=${event.end}&at=${at}`}
+        href={`/radar?product=${pid}&site=${station.id}${tilt && tilt !== 'N0' ? `&tilt=${tilt}` : ''}&time=${event.end}&at=${at}`}
         className="absolute right-2 top-2 z-[1000] rounded-md border border-slate-700/80 bg-slate-900/85 px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-slate-800"
       >
         Open in full radar

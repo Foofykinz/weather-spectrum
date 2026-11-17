@@ -5,6 +5,8 @@ import {
   subscribeStorms,
   stormsAt,
   stormsReady,
+  radarStormHistory,
+  stormsFromHistory,
   selectStorms,
   compassOf,
   aheadOf,
@@ -100,11 +102,25 @@ export default function StormsLayer({ time, times, radar }) {
     };
   }, [map]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Load every frame's storms as soon as the loop is known.
+  // Loops on one radar: that radar's detections for the whole loop in one
+  // small download. Otherwise (national map) a lookup per frame time.
   const timesKey = times?.map((t) => t.getTime()).join(',') || '';
+  const history = useRef(null); // { key, data }
   useEffect(() => {
-    times?.forEach((t) => stormsAt(t).catch(() => {}));
-  }, [timesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!times?.length) return;
+    if (radar) {
+      const key = `${radar}|${timesKey}`;
+      if (history.current?.key === key) return;
+      const lo = new Date(Math.min(...times.map((t) => t.getTime())));
+      const hi = new Date(Math.max(...times.map((t) => t.getTime())));
+      radarStormHistory(radar, lo, hi)
+        .then((data) => {
+          history.current = { key, data };
+          if (timeRef.current) draw(stormsFromHistory(data, timeRef.current));
+        })
+        .catch(() => {});
+    } else times.forEach((t) => stormsAt(t).catch(() => {}));
+  }, [timesKey, radar]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const timeMs = time ? time.getTime() : null;
   useEffect(() => {
@@ -113,9 +129,14 @@ export default function StormsLayer({ time, times, radar }) {
       return undefined;
     }
     const t = new Date(timeMs);
+    if (radar && history.current?.key === `${radar}|${timesKey}`) {
+      draw(stormsFromHistory(history.current.data, t)); // same instant as the radar frame
+      return undefined;
+    }
+    if (radar && times?.length) return undefined; // the radar's history is loading; drawn when it arrives
     const cached = stormsReady(t);
     if (cached) {
-      draw(cached); // already loaded: same instant as the radar frame
+      draw(cached);
       return undefined;
     }
     let alive = true;

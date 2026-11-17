@@ -124,6 +124,64 @@ export function stormsAt(t) {
   return pastCache.get(minute);
 }
 
+// ---- one radar over a time span (loops and replays on a single radar): one
+// small CSV from IEM instead of a nationwide lookup per frame.
+const spanCache = new Map(); // `${radar}|${sts}|${ets}` -> Promise<[{ valid, storms }]>
+const stamp = (d) => d.toISOString().slice(0, 16) + 'Z';
+export function radarStormHistory(radar, start, end) {
+  const sts = stamp(new Date(start.getTime() - 15 * 60e3));
+  const ets = stamp(new Date(end.getTime() + 60e3));
+  const id = `${radar}|${sts}|${ets}`;
+  if (!spanCache.has(id)) {
+    const url = `${IEM}/cgi-bin/request/gis/nexrad_storm_attrs.py?fmt=csv&radar=${radar}&sts=${sts}&ets=${ets}`;
+    spanCache.set(
+      id,
+      fetch(url)
+        .then((r) => {
+          if (!r.ok) throw new Error(`Storm data returned ${r.status}`);
+          return r.text();
+        })
+        .then((csv) => {
+          const [head, ...rows] = csv.trim().split('\n');
+          const cols = head.split(',');
+          const at = (row, name) => row[cols.indexOf(name)];
+          const byTime = new Map();
+          for (const line of rows) {
+            const row = line.split(',');
+            const v = at(row, 'VALID');
+            const valid = new Date(Date.UTC(+v.slice(0, 4), +v.slice(4, 6) - 1, +v.slice(6, 8), +v.slice(8, 10), +v.slice(10, 12)));
+            const s = storm({
+              geometry: { coordinates: [+at(row, 'LON'), +at(row, 'LAT')] },
+              properties: {
+                nexrad: at(row, 'NEXRAD'), storm_id: at(row, 'STORM_ID'), azimuth: +at(row, 'AZIMUTH'), range: +at(row, 'RANGE'),
+                tvs: at(row, 'TVS'), meso: at(row, 'MESO'), posh: +at(row, 'POSH'), poh: +at(row, 'POH'), max_size: +at(row, 'MAX_SIZE'),
+                vil: +at(row, 'VIL'), max_dbz: +at(row, 'MAX_DBZ'), top: +at(row, 'TOP'), drct: +at(row, 'DRCT'), sknt: +at(row, 'SKNT'),
+                valid: valid.toISOString(),
+              },
+            });
+            if (!isNotable(s)) continue;
+            if (!byTime.has(valid.getTime())) byTime.set(valid.getTime(), []);
+            byTime.get(valid.getTime()).push(s);
+          }
+          return [...byTime.entries()].sort((a, b) => a[0] - b[0]).map(([t, storms]) => ({ valid: t, storms }));
+        })
+        .catch((err) => {
+          spanCache.delete(id);
+          throw err;
+        })
+    );
+  }
+  return spanCache.get(id);
+}
+// The radar's detections in effect at time t: its newest volume at or
+// before t (within 12 minutes).
+export function stormsFromHistory(history, t) {
+  const ms = t.getTime() + 60e3;
+  let pick = null;
+  for (const h of history) if (h.valid <= ms) pick = h;
+  return pick && ms - pick.valid <= 12 * 60e3 ? pick.storms : [];
+}
+
 const COMPASS = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
 export const compassOf = (deg) => COMPASS[Math.round(deg / 22.5) % 16];
 

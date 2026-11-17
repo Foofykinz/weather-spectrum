@@ -28,23 +28,42 @@ precision highp float;
 precision highp int;
 precision highp usampler2D;
 precision highp isampler2D;
-uniform usampler2D uData;   // level per (bin, radial)
-uniform isampler2D uAz;     // 0.1 deg azimuth step -> radial index (-1 = none)
-uniform sampler2D uLut;     // level -> color
+// Two scans: A (the previous loop frame) and B (the one being shown). Outside
+// a crossfade only B is drawn; during one, the two real scans are blended.
+uniform usampler2D uDataA;  // level per (bin, radial)
+uniform isampler2D uAzA;    // 0.1 deg azimuth step -> radial index (-1 = none)
+uniform sampler2D uLutA;    // level -> color
+uniform vec4 uGeoA;         // elevation (deg), bin km, first bin, bin count
+uniform usampler2D uDataB;
+uniform isampler2D uAzB;
+uniform sampler2D uLutB;
+uniform vec4 uGeoB;
+uniform float uMix;         // 1 = B only; below 1 = crossfading from A
 uniform vec2 uOrigin;       // world pixel (CSS px) of the canvas top-left
 uniform float uWorld;       // world size in CSS px at this zoom
 uniform float uDpr;
 uniform float uHeight;      // canvas height in device px
 uniform vec2 uRadar;        // radar lat, lon (deg)
-uniform float uElev;        // elevation angle (deg)
-uniform float uBinKm;
-uniform float uFirstBin;
-uniform int uNbins;
 out vec4 outColor;
 const float PI = 3.141592653589793;
 const float RAD = PI / 180.0;
 const float EARTH = 6371.0;
 const float KE = 6371.0 * 4.0 / 3.0;
+
+// Color of the exact range bin at this ground distance / azimuth step
+// (transparent where there's no data).
+vec4 frameColor(usampler2D data, isampler2D azt, sampler2D lut, vec4 geo, float km, int ai) {
+  float phi = km / KE;
+  float slant = KE * sin(phi) / cos(geo.x * RAD + phi);
+  int bin = int(floor(slant / geo.y - geo.z)); // first bin may be fractional (Level II)
+  if (bin < 0 || bin >= int(geo.w)) return vec4(0.0);
+  int rad = texelFetch(azt, ivec2(ai, 0), 0).r;
+  if (rad < 0) return vec4(0.0);
+  uint level = texelFetch(data, ivec2(bin, rad), 0).r;
+  if (level == 0u) return vec4(0.0);
+  return texelFetch(lut, ivec2(int(level), 0), 0);
+}
+
 void main() {
   vec2 css = vec2(gl_FragCoord.x, uHeight - gl_FragCoord.y) / uDpr;
   vec2 w = uOrigin + css;
@@ -59,26 +78,28 @@ void main() {
   // haversine: precise at short range, unlike acos in 32-bit floats
   float a = sdp * sdp + cos(p1) * cos(p2) * sdl * sdl;
   float km = 2.0 * EARTH * asin(min(1.0, sqrt(a)));
-  float phi = km / KE;
-  float slant = KE * sin(phi) / cos(uElev * RAD + phi);
-  int bin = int(floor(slant / uBinKm - uFirstBin)); // uFirstBin may be fractional (Level II)
-  if (bin < 0 || bin >= uNbins) discard;
   // azimuth, written to stay precise near the radar
   float y = sin(dl) * cos(p2);
   float x = sin(dp) + 2.0 * sin(p1) * cos(p2) * sdl * sdl;
   float az = atan(y, x) / RAD;
   if (az < 0.0) az += 360.0;
   int ai = int(floor(az * 10.0)) % 3600;
-  int rad = texelFetch(uAz, ivec2(ai, 0), 0).r;
-  if (rad < 0) discard;
-  uint level = texelFetch(uData, ivec2(bin, rad), 0).r;
-  if (level == 0u) discard;
-  vec4 c = texelFetch(uLut, ivec2(int(level), 0), 0);
+  vec4 c = frameColor(uDataB, uAzB, uLutB, uGeoB, km, ai);
+  if (uMix < 1.0) {
+    vec4 p = frameColor(uDataA, uAzA, uLutA, uGeoA, km, ai);
+    float al = p.a * (1.0 - uMix) + c.a * uMix;
+    if (al <= 0.0) discard;
+    c = vec4((p.rgb * p.a * (1.0 - uMix) + c.rgb * c.a * uMix) / al, al);
+  }
   if (c.a == 0.0) discard;
   outColor = c;
 }`;
 
 export { glRadarSupported } from './support';
+
+// Crossfade between loop frames (ms). Each frame is still one real scan;
+// during the fade the two neighboring scans are blended.
+const FADE_MS = 280;
 
 function compile(gl, type, src) {
   const s = gl.createShader(type);
@@ -115,7 +136,7 @@ export const GLRadarLayer = L.Layer.extend({
     gl.linkProgram(prog);
     if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog) || 'link error');
     this._u = {};
-    for (const n of ['uData', 'uAz', 'uLut', 'uOrigin', 'uWorld', 'uDpr', 'uHeight', 'uRadar', 'uElev', 'uBinKm', 'uFirstBin', 'uNbins']) {
+    for (const n of ['uDataA', 'uAzA', 'uLutA', 'uGeoA', 'uDataB', 'uAzB', 'uLutB', 'uGeoB', 'uMix', 'uOrigin', 'uWorld', 'uDpr', 'uHeight', 'uRadar']) {
       this._u[n] = gl.getUniformLocation(prog, n);
     }
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
@@ -126,6 +147,7 @@ export const GLRadarLayer = L.Layer.extend({
 
   onRemove() {
     cancelAnimationFrame(this._raf);
+    cancelAnimationFrame(this._fadeRaf);
     this._gl?.getExtension('WEBGL_lose_context')?.loseContext();
     this._canvas?.remove();
     this._canvas = this._gl = null;
@@ -143,11 +165,25 @@ export const GLRadarLayer = L.Layer.extend({
     return this;
   },
 
+  // Switch loop frame with a short crossfade from the previous one.
   setIndex(i) {
     if (i === this._index) return this;
+    this._prev = this._index;
     this._index = i;
-    if (this._gl) this._draw();
+    this._fadeStart = performance.now();
+    cancelAnimationFrame(this._fadeRaf);
+    const tick = () => {
+      if (!this._gl) return;
+      this._draw();
+      if (this._mix() < 1) this._fadeRaf = requestAnimationFrame(tick);
+    };
+    tick();
     return this;
+  },
+
+  _mix() {
+    const ms = this.options.fadeMs ?? FADE_MS;
+    return ms > 0 && this._fadeStart != null ? Math.min(1, (performance.now() - this._fadeStart) / ms) : 1;
   },
 
   _upload(r) {
@@ -208,30 +244,30 @@ export const GLRadarLayer = L.Layer.extend({
     const gl = this._gl;
     const f = this._frames[this._index];
     if (!gl || !f || !this._origin) return;
-    const { r } = f;
+    const mix = this._mix();
+    const p = mix < 1 ? this._frames[this._prev] || f : f;
     gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
     gl.useProgram(this._prog);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, f.data);
-    gl.activeTexture(gl.TEXTURE1);
-    gl.bindTexture(gl.TEXTURE_2D, f.az);
-    gl.activeTexture(gl.TEXTURE2);
-    gl.bindTexture(gl.TEXTURE_2D, f.lut);
     const u = this._u;
-    gl.uniform1i(u.uData, 0);
-    gl.uniform1i(u.uAz, 1);
-    gl.uniform1i(u.uLut, 2);
+    const bind = (frame, unit, names) => {
+      [frame.data, frame.az, frame.lut].forEach((tex, k) => {
+        gl.activeTexture(gl.TEXTURE0 + unit + k);
+        gl.bindTexture(gl.TEXTURE_2D, tex);
+        gl.uniform1i(u[names[k]], unit + k);
+      });
+      const r = frame.r;
+      gl.uniform4f(u[names[3]], r.elevation, r.binKm, r.firstBin, r.nbins);
+    };
+    bind(p, 0, ['uDataA', 'uAzA', 'uLutA', 'uGeoA']);
+    bind(f, 3, ['uDataB', 'uAzB', 'uLutB', 'uGeoB']);
+    gl.uniform1f(u.uMix, mix);
     gl.uniform2f(u.uOrigin, this._origin.x, this._origin.y);
     gl.uniform1f(u.uWorld, this._worldSize);
     gl.uniform1f(u.uDpr, this._dpr);
     gl.uniform1f(u.uHeight, gl.drawingBufferHeight);
-    gl.uniform2f(u.uRadar, r.lat, r.lon);
-    gl.uniform1f(u.uElev, r.elevation);
-    gl.uniform1f(u.uBinKm, r.binKm);
-    gl.uniform1f(u.uFirstBin, r.firstBin);
-    gl.uniform1i(u.uNbins, r.nbins);
+    gl.uniform2f(u.uRadar, f.r.lat, f.r.lon);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   },
 

@@ -34,8 +34,8 @@ export default function EventPage() {
           </Suspense>
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          Real archived scans from the {station.icao} radar (NOAA NEXRAD Level II), lowest tilt, with the NWS warnings in effect at each scan and
-          automated storm markers from the NWS radar algorithms. Tap the map to read exact values.
+          Real archived scans from the {station.icao} radar ({e.date >= '2020-04-01' ? 'NOAA NEXRAD Level III, every low-level scan' : 'NOAA NEXRAD Level II, one low-level scan per volume, as often as radars scanned it then'}), with the NWS warnings in
+          effect at each scan and automated storm markers from the NWS radar algorithms. Tap the map to read exact values.
         </p>
 
         <section className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">

@@ -26,10 +26,10 @@ export function timeFromParam(v) {
 }
 export const timeToParam = (d) => d.toISOString().slice(0, 16) + 'Z';
 
-export async function loadArchive(product, site, tilt, end, signal, onProgress) {
+export async function loadArchive(product, site, tilt, end, signal, onProgress, count = ARCHIVE_FRAMES) {
   const a = product.archive;
   if (a.times) {
-    const times = await a.times(site, end, ARCHIVE_FRAMES, signal);
+    const times = await a.times(site, end, count, signal);
     if (!times.length) {
       const err = new Error('No mosaic images around that time.');
       err.code = 'NO_DATA';
@@ -39,7 +39,7 @@ export async function loadArchive(product, site, tilt, end, signal, onProgress) 
   }
   // Level II: archived volumes, each read only as far as the chosen tilt.
   if (a.level2) {
-    const keys = await listLevel2Before(site.icao, end, ARCHIVE_FRAMES, signal);
+    const keys = await listLevel2Before(site.icao, end, count, signal);
     return runFrames(keys, signal, onProgress, async (key) => {
       const { validTime, details } = await fetchLevel2Key(key, a.level2, a.colors, { tilt, drawSize: archiveDrawSize() });
       return { validTime, details, layer: product.layer(site, validTime, details) };
@@ -49,7 +49,7 @@ export async function loadArchive(product, site, tilt, end, signal, onProgress) 
   let keys = null;
   for (const code of a.level3(tilt)) {
     try {
-      keys = await listLevel3Before(site.id, code, end, ARCHIVE_FRAMES, signal);
+      keys = await listLevel3Before(site.id, code, end, count, signal);
       break;
     } catch (err) {
       if (err.code !== 'NO_DATA') throw err;
@@ -85,9 +85,9 @@ async function runFrames(keys, signal, onProgress, load) {
 }
 
 // { status: 'idle' | 'loading' | 'ok' | 'error', frames, progress: [done, total], error }
-export function useArchive(product, site, tilt, end) {
+export function useArchive(product, site, tilt, end, count = ARCHIVE_FRAMES) {
   const [state, setState] = useState({ status: 'idle' });
-  const key = end && product?.archive && (product.scope !== 'site' || site) ? `${product.id}|${site?.id || ''}|${tilt || ''}|${end.getTime()}` : '';
+  const key = end && product?.archive && (product.scope !== 'site' || site) ? `${product.id}|${site?.id || ''}|${tilt || ''}|${end.getTime()}|${count}` : '';
   useEffect(() => {
     if (!key) {
       setState({ status: 'idle' });
@@ -95,7 +95,7 @@ export function useArchive(product, site, tilt, end) {
     }
     const c = new AbortController();
     setState({ status: 'loading', key, progress: [0, 0] });
-    loadArchive(product, site, tilt, end, c.signal, (done, total) => !c.signal.aborted && setState((s) => ({ ...s, progress: [done, total] })))
+    loadArchive(product, site, tilt, end, c.signal, (done, total) => !c.signal.aborted && setState((s) => ({ ...s, progress: [done, total] })), count)
       .then((frames) => !c.signal.aborted && setState({ status: 'ok', key, frames }))
       .catch((error) => {
         if (!c.signal.aborted && error.name !== 'AbortError') setState({ status: 'error', key, error });

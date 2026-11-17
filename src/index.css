@@ -77,3 +77,10 @@ select option {
 .ws-no-scrollbar {
   scrollbar-width: none;
 }
+
+/* Radar loops built from map tiles (national mosaic, broadcast): a short
+   crossfade between frames instead of a hard cut. Each frame is still one
+   real scan. Decoded single-radar loops fade on the GPU the same way. */
+.leaflet-radar-pane .leaflet-layer {
+  transition: opacity 280ms linear;
+}
