@@ -4,6 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { STATIONS } from '../../radar/stations';
 import VectorBasemap from './VectorBasemap';
+import StormsLayer from './StormsLayer';
 import GlmLayer from './GlmLayer';
 import WarningsLayer from './WarningsLayer';
 import { warningsAt, watchesAtPoint } from '../../radar/providers/warnings';
@@ -473,6 +474,10 @@ export default function RadarMap({
   embed = false, // inside a page: no scroll-wheel zoom; touch devices use the zoom buttons
   keepInitialView = false,
   mapRef, // gets the Leaflet map (used by the post maker)
+  storms = false,
+  stormsTime, // undefined = live; a Date = the storms at that frame
+  stormsRadar = null, // only this radar's detections (single-radar view)
+  stormsTimes, // all loop frame times, preloaded
 }) {
   return (
     <MapContainer
@@ -514,6 +519,7 @@ export default function RadarMap({
       <ValueProbe product={product} details={layer ? details : null} />
       {lightning && <GlmLayer onStatus={onLightningStatus} />}
       {warnings && <WarningsLayer frame={warningsFrame} onStatus={onWarningsStatus} />}
+      {storms && <StormsLayer time={stormsTime} times={stormsTimes} radar={stormsRadar} />}
       <MapSync group={syncGroup} />
       <AutoResize />
       {primary && <ViewWatcher onViewChange={onViewChange} />}

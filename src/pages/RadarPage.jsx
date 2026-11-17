@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Layers, ArrowLeft, Zap, Play, AlertTriangle, History, Image as ImageIcon } from 'lucide-react';
+import { Layers, ArrowLeft, Zap, Play, AlertTriangle, History, Image as ImageIcon, Target } from 'lucide-react';
 import PostMaker from '../components/radar/PostMaker';
 import LoopControls from '../components/radar/LoopControls';
 import LayoutSwitch from '../components/radar/LayoutSwitch';
@@ -77,6 +77,7 @@ function SingleRadar() {
   const lightningOn = params.get('ltg') === '1';
   const [lightningStatus, setLightningStatus] = useState(null);
   const warningsOn = params.get('warn') !== '0'; // on unless turned off
+  const stormsOn = params.get('storms') !== '0'; // storm markers, on unless turned off
   const [warningsStatus, setWarningsStatus] = useState(null);
 
   // Past radar (&time=2024-05-06T20:00Z): real archived scans up to that time.
@@ -109,7 +110,10 @@ function SingleRadar() {
   const FRAME_MS = 600;
   const LAST_FRAME_HOLD = 3; // extra ticks on the newest frame before restarting
   const site = product.scope === 'site' ? station : null;
-  const canLoop = !!product.frames && (product.scope !== 'site' || !!station);
+  // Image products loop from their provider's frame list; decoded single-radar
+  // products loop from the NOAA Level III files (same loader as past radar).
+  const canLoop = (!!product.frames || !!product.archive) && (product.scope !== 'site' || !!station);
+  const [loopProgress, setLoopProgress] = useState(null); // [done, total] while decoded frames load
   const [anim, setAnim] = useState(null); // { times, specs, index, playing, loaded, hold }
   const [loopError, setLoopError] = useState(null);
   const loopReq = useRef(null);
@@ -140,6 +144,7 @@ function SingleRadar() {
   const stopLoop = useCallback(() => {
     loopReq.current?.abort();
     setAnim(null);
+    setLoopProgress(null);
   }, []);
 
   const startLoop = async () => {
@@ -148,17 +153,29 @@ function SingleRadar() {
     loopReq.current = controller;
     setLoopError(null);
     try {
-      const times = await product.frames(site, LOOP_FRAMES, controller.signal);
-      if (controller.signal.aborted) return;
-      if (times.length < 2) throw new Error('Not enough recent scans to loop.');
-      setAnim({ times, specs: times.map((t) => product.layer(site, t)), index: 0, playing: true, loaded: 0, hold: 0 });
+      const decoded = product.archive && product.scope === 'site'; // same sharp source as the still image
+      if (!decoded) {
+        const times = await product.frames(site, LOOP_FRAMES, controller.signal);
+        if (controller.signal.aborted) return;
+        if (times.length < 2) throw new Error('Not enough recent scans to loop.');
+        setAnim({ times, specs: times.map((t) => product.layer(site, t)), index: 0, playing: true, loaded: 0, hold: 0 });
+      } else {
+        setLoopProgress([0, 0]);
+        const frames = await loadArchive(product, site, tilt, new Date(), controller.signal, (d, n) => !controller.signal.aborted && setLoopProgress([d, n]));
+        if (controller.signal.aborted) return;
+        if (frames.length < 2) throw new Error('Not enough recent scans to loop.');
+        // Decoded frames are ready at once: count them all as loaded.
+        setAnim({ times: frames.map((f) => f.validTime), specs: frames.map((f) => f.layer), index: 0, playing: true, loaded: frames.length, hold: 0 });
+      }
     } catch (err) {
       if (err.name !== 'AbortError') setLoopError(err.message);
+    } finally {
+      if (loopReq.current === controller) setLoopProgress(null);
     }
   };
 
   // A loop belongs to one product + radar; leaving either returns to live.
-  useEffect(() => stopLoop, [product.id, station?.id, stopLoop]);
+  useEffect(() => stopLoop, [product.id, station?.id, tilt, stopLoop]);
 
   useEffect(() => {
     if (!anim?.playing) return undefined;
@@ -335,6 +352,10 @@ function SingleRadar() {
         warnings={warningsOn}
         warningsFrame={warnTimes && (video || pastFrames || anim) ?warningsAtTime(warnTimes[warnIndex]) : undefined}
         onWarningsStatus={setWarningsStatus}
+        storms={stormsOn}
+        stormsTime={warnTimes && (video || pastFrames || anim) ? warnTimes[warnIndex] : undefined}
+        stormsRadar={product.scope === 'site' ? station?.id || null : null}
+        stormsTimes={video || pastFrames || anim ? warnTimes : undefined}
         mapRef={mapRef}
       />
 
@@ -396,6 +417,20 @@ function SingleRadar() {
           </button>
           <button
             type="button"
+            onClick={() => updateParams({ storms: stormsOn ? '0' : null })}
+            aria-pressed={stormsOn}
+            title="Storm markers: rotation, tornado vortex signatures, large hail and storm motion (NWS radar algorithms)"
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
+              stormsOn
+                ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
+                : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
+            }`}
+          >
+            <Target className="w-4 h-4" />
+            <span className="hidden sm:inline">Storms</span>
+          </button>
+          <button
+            type="button"
             onClick={() => setPickerOpen((o) => !o)}
             aria-pressed={past}
             aria-expanded={pickerOpen}
@@ -424,11 +459,14 @@ function SingleRadar() {
             <button
               type="button"
               onClick={startLoop}
+              disabled={!!loopProgress}
               title="Play the last 10 scans"
               className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 px-2.5 py-2 text-xs font-semibold text-slate-200 shadow-lg backdrop-blur hover:bg-slate-800"
             >
               <Play className="w-4 h-4" />
-              <span className="hidden sm:inline">Loop</span>
+              <span className="hidden sm:inline">
+                {loopProgress ? `Loading ${loopProgress[0]}/${loopProgress[1] || '...'}` : 'Loop'}
+              </span>
             </button>
           )}
         </div>
