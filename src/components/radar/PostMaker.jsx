@@ -22,7 +22,8 @@ import {
   warningName,
 } from '../../radar/post';
 import { videoType, recordVideo } from '../../radar/video';
-import { saveFile, saveImage, savedMessage } from '../../utils/saveFile';
+import { saveFile, savedMessage, isPhone } from '../../utils/saveFile';
+import SaveImageSheet from '../SaveImageSheet';
 
 // Make a Facebook-ready radar image of the current map view, with caption
 // drafts built from the official warning data.
@@ -45,6 +46,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
   const [subline, setSubline] = useState(null);
   const [legendImg, setLegendImg] = useState(null);
   const [message, setMessage] = useState(null);
+  const [saveSheet, setSaveSheet] = useState(null); // { blob, name } on phones
   const preview = useRef(null);
 
   const size = mode === 'video' ? VERTICAL : SIZES.find((s) => s.id === sizeId);
@@ -184,8 +186,13 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
 
   const download = async () => {
     try {
-      const how = await saveImage(await toBlob(), fileName());
-      setMessage(how === 'downloaded' ? savedMessage('Image') : how === 'shared' ? 'Done.' : null);
+      const blob = await toBlob();
+      if (isPhone()) {
+        setSaveSheet({ blob, name: fileName() });
+        return;
+      }
+      saveFile(blob, fileName());
+      setMessage(savedMessage('Image'));
     } catch (err) {
       blobError(err);
     }
@@ -218,6 +225,11 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-black/70 p-2 sm:p-6" onClick={onClose}>
+      {saveSheet && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <SaveImageSheet blob={saveSheet.blob} name={saveSheet.name} onClose={() => setSaveSheet(null)} />
+        </div>
+      )}
       <div
         role="dialog"
         aria-label="Make a post"
@@ -420,7 +432,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
             <div className="flex flex-wrap gap-2">
               {mode === 'image' && (
                 <button type="button" onClick={download} className={`${chip(true)} flex items-center gap-1.5`}>
-                  <Download className="w-4 h-4" /> Save image
+                  <Download className="w-4 h-4" /> {isPhone() ? 'Save to phone' : 'Save image'}
                 </button>
               )}
               <button type="button" onClick={() => copyCaption(false)} className={`${chip(false)} flex items-center gap-1.5`}>

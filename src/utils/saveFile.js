@@ -19,26 +19,14 @@ export function saveFile(blobOrUrl, name) {
 // in the photo gallery, so say where to look.
 export const savedMessage = (kind = 'Image') => {
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-  if (/Android/i.test(ua)) return `${kind} saved to Downloads. Look in My Files (or Files) > Downloads; it may not show in Gallery right away. Share sends it straight to an app.`;
-  if (/iPhone|iPad|iPod/i.test(ua)) return `${kind} saved to the Files app > Downloads. Share > Save puts it in Photos.`;
+  if (/Android/i.test(ua)) return `${kind} saved. In your Gallery or Photos app, open the Download album (it can take a moment to show up).`;
+  if (/iPhone|iPad|iPod/i.test(ua)) return `${kind} saved to the Files app > Downloads. For Photos, tap Share, then Save ${kind}.`;
   return `${kind} saved to your downloads folder.`;
 };
 
-// Images: on iPhone/iPad a download lands in the Files app, not Photos, so
-// open the share sheet instead (its "Save Image" puts it in Photos). Falls
-// back to a normal download. Returns 'shared' | 'cancelled' | 'downloaded'.
-const isApple = () =>
+// iPhone / iPad (iPadOS reports itself as a Mac with a touch screen).
+export const isApple = () =>
   typeof navigator !== 'undefined' && (/iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
-export async function saveImage(blob, name) {
-  const file = new File([blob], name, { type: blob.type });
-  if (isApple() && navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({ files: [file] });
-      return 'shared';
-    } catch (err) {
-      if (err.name === 'AbortError') return 'cancelled';
-    }
-  }
-  saveFile(blob, name);
-  return 'downloaded';
-}
+
+// Phones and tablets: save through SaveImageSheet (press and hold) instead of a download.
+export const isPhone = () => typeof navigator !== 'undefined' && (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || isApple());

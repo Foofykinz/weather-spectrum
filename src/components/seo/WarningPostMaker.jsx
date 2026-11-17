@@ -5,7 +5,8 @@ import { snapshotMap } from '../../radar/snapshot';
 import { STYLES, mapArea, coveredEdges, drawPost, buildCaptions, defaultHeadline, defaultSubline } from '../../warnings/post';
 import { boundsFor, periodToParams } from '../../warnings/history';
 import TornadoWarningMap from './TornadoWarningMap';
-import { saveFile, saveImage, savedMessage } from '../../utils/saveFile';
+import { saveFile, savedMessage, isPhone } from '../../utils/saveFile';
+import SaveImageSheet from '../SaveImageSheet';
 
 // Post image + captions for the tornado warnings of a period.
 // info: { period, now, state, count, stats, officeName }; warnings: the list
@@ -73,6 +74,7 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
   const [headline, setHeadline] = useState(null);
   const [subline, setSubline] = useState(null);
   const [message, setMessage] = useState(null);
+  const [saveSheet, setSaveSheet] = useState(null); // { blob, name } on phones
   const [format, setFormat] = useState('png'); // 'png' | 'jpeg'
   const mime = `image/${format}`;
   const preview = useRef(null);
@@ -135,8 +137,13 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
   };
   const download = async () => {
     try {
-      const how = await saveImage(await toBlob(), fileName());
-      setMessage(how === 'downloaded' ? savedMessage('Image') : how === 'shared' ? 'Done.' : null);
+      const blob = await toBlob();
+      if (isPhone()) {
+        setSaveSheet({ blob, name: fileName() });
+        return;
+      }
+      saveFile(blob, fileName());
+      setMessage(savedMessage('Image'));
     } catch {
       setMessage("The image couldn't be made in this browser.");
     }
@@ -178,6 +185,11 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
 
   return (
     <div className="fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-black/70 p-2 sm:p-6" onClick={onClose}>
+      {saveSheet && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <SaveImageSheet blob={saveSheet.blob} name={saveSheet.name} onClose={() => setSaveSheet(null)} />
+        </div>
+      )}
       {offscreen}
       <div
         role="dialog"
@@ -278,7 +290,7 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={download} disabled={pic.status !== 'ok'} className={`${chip(true)} flex items-center gap-1.5 disabled:opacity-50`}>
-                <Download className="w-4 h-4" /> Save image
+                <Download className="w-4 h-4" /> {isPhone() ? 'Save to phone' : 'Save image'}
               </button>
               <button type="button" onClick={() => copyCaption(false)} className={`${chip(false)} flex items-center gap-1.5`}>
                 <Copy className="w-4 h-4" /> Copy caption
