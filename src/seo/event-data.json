@@ -180,5 +180,593 @@
     "link": "https://mesonet.agron.iastate.edu/vtec/?year=2011&wfo=KSGF&phenomena=TO&significance=W&eventid=0032"
    }
   ]
+ },
+ "el-reno-tornado-2013": {
+  "warnings": [
+   {
+    "phen": "SV",
+    "etn": 459,
+    "issued": "2013-05-31T22:25:00Z",
+    "expires": "2013-05-31T23:15:00Z",
+    "first": "NATIONAL WEATHER SERVICE METEOROLOGISTS DETECTED A SEVERE THUNDERSTORM LOCATED 4 MILES EAST OF BRIDGEPORT...WITH ANOTHER STORM JUST SOUTH OF HINTON...THESE STORMS WERE MOVING EAST AT 35 MPH. HAZARDS IN THE WARNING INCLUDE",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Caddo, OK",
+     "Canadian, OK",
+     "Blaine, OK",
+     "Kingfisher, OK"
+    ],
+    "updates": [],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2013&wfo=KOUN&phenomena=SV&significance=W&eventid=0459"
+   },
+   {
+    "phen": "TO",
+    "etn": 57,
+    "issued": "2013-05-31T22:36:00Z",
+    "expires": "2013-05-31T23:15:00Z",
+    "first": "AT 533 PM CDT...NATIONAL WEATHER SERVICE METEOROLOGISTS DETECTED A SEVERE THUNDERSTORM CAPABLE OF PRODUCING A TORNADO. THIS DANGEROUS STORM WAS LOCATED 7 MILES NORTHEAST OF HINTON...AND MOVING EAST AT 25 MPH.",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Canadian, OK"
+    ],
+    "updates": [
+     {
+      "time": "2013-05-31T22:50:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 615 PM CDT FOR CENTRAL CANADIAN COUNTY"
+     },
+     {
+      "time": "2013-05-31T22:57:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 615 PM CDT FOR CENTRAL CANADIAN COUNTY"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2013&wfo=KOUN&phenomena=TO&significance=W&eventid=0057"
+   },
+   {
+    "phen": "TO",
+    "etn": 58,
+    "issued": "2013-05-31T23:08:00Z",
+    "expires": "2013-06-01T00:00:00Z",
+    "first": "AT 605 PM CDT...NATIONAL WEATHER SERVICE METEOROLOGISTS AND STORM SPOTTERS WERE TRACKING A LARGE AND EXTREMELY DANGEROUS TORNADO 6 MILES SOUTHWEST OF EL RENO. DOPPLER RADAR SHOWED THIS TORNADO MOVING SOUTHEAST AT 20 MPH.",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Grady, OK",
+     "Canadian, OK"
+    ],
+    "updates": [
+     {
+      "time": "2013-05-31T23:17:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 700 PM CDT FOR NORTHEASTERN GRADY AND CENTRAL CANADIAN COUNTIES"
+     },
+     {
+      "time": "2013-05-31T23:24:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 700 PM CDT FOR NORTHEASTERN GRADY AND SOUTHEASTERN CANADIAN COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2013&wfo=KOUN&phenomena=TO&significance=W&eventid=0058"
+   },
+   {
+    "phen": "TO",
+    "etn": 60,
+    "issued": "2013-05-31T23:28:00Z",
+    "expires": "2013-06-01T00:00:00Z",
+    "first": "AT 623 PM CDT...NATIONAL WEATHER SERVICE METEOROLOGISTS AND STORM SPOTTERS WERE TRACKING A LARGE AND EXTREMELY DANGEROUS TORNADO 6 MILES SOUTHEAST OF EL RENO. DOPPLER RADAR SHOWED THIS TORNADO MOVING EAST AT 40 MPH.",
+    "tags": {
+     "tornado": null,
+     "emergency": true
+    },
+    "counties": [
+     "Canadian, OK",
+     "Oklahoma, OK"
+    ],
+    "updates": [
+     {
+      "time": "2013-05-31T23:46:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 700 PM CDT FOR SOUTHWESTERN OKLAHOMA AND SOUTHEASTERN CANADIAN COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2013&wfo=KOUN&phenomena=TO&significance=W&eventid=0060"
+   }
+  ]
+ },
+ "tuscaloosa-tornado-2011": {
+  "warnings": [
+   {
+    "phen": "TO",
+    "etn": 104,
+    "issued": "2011-04-27T20:38:00Z",
+    "expires": "2011-04-27T21:45:00Z",
+    "first": "THE NATIONAL WEATHER SERVICE INDICATED A SEVERE THUNDERSTORM CAPABLE OF PRODUCING A TORNADO. THIS DANGEROUS STORM WAS LOCATED 15 MILES WEST OF EMELLE...OR 26 MILES NORTHWEST OF YORK...AND MOVING NORTHEAST AT 55 MPH. * THIS DANGEROUS STORM WILL BE NEAR",
+    "tags": {
+     "tornado": null,
+     "emergency": true
+    },
+    "counties": [
+     "Tuscaloosa, AL",
+     "Greene, AL",
+     "Sumter, AL",
+     "Hale, AL",
+     "Pickens, AL"
+    ],
+    "updates": [
+     {
+      "time": "2011-04-27T20:47:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT FOR SOUTHWESTERN TUSCALOOSA"
+     },
+     {
+      "time": "2011-04-27T20:55:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT FOR SOUTHWESTERN TUSCALOOSA"
+     },
+     {
+      "time": "2011-04-27T21:08:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT FOR SOUTHWESTERN TUSCALOOSA"
+     },
+     {
+      "time": "2011-04-27T21:33:00Z",
+      "line": "THE TORNADO WARNING FOR NORTH CENTRAL SUMTER COUNTY IS CANCELLED"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2011&wfo=KBMX&phenomena=TO&significance=W&eventid=0104"
+   },
+   {
+    "phen": "TO",
+    "etn": 107,
+    "issued": "2011-04-27T21:31:00Z",
+    "expires": "2011-04-27T21:51:00Z",
+    "first": "THE NATIONAL WEATHER SERVICE WAS TRACKING A CONFIRMED TORNADO NEAR BENEVOLA...OR 10 MILES SOUTHEAST OF CARROLLTON. DOPPLER RADAR SHOWED THIS TORNADO MOVING NORTHEAST AT 50 MPH. * THE TORNADO WILL BE NEAR",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Pickens, AL",
+     "Tuscaloosa, AL"
+    ],
+    "updates": [
+     {
+      "time": "2011-04-27T21:51:00Z",
+      "line": "THE TORNADO WARNING FOR NORTHERN TUSCALOOSA AND EAST CENTRAL PICKENS COUNTIES IS CANCELLED"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2011&wfo=KBMX&phenomena=TO&significance=W&eventid=0107"
+   },
+   {
+    "phen": "TO",
+    "etn": 109,
+    "issued": "2011-04-27T21:47:00Z",
+    "expires": "2011-04-27T22:45:00Z",
+    "first": "THE NATIONAL WEATHER SERVICE INDICATED A SEVERE THUNDERSTORM CAPABLE OF PRODUCING A TORNADO. THIS DANGEROUS STORM WAS LOCATED NEAR MANTUA...OR 14 MILES NORTH OF EUTAW...AND MOVING NORTHEAST AT 55 MPH. * LOCATIONS IMPACTED INCLUDE",
+    "tags": {
+     "tornado": null,
+     "emergency": true
+    },
+    "counties": [
+     "Pickens, AL",
+     "Tuscaloosa, AL",
+     "Greene, AL"
+    ],
+    "updates": [
+     {
+      "time": "2011-04-27T21:58:00Z",
+      "line": "THE TORNADO WARNING FOR SOUTHEASTERN PICKENS AND NORTHEASTERN GREENE COUNTIES IS CANCELLED"
+     },
+     {
+      "time": "2011-04-27T22:08:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT FOR TUSCALOOSA COUNTY UNTIL 545 PM CDT"
+     },
+     {
+      "time": "2011-04-27T22:17:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT FOR TUSCALOOSA COUNTY UNTIL 545 PM CDT"
+     },
+     {
+      "time": "2011-04-27T22:33:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT FOR NORTHEASTERN TUSCALOOSA COUNTY UNTIL 545 PM CDT"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2011&wfo=KBMX&phenomena=TO&significance=W&eventid=0109"
+   },
+   {
+    "phen": "TO",
+    "etn": 114,
+    "issued": "2011-04-27T22:31:00Z",
+    "expires": "2011-04-27T23:30:00Z",
+    "first": "STORM SPOTTERS AND THE NATIONAL WEATHER SERVICE WERE TRACKING A LARGE AND EXTREMELY DANGEROUS TORNADO ON THE GROUND NEAR BROOKWOOD...OR 12 MILES EAST OF HOLT. DOPPLER RADAR SHOWED THIS TORNADO MOVING NORTHEAST AT 55 MPH. * LOCATIONS IMPACTED INCLUDE",
+    "tags": {
+     "tornado": null,
+     "emergency": true
+    },
+    "counties": [
+     "Jefferson, AL",
+     "Shelby, AL",
+     "Tuscaloosa, AL"
+    ],
+    "updates": [
+     {
+      "time": "2011-04-27T22:36:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT FOR JEFFERSON...EAST CENTRAL TUSCALOOSA AND NORTHERN SHELBY COUNTIES UNTIL 630 PM CDT"
+     },
+     {
+      "time": "2011-04-27T22:42:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT FOR JEFFERSON...EAST CENTRAL TUSCALOOSA AND NORTHERN SHELBY COUNTIES UNTIL 630 PM CDT"
+     },
+     {
+      "time": "2011-04-27T22:51:00Z",
+      "line": "THE TORNADO WARNING FOR EAST CENTRAL TUSCALOOSA COUNTY IS CANCELLED"
+     },
+     {
+      "time": "2011-04-27T23:00:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT FOR JEFFERSON AND NORTHEASTERN SHELBY COUNTIES UNTIL 630 PM CDT"
+     },
+     {
+      "time": "2011-04-27T23:07:00Z",
+      "line": "THE TORNADO WARNING FOR NORTHEASTERN SHELBY COUNTY IS CANCELLED"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2011&wfo=KBMX&phenomena=TO&significance=W&eventid=0114"
+   }
+  ]
+ },
+ "mayfield-tornado-2021": {
+  "warnings": [
+   {
+    "phen": "TO",
+    "etn": 34,
+    "issued": "2021-12-11T02:29:00Z",
+    "expires": "2021-12-11T03:30:00Z",
+    "first": "At 829 PM CST, a confirmed large and extremely dangerous tornado was located over Tiptonville, or near Reelfoot Lake State Park, moving northeast at 55 mph.",
+    "tags": {
+     "tornado": "OBSERVED",
+     "emergency": false
+    },
+    "counties": [
+     "Fulton, KY",
+     "Mississippi, MO",
+     "Hickman, KY"
+    ],
+    "updates": [
+     {
+      "time": "2021-12-11T02:41:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 930 PM CST FOR FULTON"
+     },
+     {
+      "time": "2021-12-11T03:01:00Z",
+      "line": "THE TORNADO WARNING FOR SOUTH CENTRAL MISSISSIPPI COUNTY IS CANCELLED"
+     },
+     {
+      "time": "2021-12-11T03:09:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 930 PM CST FOR EAST CENTRAL FULTON AND SOUTHEASTERN HICKMAN COUNTIES"
+     },
+     {
+      "time": "2021-12-11T03:21:00Z",
+      "line": "THE TORNADO WARNING FOR EAST CENTRAL FULTON AND SOUTHEASTERN HICKMAN COUNTIES WILL EXPIRE AT 930 PM CST"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2021&wfo=KPAH&phenomena=TO&significance=W&eventid=0034"
+   },
+   {
+    "phen": "TO",
+    "etn": 36,
+    "issued": "2021-12-11T03:05:00Z",
+    "expires": "2021-12-11T03:45:00Z",
+    "first": "At 904 PM CST, a confirmed large and extremely dangerous tornado was located near Cayce, or near Clinton, moving northeast at 55 mph.",
+    "tags": {
+     "tornado": "OBSERVED",
+     "emergency": false
+    },
+    "counties": [
+     "Marshall, KY",
+     "Graves, KY"
+    ],
+    "updates": [],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2021&wfo=KPAH&phenomena=TO&significance=W&eventid=0036"
+   },
+   {
+    "phen": "TO",
+    "etn": 38,
+    "issued": "2021-12-11T03:26:00Z",
+    "expires": "2021-12-11T03:35:00Z",
+    "first": "TORNADO EMERGENCY FOR Mayfield",
+    "tags": {
+     "tornado": "OBSERVED",
+     "emergency": true
+    },
+    "counties": [
+     "Graves, KY"
+    ],
+    "updates": [
+     {
+      "time": "2021-12-11T03:35:00Z",
+      "line": "THE TORNADO WARNING FOR CENTRAL GRAVES COUNTY IS CANCELLED"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2021&wfo=KPAH&phenomena=TO&significance=W&eventid=0038"
+   },
+   {
+    "phen": "TO",
+    "etn": 39,
+    "issued": "2021-12-11T03:40:00Z",
+    "expires": "2021-12-11T04:30:00Z",
+    "first": "At 939 PM CST, a confirmed large and extremely dangerous tornado was located near Benton, moving northeast at 60 mph.",
+    "tags": {
+     "tornado": "OBSERVED",
+     "emergency": false
+    },
+    "counties": [
+     "Marshall, KY",
+     "Lyon, KY",
+     "Livingston, KY",
+     "Graves, KY"
+    ],
+    "updates": [
+     {
+      "time": "2021-12-11T03:46:00Z",
+      "line": "THE TORNADO WARNING FOR NORTHEASTERN GRAVES COUNTY IS CANCELLED"
+     },
+     {
+      "time": "2021-12-11T04:03:00Z",
+      "line": "THE TORNADO WARNING FOR CENTRAL MARSHALL COUNTY IS CANCELLED"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2021&wfo=KPAH&phenomena=TO&significance=W&eventid=0039"
+   },
+   {
+    "phen": "TO",
+    "etn": 40,
+    "issued": "2021-12-11T03:45:00Z",
+    "expires": "2021-12-11T04:00:00Z",
+    "first": "TORNADO EMERGENCY FOR Benton",
+    "tags": {
+     "tornado": "OBSERVED",
+     "emergency": true
+    },
+    "counties": [
+     "Marshall, KY"
+    ],
+    "updates": [],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2021&wfo=KPAH&phenomena=TO&significance=W&eventid=0040"
+   }
+  ]
+ },
+ "greenfield-tornado-2024": {
+  "warnings": [
+   {
+    "phen": "TO",
+    "etn": 36,
+    "issued": "2024-05-21T19:55:00Z",
+    "expires": "2024-05-21T20:45:00Z",
+    "first": "At 255 PM CDT, a severe thunderstorm capable of producing a tornado was located over Viking Lake State Park, or 10 miles southeast of Red Oak, moving northeast at 60 mph.",
+    "tags": {
+     "tornado": "RADAR INDICATED",
+     "emergency": false
+    },
+    "counties": [
+     "Adair, IA",
+     "Adams, IA",
+     "Cass, IA",
+     "Union, IA"
+    ],
+    "updates": [
+     {
+      "time": "2024-05-21T20:01:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 345 PM CDT FOR SOUTHEASTERN CASS...NORTHWESTERN UNION...NORTHERN ADAMS AND SOUTHWESTERN ADAIR COUNTIES"
+     },
+     {
+      "time": "2024-05-21T20:27:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 345 PM CDT FOR SOUTHEASTERN CASS...NORTHWESTERN UNION...NORTHEASTERN ADAMS AND SOUTHWESTERN ADAIR COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2024&wfo=KDMX&phenomena=TO&significance=W&eventid=0036"
+   },
+   {
+    "phen": "TO",
+    "etn": 37,
+    "issued": "2024-05-21T20:07:00Z",
+    "expires": "2024-05-21T21:00:00Z",
+    "first": "At 307 PM CDT, a severe thunderstorm capable of producing a tornado was located near Nodaway, or 5 miles southwest of Corning, moving northeast at 55 mph.",
+    "tags": {
+     "tornado": "RADAR INDICATED",
+     "emergency": false
+    },
+    "counties": [
+     "Taylor, IA",
+     "Madison, IA",
+     "Adair, IA",
+     "Adams, IA",
+     "Union, IA"
+    ],
+    "updates": [
+     {
+      "time": "2024-05-21T20:12:00Z",
+      "line": "THE TORNADO WARNING FOR NORTHWESTERN TAYLOR COUNTY IS CANCELLED"
+     },
+     {
+      "time": "2024-05-21T20:21:00Z",
+      "line": "THE TORNADO WARNING FOR SOUTHWESTERN MADISON COUNTY IS CANCELLED"
+     },
+     {
+      "time": "2024-05-21T20:45:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 400 PM CDT FOR NORTHWESTERN UNION...NORTHEASTERN ADAMS AND SOUTHEASTERN ADAIR COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2024&wfo=KDMX&phenomena=TO&significance=W&eventid=0037"
+   },
+   {
+    "phen": "TO",
+    "etn": 41,
+    "issued": "2024-05-21T20:35:00Z",
+    "expires": "2024-05-21T21:15:00Z",
+    "first": "At 334 PM CDT, a confirmed large and extremely dangerous tornado was located over Nodaway Park, or 5 miles southwest of Greenfield, moving northeast at 55 mph.",
+    "tags": {
+     "tornado": "OBSERVED",
+     "emergency": false
+    },
+    "counties": [
+     "Adair, IA",
+     "Dallas, IA",
+     "Guthrie, IA",
+     "Madison, IA"
+    ],
+    "updates": [
+     {
+      "time": "2024-05-21T20:56:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 415 PM CDT FOR NORTHWESTERN MADISON...SOUTHEASTERN GUTHRIE...SOUTHWESTERN DALLAS AND NORTHEASTERN ADAIR COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2024&wfo=KDMX&phenomena=TO&significance=W&eventid=0041"
+   }
+  ]
+ },
+ "barnsdall-tornado-2024": {
+  "warnings": [
+   {
+    "phen": "TO",
+    "etn": 45,
+    "issued": "2024-05-07T01:56:00Z",
+    "expires": "2024-05-07T02:45:00Z",
+    "first": "At 856 PM CDT, a severe thunderstorm capable of producing a tornado was located over Terlton, moving northeast at 40 mph.",
+    "tags": {
+     "tornado": "RADAR INDICATED",
+     "emergency": false
+    },
+    "counties": [
+     "Osage, OK",
+     "Pawnee, OK"
+    ],
+    "updates": [
+     {
+      "time": "2024-05-07T02:10:00Z",
+      "line": "THE TORNADO WARNING FOR SOUTHEASTERN PAWNEE COUNTY IS CANCELLED"
+     },
+     {
+      "time": "2024-05-07T02:15:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 945 PM CDT FOR SOUTHEASTERN OSAGE COUNTY"
+     },
+     {
+      "time": "2024-05-07T02:17:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 945 PM CDT FOR SOUTHEASTERN OSAGE COUNTY"
+     },
+     {
+      "time": "2024-05-07T02:20:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 945 PM CDT FOR SOUTHEASTERN OSAGE COUNTY"
+     },
+     {
+      "time": "2024-05-07T02:24:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 945 PM CDT FOR SOUTHEASTERN OSAGE COUNTY"
+     },
+     {
+      "time": "2024-05-07T02:31:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 945 PM CDT FOR EAST CENTRAL OSAGE COUNTY"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2024&wfo=KTSA&phenomena=TO&significance=W&eventid=0045"
+   },
+   {
+    "phen": "SV",
+    "etn": 178,
+    "issued": "2024-05-07T02:03:00Z",
+    "expires": "2024-05-07T02:45:00Z",
+    "first": "60 mph wind gusts and quarter size hail. SOURCE...Radar indicated. IMPACT...Hail damage to vehicles is expected. Expect wind damage to roofs, siding, and trees. * Locations in or near the path include",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Osage, OK"
+    ],
+    "updates": [],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2024&wfo=KTSA&phenomena=SV&significance=W&eventid=0178"
+   },
+   {
+    "phen": "SV",
+    "etn": 179,
+    "issued": "2024-05-07T02:17:00Z",
+    "expires": "2024-05-07T03:15:00Z",
+    "first": "70 mph wind gusts and quarter size hail. SOURCE...Radar indicated. IMPACT...Hail damage to vehicles is expected. Expect considerable tree damage. Wind damage is also likely to mobile homes, roofs, and outbuildings. * Locations in or near the path include",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Creek, OK",
+     "Osage, OK",
+     "Pawnee, OK",
+     "Tulsa, OK"
+    ],
+    "updates": [
+     {
+      "time": "2024-05-07T02:39:00Z",
+      "line": "A SEVERE THUNDERSTORM WARNING REMAINS IN EFFECT UNTIL 1015 PM CDT FOR OSAGE...NORTHERN CREEK...PAWNEE AND WEST CENTRAL TULSA COUNTIES"
+     },
+     {
+      "time": "2024-05-07T03:05:00Z",
+      "line": "A SEVERE THUNDERSTORM WARNING REMAINS IN EFFECT UNTIL 1015 PM CDT FOR EASTERN OSAGE...NORTHERN CREEK...SOUTHEASTERN PAWNEE AND WEST CENTRAL TULSA COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2024&wfo=KTSA&phenomena=SV&significance=W&eventid=0179"
+   },
+   {
+    "phen": "TO",
+    "etn": 47,
+    "issued": "2024-05-07T02:35:00Z",
+    "expires": "2024-05-07T03:15:00Z",
+    "first": "At 935 PM CDT, a confirmed large and extremely dangerous tornado was located 3 miles southwest of Barnsdall, moving northeast at 35 mph.",
+    "tags": {
+     "tornado": "OBSERVED",
+     "emergency": true
+    },
+    "counties": [
+     "Osage, OK",
+     "Washington, OK"
+    ],
+    "updates": [
+     {
+      "time": "2024-05-07T02:39:00Z",
+      "line": "TORNADO EMERGENCY FOR Barnsdall"
+     },
+     {
+      "time": "2024-05-07T02:46:00Z",
+      "line": "TORNADO EMERGENCY FOR RURAL FAR EASTERN OSAGE COUNTY"
+     },
+     {
+      "time": "2024-05-07T02:57:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 1015 PM CDT FOR EAST CENTRAL OSAGE AND NORTHERN WASHINGTON COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2024&wfo=KTSA&phenomena=TO&significance=W&eventid=0047"
+   },
+   {
+    "phen": "TO",
+    "etn": 48,
+    "issued": "2024-05-07T03:06:00Z",
+    "expires": "2024-05-07T03:18:00Z",
+    "first": "At 1006 PM CDT, a severe thunderstorm with strong low level rotation that could produce a tornado at any time was located over Dewey, moving northeast at 50 mph.",
+    "tags": {
+     "tornado": "RADAR INDICATED",
+     "emergency": false
+    },
+    "counties": [
+     "Washington, OK"
+    ],
+    "updates": [
+     {
+      "time": "2024-05-07T03:15:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 1045 PM CDT FOR NORTHERN WASHINGTON COUNTY"
+     },
+     {
+      "time": "2024-05-07T03:18:00Z",
+      "line": "THE TORNADO WARNING FOR NORTHERN WASHINGTON COUNTY IS CANCELLED"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2024&wfo=KTSA&phenomena=TO&significance=W&eventid=0048"
+   }
+  ]
  }
 }
