@@ -5,6 +5,7 @@ import { snapshotMap } from '../../radar/snapshot';
 import { STYLES, mapArea, coveredEdges, drawPost, buildCaptions, defaultHeadline, defaultSubline } from '../../warnings/post';
 import { boundsFor, periodToParams } from '../../warnings/history';
 import TornadoWarningMap from './TornadoWarningMap';
+import { saveFile, saveImage, savedMessage } from '../../utils/saveFile';
 
 // Post image + captions for the tornado warnings of a period.
 // info: { period, now, state, count, stats, officeName }; warnings: the list
@@ -134,13 +135,8 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
   };
   const download = async () => {
     try {
-      const url = URL.createObjectURL(await toBlob());
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName();
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setMessage('Image saved.');
+      const how = await saveImage(await toBlob(), fileName());
+      setMessage(how === 'downloaded' ? savedMessage('Image') : how === 'shared' ? 'Done.' : null);
     } catch {
       setMessage("The image couldn't be made in this browser.");
     }

@@ -22,6 +22,7 @@ import {
   warningName,
 } from '../../radar/post';
 import { videoType, recordVideo } from '../../radar/video';
+import { saveFile, saveImage, savedMessage } from '../../utils/saveFile';
 
 // Make a Facebook-ready radar image of the current map view, with caption
 // drafts built from the official warning data.
@@ -137,11 +138,8 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
   };
   const videoFile = () => new File([vid.blob], fileName().replace(/\.png$/, `.${vid.ext}`), { type: vid.blob.type });
   const saveVideo = () => {
-    const a = document.createElement('a');
-    a.href = vid.url;
-    a.download = videoFile().name;
-    a.click();
-    setMessage('Video saved.');
+    saveFile(vid.url, videoFile().name);
+    setMessage(savedMessage('Video'));
   };
   const shareVideo = async () => {
     const copied = await copyCaption(true);
@@ -186,14 +184,8 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
 
   const download = async () => {
     try {
-      const blob = await toBlob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = fileName();
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setMessage('Image saved.');
+      const how = await saveImage(await toBlob(), fileName());
+      setMessage(how === 'downloaded' ? savedMessage('Image') : how === 'shared' ? 'Done.' : null);
     } catch (err) {
       blobError(err);
     }
