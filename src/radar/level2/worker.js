@@ -2,7 +2,8 @@
 // files), decompress and index them, and hand out single tilts of single
 // moments (also drawn as an overview image, for browsers without WebGL2).
 
-import { indexVolume, tiltsFor, sweepMoment } from './decode';
+import { indexVolume, indexBlocks, recordsOf, tiltsFor, sweepMoment } from './decode';
+import { bunzip } from './bunzip.js';
 import { liveVolumes, previousVolume } from './live';
 import { buildLut, scanBounds, scanImageSize, renderBox } from '../level3/render';
 
@@ -49,13 +50,115 @@ function render(vol, pick, msg, cutKey) {
 
 const listTilts = (vol, moment) => tiltsFor(vol, moment).map(({ tilt, elevation }) => ({ tilt, elevation }));
 
+// One tilt from an archived volume, downloading only as much of the file as
+// needed: 1 MB at a time, stopping once that tilt has been fully read (the
+// radar scans low tilts first, so the lowest needs about a quarter of the
+// file). Older gzip-wrapped files are read whole.
+const STEP = 1 << 20;
+async function archiveSweep(key, moment, want) {
+  const url = `${BUCKET}/${key}`;
+  const choose = (vol, final) => {
+    const tilts = tiltsFor(vol, moment);
+    const pick = want ? nearest(tilts, want) : tilts[0];
+    return pick || (final ? tilts[0] : null);
+  };
+  if (key.endsWith('.gz')) {
+    // Older files: gzip around ~45 MB of raw messages. Unzip while
+    // downloading and stop once the tilt is complete.
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`Level II archive returned ${r.status}.`);
+    const reader = r.body.pipeThrough(new DecompressionStream('gzip')).getReader();
+    let buf = new Uint8Array(8 << 20);
+    let len = 0;
+    let checked = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (value) {
+        if (len + value.length > buf.length) {
+          const bigger = new Uint8Array(Math.max(buf.length * 2, len + value.length));
+          bigger.set(buf.subarray(0, len));
+          buf = bigger;
+        }
+        buf.set(value, len);
+        len += value.length;
+      }
+      if (done || len - checked >= 4 << 20) {
+        checked = len;
+        let vol = null;
+        try {
+          vol = indexBlocks(recordsOf(buf.subarray(0, len)), done);
+        } catch (err) {
+          if (done) throw err;
+        }
+        const pick = vol && choose(vol, done);
+        if (pick) {
+          reader.cancel().catch(() => {});
+          return { vol, pick };
+        }
+        if (done) throw new Error('This product is not in this volume.');
+      }
+    }
+  }
+  let bytes = new Uint8Array(0);
+  let total = Infinity;
+  const more = async () => {
+    if (bytes.length >= total) return false;
+    const r = await fetch(url, { headers: { Range: `bytes=${bytes.length}-${bytes.length + STEP - 1}` } });
+    if (r.status === 416) return false;
+    if (!r.ok) throw new Error(`Level II archive returned ${r.status}.`);
+    const m = /\/(\d+)$/.exec(r.headers.get('Content-Range') || '');
+    total = m ? +m[1] : bytes.length + 0; // no Content-Range: the whole file came back
+    const chunk = new Uint8Array(await r.arrayBuffer());
+    const next = new Uint8Array(bytes.length + chunk.length);
+    next.set(bytes);
+    next.set(chunk, bytes.length);
+    bytes = next;
+    if (!m) total = bytes.length;
+    return true;
+  };
+  await more();
+  if (String.fromCharCode(...bytes.subarray(0, 4)) !== 'AR2V') throw new Error('Not a Level II volume.');
+  const blocks = [];
+  let pos = 24;
+  for (;;) {
+    const view = new DataView(bytes.buffer);
+    let added = false;
+    while (pos + 4 <= bytes.length) {
+      const size = Math.abs(view.getInt32(pos));
+      if (!size || pos + 4 + size > bytes.length) break;
+      const rec = bytes.subarray(pos + 4, pos + 4 + size);
+      blocks.push(rec[0] === 0x42 && rec[1] === 0x5a && rec[2] === 0x68 ? bunzip(rec) : rec.slice());
+      pos += 4 + size;
+      added = true;
+    }
+    const done = bytes.length >= total && pos + 4 > bytes.length;
+    if (added || done) {
+      let vol = null;
+      try {
+        vol = indexBlocks(blocks, done);
+      } catch (err) {
+        if (done) throw err;
+      }
+      const pick = vol && choose(vol, done);
+      if (pick) return { vol, pick };
+      if (done) throw new Error('This product is not in this volume.');
+    }
+    if (!(await more())) {
+      const vol = indexBlocks(blocks, true);
+      const pick = choose(vol, true);
+      if (!pick) throw new Error('This product is not in this volume.');
+      return { vol, pick };
+    }
+  }
+}
+
 async function handle(msg) {
-  if (msg.type === 'tilts' || msg.type === 'sweep') {
+  if (msg.type === 'tilts') {
     const vol = await archiveVolume(msg.key);
-    const tilts = tiltsFor(vol, msg.moment);
-    if (msg.type === 'tilts') return { tilts: listTilts(vol, msg.moment) };
-    const pick = nearest(tilts, msg.tilt) || tilts[0];
-    if (!pick) throw new Error('This product is not in this volume.');
+    return { tilts: listTilts(vol, msg.moment) };
+  }
+  if (msg.type === 'sweep') {
+    const { vol, pick } = await archiveSweep(msg.key, msg.moment, msg.tilt);
     return render(vol, pick, msg, `${msg.key}/${pick.n}/${msg.moment}`);
   }
 

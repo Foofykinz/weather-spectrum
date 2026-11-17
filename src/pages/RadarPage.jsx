@@ -128,8 +128,10 @@ function SingleRadar() {
 
   // Past mode: products with no archive switch to the closest one that has one.
   useEffect(() => {
-    if (past && !product.archive) updateParamsRef.current({ product: archiveProductId(product.id), tilt: null });
-  }, [past, product]);
+    if (!past) return;
+    const target = archiveProductId(product.id, pastTime);
+    if (target !== product.id) updateParamsRef.current({ product: target, tilt: null });
+  }, [past, product, pastTime?.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
   // Past loop playback (same pacing as the live loop).
   useEffect(() => {
     if (!pastAnim.playing || !pastFrames) return undefined;

@@ -38,7 +38,7 @@ export default function PastPicker({ time, onShow, onLive, onClose }) {
           type="datetime-local"
           value={value}
           max={toLocalInput(new Date())}
-          min="2020-04-01T00:00"
+          min={toLocalInput(ARCHIVE_START)}
           onChange={(e) => setValue(e.target.value)}
           aria-label="Date and time (your local time)"
           className="min-w-0 flex-1 rounded-md border border-slate-700/80 bg-slate-950 px-2 py-1.5 text-xs text-slate-100 [color-scheme:dark]"
@@ -65,8 +65,9 @@ export default function PastPicker({ time, onShow, onLive, onClose }) {
         )}
       </div>
       <p className="mt-2 text-[11px] leading-snug text-slate-400">
-        Shows the 10 scans up to that time, in your local time zone. Single radars come from the NOAA Level III archive;
-        the national map from IEM&apos;s mosaic archive. Lightning isn&apos;t available for past dates.
+        Shows the 10 scans up to that time, in your local time zone. Single radars come from NOAA&apos;s Level III archive
+        (from April 2020) or the raw Level II volumes (from 2009); the national map from IEM&apos;s mosaic archive.
+        Lightning isn&apos;t available for past dates.
       </p>
     </div>
   );

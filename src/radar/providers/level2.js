@@ -39,7 +39,22 @@ const stamp = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.ge
 async function listKeys(prefix, startAfter, signal) {
   const res = await fetch(`${BUCKET}/?list-type=2&prefix=${prefix}${startAfter ? `&start-after=${startAfter}` : ''}`, { signal, cache: 'no-store' });
   if (!res.ok) throw new Error(`Level II archive returned ${res.status}.`);
-  return [...(await res.text()).matchAll(/<Key>([^<]+_V\d+)<\/Key>/g)].map((m) => m[1]).sort();
+  // Volumes end in _V0x (older ones in _V0x.gz); _MDM files are metadata only.
+  return [...(await res.text()).matchAll(/<Key>([^<]+_V\d+(?:\.gz)?)<\/Key>/g)].map((m) => m[1]).sort();
+}
+
+// The `count` newest archived volumes that started at or before `end`.
+export async function listLevel2Before(icao, end, count, signal) {
+  let found = [];
+  for (let d = 0; d < 3 && found.length < count; d++) {
+    const day = new Date(end.getTime() - d * 86400e3);
+    const keys = (await listKeys(dayPrefix(icao, day), null, signal)).filter((k) => level2KeyTime(k) <= end);
+    found = keys.concat(found);
+  }
+  if (!found.length) {
+    throw Object.assign(new Error('No Level II volumes for this radar around that time.'), { code: 'NO_DATA' });
+  }
+  return found.slice(-count);
 }
 
 export async function latestLevel2Key(icao, signal) {
@@ -55,7 +70,7 @@ export async function latestLevel2Key(icao, signal) {
 }
 
 export const level2KeyTime = (key) => {
-  const m = /(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_V\d+$/.exec(key);
+  const m = /(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_V\d+(?:\.gz)?$/.exec(key);
   return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6])) : null;
 };
 

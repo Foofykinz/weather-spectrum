@@ -19,17 +19,24 @@ import { bunzip } from './bunzip.js';
 const CTM = 12;
 const FRAME = 2432;
 export const LEVEL2_MOMENTS = ['REF', 'VEL', 'SW ', 'ZDR', 'RHO'];
+// ZDR is stored with 16-bit codes. It's re-coded to 8 bits at 1/16 dB
+// steps (offset 128), the same precision as NOAA's Level III ZDR product.
+const ZDR8 = { scale: 16, offset: 128 };
+const usable = (moment, bits) => bits === 8 || (bits === 16 && moment === 'ZDR');
 
 const str = (b, o, n) => String.fromCharCode(...b.subarray(o, o + n));
 
 // Records in a file or a real-time chunk -> decompressed message blocks.
 // A whole volume (or the first real-time chunk) starts with the 24-byte
 // "AR2V" header; later real-time chunks are bare records.
-export function recordsOf(arrayBuffer) {
-  const file = new Uint8Array(arrayBuffer);
-  const fv = new DataView(arrayBuffer);
+export function recordsOf(input) {
+  const file = input instanceof Uint8Array ? input : new Uint8Array(input);
+  const fv = new DataView(file.buffer, file.byteOffset, file.byteLength);
   const blocks = [];
   let o = str(file, 0, 4) === 'AR2V' ? 24 : 0;
+  // Older archive files (inside .gz) hold the messages directly after the
+  // header, with no compressed records: one raw block.
+  if (o === 24 && file.length > 28 && fv.getInt32(24) === 0) return [file.subarray(24)];
   while (o + 4 <= file.length) {
     const size = Math.abs(fv.getInt32(o));
     if (!size || o + 4 + size > file.length) break;
@@ -52,6 +59,7 @@ export function indexBlocks(blocks, complete = true) {
   const radials = [];
   let site = null;
   let vcp = null;
+  let legacy = false;
   for (const b of blocks) {
     const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
     let p = 0;
@@ -60,6 +68,7 @@ export function indexBlocks(blocks, complete = true) {
       const sizeHw = v.getUint16(h);
       const type = b[h + 3];
       if (type === 31) {
+        if (h + sizeHw * 2 > b.length) break; // cut off mid-message (still downloading)
         const m = h + 16;
         const nBlocks = v.getUint16(m + 30);
         const ptrs = {};
@@ -86,11 +95,14 @@ export function indexBlocks(blocks, complete = true) {
         });
         p = h + Math.max(sizeHw * 2, 16);
       } else {
+        if (type === 1) legacy = true; // pre-2008 "digital radar data" message
         p += FRAME;
       }
     }
   }
-  if (!site || !radials.length) throw new Error('No radar data in this volume.');
+  if (!site || !radials.length) {
+    throw new Error(legacy ? 'This volume uses the older (pre-2008) Level II format, which isn’t supported yet.' : 'No radar data in this volume.');
+  }
 
   // Cuts (elevation numbers) and what each contains.
   const cuts = new Map();
@@ -133,7 +145,7 @@ export function tiltsFor(vol, moment) {
   for (const c of vol.cuts) {
     if (!c.moments.has(moment)) continue;
     const h = momentHeader(c.radials[0], moment);
-    if (!h || h.wordBits !== 8) continue;
+    if (!h || !usable(moment, h.wordBits)) continue;
     const reach = h.firstM + h.gates * h.stepM;
     const key = c.elevation.toFixed(1);
     const best = byAngle.get(key);
@@ -149,7 +161,8 @@ export function sweepMoment(vol, n, moment) {
   const rads = cut.radials.filter((r) => r.ptrs[moment]).sort((a, b) => a.az - b.az);
   if (!rads.length) throw new Error(`No ${moment.trim()} data at this tilt.`);
   const h0 = momentHeader(rads[0], moment);
-  if (h0.wordBits !== 8) throw new Error('Unsupported data size.');
+  if (!usable(moment, h0.wordBits)) throw new Error('Unsupported data size.');
+  const wide = h0.wordBits === 16;
   const nbins = Math.max(...rads.map((r) => momentHeader(r, moment).gates));
   const nrad = rads.length;
   const data = new Uint8Array(nrad * nbins);
@@ -157,7 +170,14 @@ export function sweepMoment(vol, n, moment) {
   const deltas = new Float32Array(nrad);
   rads.forEach((r, i) => {
     const h = momentHeader(r, moment);
-    data.set(r.buf.subarray(h.q + 28, h.q + 28 + h.gates), i * nbins);
+    if (!wide) data.set(r.buf.subarray(h.q + 28, h.q + 28 + h.gates), i * nbins);
+    else {
+      for (let g = 0; g < h.gates; g++) {
+        const c = r.view.getUint16(h.q + 28 + g * 2);
+        // codes 0 and 1 are flags (below threshold, range folded); keep them
+        data[i * nbins + g] = c < 2 ? c : Math.max(2, Math.min(255, Math.round(((c - h.offset) / h.scale) * ZDR8.scale + ZDR8.offset)));
+      }
+    }
     starts[i] = (r.az - r.res / 2 + 360) % 360;
     deltas[i] = r.res;
   });
@@ -169,8 +189,9 @@ export function sweepMoment(vol, n, moment) {
     vcp: vol.vcp,
     scanTime: new Date(cut.start),
     elevation: cut.elevation,
-    scale: h0.scale,
-    offset: h0.offset,
+    scale: wide ? ZDR8.scale : h0.scale,
+    offset: wide ? ZDR8.offset : h0.offset,
+    recoded: wide, // ZDR re-coded at 1/16 dB steps
     thresholds: [],
     // Bins are counted from the start edge of the first gate, in gate units.
     firstBin: (h0.firstM - h0.stepM / 2) / h0.stepM,

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { listLevel3Before, fetchLevel3Key } from './providers/level3';
+import { listLevel2Before, fetchLevel2Key } from './providers/level2';
 
 // Past radar: the real scans at or before a chosen time.
 //  - Single-radar products: the archived NOAA Level III files themselves,
@@ -8,8 +9,10 @@ import { listLevel3Before, fetchLevel3Key } from './providers/level3';
 // Nothing is interpolated between scans; each frame is one real scan.
 
 export const ARCHIVE_FRAMES = 10;
-// Oldest data: NOAA Level III archive (AWS) starts April 2020.
-export const ARCHIVE_START = new Date('2020-04-01T00:00:00Z');
+// Oldest data we can show: Level II volumes in the current (message 31)
+// format, from 2009. Level III single-radar products start April 2020;
+// before that, single-radar views switch to their Level II equivalents.
+export const ARCHIVE_START = new Date('2009-01-01T00:00:00Z');
 const ARCHIVE_DRAW_SIZE = 1024; // overview per frame; zooming in redraws the shown scan at full detail
 const CONCURRENCY = 3;
 
@@ -32,6 +35,14 @@ export async function loadArchive(product, site, tilt, end, signal, onProgress) 
     }
     return times.map((t) => ({ validTime: t, details: null, layer: product.layer(site, t) }));
   }
+  // Level II: archived volumes, each read only as far as the chosen tilt.
+  if (a.level2) {
+    const keys = await listLevel2Before(site.icao, end, ARCHIVE_FRAMES, signal);
+    return runFrames(keys, signal, onProgress, async (key) => {
+      const { validTime, details } = await fetchLevel2Key(key, a.level2, a.colors, { tilt, drawSize: ARCHIVE_DRAW_SIZE });
+      return { validTime, details, layer: product.layer(site, validTime, details) };
+    });
+  }
   // Try each file code in turn (newest product form first).
   let keys = null;
   for (const code of a.level3(tilt)) {
@@ -47,6 +58,14 @@ export async function loadArchive(product, site, tilt, end, signal, onProgress) 
     err.code = 'NO_DATA';
     throw err;
   }
+  return runFrames(keys, signal, onProgress, async (key) => {
+    const { validTime, details } = await fetchLevel3Key(key, a.colors, { drawSize: ARCHIVE_DRAW_SIZE });
+    return { validTime, details, layer: product.layer(site, validTime, details) };
+  });
+}
+
+// Load frames a few at a time, in order, reporting progress.
+async function runFrames(keys, signal, onProgress, load) {
   const frames = new Array(keys.length);
   let next = 0;
   let done = 0;
@@ -54,8 +73,7 @@ export async function loadArchive(product, site, tilt, end, signal, onProgress) 
     while (next < keys.length) {
       const i = next++;
       if (signal.aborted) throw new DOMException('Aborted', 'AbortError');
-      const { validTime, details } = await fetchLevel3Key(keys[i], a.colors, { drawSize: ARCHIVE_DRAW_SIZE });
-      frames[i] = { validTime, details, layer: product.layer(site, validTime, details) };
+      frames[i] = await load(keys[i]);
       onProgress(++done, keys.length);
     }
   };

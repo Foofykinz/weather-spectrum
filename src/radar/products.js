@@ -373,6 +373,16 @@ export const RADAR_PRODUCTS = [
     legend: 'nws-cc',
     probeFormat: (v) => `CC ${v.toFixed(3)}`,
   }),
+  level2Product({
+    id: 'l2-zdr',
+    moment: 'ZDR',
+    colors: nwsZdrColors,
+    name: 'Level II Differential Reflectivity',
+    short: 'L2 ZDR',
+    description: 'Differential reflectivity from the raw volume scan, at every tilt (in 1/16 dB steps, the same precision as NOAA’s Level III ZDR).',
+    legend: 'nws-zdr',
+    probeFormat: (v) => `ZDR ${v.toFixed(2)} dB`,
+  }),
 ];
 
 // Level II products: the raw volume scan, decoded in the browser, any tilt.
@@ -394,6 +404,8 @@ function level2Product({ id, moment, colors, name, short, description, legend, p
     layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds, radial: details.radial }),
     // Real-time chunk feed: each tilt appears as soon as the radar finishes it.
     latest: (site, signal, { tilt, drawSize } = {}) => fetchLevel2Live(site, moment, colors, signal, { tilt, drawSize }),
+    // Loops and past radar: archived volumes, read only as far as the tilt.
+    archive: { level2: moment, colors },
     probe: probeLevel3,
     probeFormat,
     pollSeconds: 30,
@@ -485,11 +497,21 @@ const ARCHIVE_FALLBACK = {
   'site-velocity': 'site-vel-tilt', // same data (Level III super-res velocity, lowest tilt)
   'site-srv': 'site-vel-tilt',
   'site-hc': 'site-reflectivity',
-  // Level II past radar comes in a later stage; until then, the Level III equivalents.
-  'l2-ref': 'site-reflectivity',
-  'l2-vel': 'site-vel-tilt',
-  'l2-cc': 'site-cc',
 };
-export function archiveProductId(id) {
-  return getProduct(id).archive ? id : ARCHIVE_FALLBACK[id] || 'site-reflectivity';
+// Level III single-radar files start April 2020. Earlier past radar uses
+// the matching Level II product (the raw volumes go back much further).
+export const LEVEL3_START = new Date('2020-04-01T00:00:00Z');
+const LEVEL2_BEFORE_LEVEL3 = {
+  'site-reflectivity': 'l2-ref',
+  'site-ref-tilt': 'l2-ref',
+  'site-velocity': 'l2-vel',
+  'site-vel-tilt': 'l2-vel',
+  'site-srv': 'l2-vel',
+  'site-cc': 'l2-cc',
+  'site-zdr': 'l2-zdr',
+};
+export function archiveProductId(id, time) {
+  const p = getProduct(id);
+  if (time && time < LEVEL3_START && p.scope === 'site' && !p.listTilts) return LEVEL2_BEFORE_LEVEL3[id] || 'l2-ref';
+  return p.archive ? id : ARCHIVE_FALLBACK[id] || 'site-reflectivity';
 }
