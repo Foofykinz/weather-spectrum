@@ -42,6 +42,7 @@ const STATIC = {
     jsonLd: [{ '@type': 'AboutPage', name: 'About Weather Spectrum', url: `${SITE}/about` }, ORG],
   },
   '/admin': { title: 'Admin | Weather Spectrum', description: 'Administration.', noindex: true },
+  '/broadcast': { title: 'Broadcast | Weather Spectrum', description: 'Weather Spectrum live broadcast screen.', noindex: true },
   '/404': { title: 'Page not found | Weather Spectrum', description: 'This page does not exist.', noindex: true },
 };
 

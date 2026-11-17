@@ -16,6 +16,9 @@ import { cityPath } from './seo/meta';
 // (home, about, city and station pages) stay light.
 const RadarPage = lazy(() => import('./pages/RadarPage'));
 const Admin = lazy(() => import('./pages/Admin'));
+const BroadcastPage = lazy(() => import('./pages/BroadcastPage'));
+// The 24/7 stream page: no cookie banner or notification prompt on screen.
+const isBroadcast = () => typeof window !== 'undefined' && window.location.pathname.startsWith('/broadcast');
 
 const loading = <div className="fixed inset-0 z-[55] bg-[#0b0f17]" aria-label="Loading radar" />;
 
@@ -94,18 +97,19 @@ export function AppShell() {
           <Route path="/stations/:icao" element={<StationPage />} />
           <Route path="/about" element={<About />} />
           <Route path="/admin" element={<Suspense fallback={null}><Admin /></Suspense>} />
+          <Route path="/broadcast" element={<Suspense fallback={loading}><BroadcastPage /></Suspense>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
       <Footer />
-      <CookieConsent />
+      {!isBroadcast() && <CookieConsent />}
     </div>
   );
 }
 
 export default function App() {
   useEffect(() => {
-    initOneSignal();
+    if (!isBroadcast()) initOneSignal();
   }, []);
   return (
     <BrowserRouter>
