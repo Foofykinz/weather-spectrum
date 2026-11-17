@@ -157,12 +157,12 @@ export const RADAR_PRODUCTS = [
     scope: 'site',
     coverage: 'Single radar, ~230 km range',
     elevation: '0.5°',
-    resolution: 'Native Level III (0.25 km × 0.5°); loop frames from IEM imagery (about 1 km)',
+    resolution: 'Native Level III (0.25 km × 0.5°), loops included',
     source: 'NOAA Level III',
     // Live view: the NOAA Level III file itself (N0B, product 153), decoded in
     // the browser, so it stays sharp when zoomed in and can be tapped for
-    // values. Loop frames use IEM's rendering of the same product (coarser,
-    // about 1 km pixels) with the same color scale.
+    // values. Loops use the same Level III files; IEM's rendering of the
+    // product is the fallback when a scan can't be decoded.
     layer: (site, t, details) =>
       details?.canvas
         ? { kind: 'canvas', canvas: details.canvas, bounds: details.bounds, radial: details.radial }

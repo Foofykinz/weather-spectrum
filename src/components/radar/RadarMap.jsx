@@ -5,6 +5,7 @@ import 'leaflet/dist/leaflet.css';
 import { STATIONS } from '../../radar/stations';
 import VectorBasemap from './VectorBasemap';
 import StormsLayer from './StormsLayer';
+import { GLRadarLayer, glRadarSupported } from '../../radar/gl/GLRadarLayer';
 import GlmLayer from './GlmLayer';
 import WarningsLayer from './WarningsLayer';
 import { warningsAt, watchesAtPoint } from '../../radar/providers/warnings';
@@ -71,6 +72,10 @@ const FilteredTiles = L.TileLayer.extend({
 });
 
 function createRadarLayer(spec, { opacity, maxNativeZoom, attribution }) {
+  // Decoded scans are drawn by the graphics chip when the browser supports it.
+  if (spec.kind === 'canvas' && spec.radial && glRadarSupported()) {
+    return new GLRadarLayer([spec.radial], { pane: 'radar', opacity, attribution });
+  }
   if (spec.kind === 'canvas') {
     // A decoded scan may be shared by several panels, but one canvas element
     // can only be on the page once: copy it if it's already displayed.
@@ -224,7 +229,8 @@ function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors })
     layer.addTo(map);
     // A drawn canvas is ready immediately — there's nothing to wait for.
     if (spec.kind === 'canvas' && previous && map.hasLayer(previous)) map.removeLayer(previous);
-    sharp.current = spec.kind === 'canvas' && spec.radial ? attachSharpZoom(map, layer, spec, () => opacityRef.current) : null;
+    // The GPU layer is sharp at every zoom by itself; the CPU image needs help.
+    sharp.current = spec.kind === 'canvas' && spec.radial && !(layer instanceof GLRadarLayer) ? attachSharpZoom(map, layer, spec, () => opacityRef.current) : null;
     const sharpNow = sharp.current;
 
     // Safety net: never leave an old scan on screen for long if the new one is slow.
@@ -266,7 +272,17 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
   const loadedCb = useRef(onLoaded);
   loadedCb.current = onLoaded;
 
+  const gpu = useRef(null); // one GPU layer holding every decoded frame
   useEffect(() => {
+    if (specs.every((s) => s.kind === 'canvas' && s.radial) && glRadarSupported()) {
+      const l = new GLRadarLayer(specs.map((s) => s.radial), { pane: 'radar', opacity, attribution });
+      l.once('load', () => loadedCb.current?.(specs.length));
+      gpu.current = l.addTo(map);
+      return () => {
+        map.removeLayer(l);
+        gpu.current = null;
+      };
+    }
     let loaded = 0;
     layers.current = specs.map((spec) => {
       const l = createRadarLayer(spec, { opacity: 0, maxNativeZoom, attribution });
@@ -277,10 +293,11 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
       layers.current.forEach((l) => map.removeLayer(l));
       layers.current = [];
     };
-  }, [specs, map, maxNativeZoom, attribution]);
+  }, [specs, map, maxNativeZoom, attribution]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    layers.current.forEach((l, i) => l.setOpacity(i === index ? opacity : 0));
+    if (gpu.current) gpu.current.setIndex(index).setOpacity(opacity);
+    else layers.current.forEach((l, i) => l.setOpacity(i === index ? opacity : 0));
   }, [index, opacity, specs]);
 
   return null;
