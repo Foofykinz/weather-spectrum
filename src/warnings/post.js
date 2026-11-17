@@ -3,6 +3,7 @@
 // Every number comes from the warning list shown on the page.
 
 import { STATES, periodLabel, periodPhrase, rangeText } from './history';
+import { postTheme, logoSize, withAlpha } from '../brand/brand';
 
 export const STYLES = [
   { id: 'spectrum', label: 'Spectrum', note: 'Navy bars, orange accent' },
@@ -96,7 +97,7 @@ export function coveredEdges(info, size, styleId, opts) {
 }
 
 // The stats card: big count, then a few lines.
-function drawStats(ctx, info, x, yBottom, w, u, font) {
+function drawStats(ctx, info, x, yBottom, w, u, font, T) {
   const pad = Math.round(22 * u);
   const big = Math.round(92 * u);
   const small = Math.round(24 * u);
@@ -107,16 +108,13 @@ function drawStats(ctx, info, x, yBottom, w, u, font) {
   ctx.fillStyle = 'rgba(11,18,32,0.88)';
   roundRect(ctx, x, y, w, h, 14 * u);
   ctx.fill();
-  const g = ctx.createLinearGradient(x, 0, x + w, 0);
-  g.addColorStop(0, '#f97316');
-  g.addColorStop(1, '#facc15');
-  ctx.fillStyle = g;
+  ctx.fillStyle = T.accentFill(ctx, x, x + w);
   ctx.fillRect(x, y + 14 * u, 5 * u, h - 28 * u);
 
   ctx.textBaseline = 'top';
   let cy = y + pad;
   fitText(ctx, info.count.toLocaleString(), font.head, font.headWeight || 700, big, w - pad * 2);
-  ctx.fillStyle = '#fbbf24';
+  ctx.fillStyle = T.number;
   ctx.fillText(info.count.toLocaleString(), x + pad, cy);
   cy += big;
   fitText(ctx, info.count === 1 ? 'tornado warning issued' : 'tornado warnings issued', font.body, 600, small, w - pad * 2);
@@ -182,7 +180,7 @@ function drawChart(ctx, info, x, yBottom, w, h, u, font) {
   ctx.textAlign = 'left';
 }
 
-// opts: { size, style, font, headline, subline, stats, chart }
+// opts: { size, style, font, headline, subline, stats, chart, brand, logoImg }
 export function drawPost(canvas, mapImg, info, opts) {
   const { size, style, font } = opts;
   canvas.width = size.w;
@@ -192,6 +190,7 @@ export function drawPost(canvas, mapImg, info, opts) {
   const u = Math.min(size.w, size.h * 1.15) / 1080;
   const M = Math.round(size.w * 0.035);
   const headWeight = font.headWeight || 700;
+  const T = postTheme(opts.brand, opts.logoImg);
 
   ctx.fillStyle = '#0b1220';
   ctx.fillRect(0, 0, size.w, size.h);
@@ -213,49 +212,74 @@ export function drawPost(canvas, mapImg, info, opts) {
     ctx.fillStyle = '#e2e8f0';
     ctx.fillText(credit, size.w - tw - 20, size.h - 8 - (fs + 16) / 2);
     ctx.textBaseline = 'alphabetic';
+    // Branded: logo (or name) in the top-left corner.
+    const logo = logoSize(T.logo, 240 * u, 110 * u);
+    if (logo.w) {
+      ctx.fillStyle = withAlpha(T.primary, 0.55);
+      roundRect(ctx, M - 10 * u, M - 10 * u, logo.w + 20 * u, logo.h + 20 * u, 10 * u);
+      ctx.fill();
+      ctx.drawImage(T.logo, M, M, logo.w, logo.h);
+    } else if (T.branded && T.footName) {
+      const ns = fitText(ctx, T.footName, font.body, 600, Math.round(24 * u), size.w * 0.6, 12);
+      const nw = ctx.measureText(T.footName).width;
+      ctx.fillStyle = withAlpha(T.primary, 0.75);
+      roundRect(ctx, M - 10 * u, M - 8 * u, nw + 20 * u, ns + 16 * u, 8 * u);
+      ctx.fill();
+      ctx.textBaseline = 'top';
+      ctx.fillStyle = T.text;
+      ctx.fillText(T.footName, M, M);
+      ctx.textBaseline = 'alphabetic';
+    }
     return;
   }
 
   if (style.id === 'clean') {
-    const ss = fitText(ctx, opts.subline, font.body, 600, Math.round(30 * u), size.w - M * 2 - 44, 12);
-    const hs = fitText(ctx, opts.headline, font.head, headWeight, Math.round(58 * u), size.w - M * 2 - 44, 16);
+    // Headline box, with the logo if any (sized so the box keeps its height).
+    const boxH = Math.round(58 * u) + Math.round(30 * u) + 46;
+    const logo = logoSize(T.logo, 240 * u, boxH - 24);
+    const lw = logo.w ? logo.w + 18 : 0;
+    const ss = fitText(ctx, opts.subline, font.body, 600, Math.round(30 * u), size.w - M * 2 - 44 - lw, 12);
+    const hs = fitText(ctx, opts.headline, font.head, headWeight, Math.round(58 * u), size.w - M * 2 - 44 - lw, 16);
     ctx.font = `600 ${ss}px ${font.body}`;
     const sw = ctx.measureText(opts.subline).width;
     ctx.font = `${headWeight} ${hs}px ${font.head}`;
     const hw = ctx.measureText(opts.headline).width;
-    const bw = Math.max(hw, sw) + 44;
-    const bh = hs + ss + 46;
-    ctx.fillStyle = 'rgba(11,18,32,0.88)';
+    const bw = Math.max(hw, sw) + 44 + lw;
+    const bh = Math.max(hs + ss + 46, logo.h + 24);
+    ctx.fillStyle = withAlpha(T.primary, 0.88);
     roundRect(ctx, M, M, bw, bh, 12);
     ctx.fill();
-    ctx.fillStyle = '#f97316';
+    ctx.fillStyle = T.accentSolid;
     ctx.fillRect(M, M + 14, 5, bh - 28);
+    if (logo.w) ctx.drawImage(T.logo, M + 20, M + (bh - logo.h) / 2, logo.w, logo.h);
+    const tx = M + 24 + lw;
+    const ty = M + (bh - (hs + ss + 8)) / 2;
     ctx.textBaseline = 'top';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(opts.headline, M + 24, M + 16);
+    ctx.fillStyle = T.text;
+    ctx.fillText(opts.headline, tx, ty);
     ctx.font = `600 ${ss}px ${font.body}`;
-    ctx.fillStyle = '#fcd34d';
-    ctx.fillText(opts.subline, M + 24, M + 24 + hs);
+    ctx.fillStyle = T.sub;
+    ctx.fillText(opts.subline, tx, ty + hs + 8);
   } else {
     const g = ctx.createLinearGradient(0, 0, 0, area.head);
-    g.addColorStop(0, '#111a2e');
-    g.addColorStop(1, '#0b1220');
+    g.addColorStop(0, T.headTop);
+    g.addColorStop(1, T.headBottom);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, size.w, area.head);
-    const accent = ctx.createLinearGradient(0, 0, size.w, 0);
-    accent.addColorStop(0, '#f97316');
-    accent.addColorStop(1, '#facc15');
-    ctx.fillStyle = accent;
+    ctx.fillStyle = T.accentFill(ctx, 0, size.w);
     ctx.fillRect(0, area.head - 6, size.w, 6);
-    const hs = fitText(ctx, opts.headline, font.head, headWeight, Math.round(area.head * 0.42), size.w - M * 2, 16);
-    const ss = fitText(ctx, opts.subline, font.body, 600, Math.round(area.head * 0.22), size.w - M * 2, 12);
+    const logo = logoSize(T.logo, size.w * 0.26, (area.head - 6) * 0.72);
+    if (logo.w) ctx.drawImage(T.logo, size.w - M - logo.w, (area.head - 6 - logo.h) / 2, logo.w, logo.h);
+    const textW = size.w - M * 2 - (logo.w ? logo.w + M * 0.6 : 0);
+    const hs = fitText(ctx, opts.headline, font.head, headWeight, Math.round(area.head * 0.42), textW, 16);
+    const ss = fitText(ctx, opts.subline, font.body, 600, Math.round(area.head * 0.22), textW, 12);
     const y0 = Math.round((area.head - 6 - (hs + 8 + ss)) / 2);
     ctx.textBaseline = 'top';
     ctx.font = `${headWeight} ${hs}px ${font.head}`;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = T.text;
     ctx.fillText(opts.headline, M, y0);
     ctx.font = `600 ${ss}px ${font.body}`;
-    ctx.fillStyle = '#fcd34d';
+    ctx.fillStyle = T.sub;
     ctx.fillText(opts.subline, M, y0 + hs + 8);
   }
 
@@ -264,7 +288,7 @@ export function drawPost(canvas, mapImg, info, opts) {
   const bottom = area.y + area.h - M * 0.7;
   const statsW = Math.round(Math.min(470 * u, size.w * 0.48));
   let statsH = 0;
-  if (opts.stats) statsH = drawStats(ctx, info, M, bottom, statsW, u, font);
+  if (opts.stats) statsH = drawStats(ctx, info, M, bottom, statsW, u, font, T);
   if (opts.chart && info.count > 0) {
     const sideBySide = chartSideBySide(opts, size, u);
     const cw = sideBySide ? (opts.stats ? Math.min(460 * u, size.w - statsW - M * 3) : Math.min(560 * u, size.w - M * 2)) : statsW;
@@ -277,15 +301,18 @@ export function drawPost(canvas, mapImg, info, opts) {
   // Footer.
   const fy = area.y + area.h;
   const fh = size.h - fy;
-  ctx.fillStyle = style.id === 'clean' ? 'rgba(11,18,32,0.92)' : '#0b1220';
+  ctx.fillStyle = style.id === 'clean' ? withAlpha(T.primary, 0.92) : T.foot;
   ctx.fillRect(0, fy, size.w, fh);
   ctx.textBaseline = 'middle';
-  ctx.font = `600 ${Math.round(Math.max(15, fh * 0.4))}px ${font.body}`;
-  ctx.fillStyle = '#fbbf24';
-  ctx.fillText('theweatherspectrum.com', M, fy + fh / 2);
-  const left = ctx.measureText('theweatherspectrum.com').width;
-  fitText(ctx, CREDIT, font.body, 400, Math.round(Math.max(12, fh * 0.28)), size.w - M * 3 - left, 9);
-  ctx.fillStyle = '#94a3b8';
+  let left = 0;
+  if (T.footName) {
+    fitText(ctx, T.footName, font.body, 600, Math.round(Math.max(15, fh * 0.4)), size.w * 0.45, 11);
+    ctx.fillStyle = T.footText;
+    ctx.fillText(T.footName, M, fy + fh / 2);
+    left = ctx.measureText(T.footName).width + M;
+  }
+  fitText(ctx, CREDIT, font.body, 400, Math.round(Math.max(12, fh * 0.28)), size.w - M * 2 - left, 9);
+  ctx.fillStyle = T.footMuted;
   ctx.textAlign = 'right';
   ctx.fillText(CREDIT, size.w - M, fy + fh / 2);
   ctx.textAlign = 'left';

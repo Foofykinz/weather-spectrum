@@ -22,6 +22,8 @@ import {
   warningName,
 } from '../../radar/post';
 import { videoType, recordVideo } from '../../radar/video';
+import BrandPanel from '../BrandPanel';
+import { useBrand } from '../../brand/brand';
 import { saveFile, savedMessage, isPhone } from '../../utils/saveFile';
 import SaveImageSheet from '../SaveImageSheet';
 
@@ -46,6 +48,9 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
   const [subline, setSubline] = useState(null);
   const [legendImg, setLegendImg] = useState(null);
   const [message, setMessage] = useState(null);
+  const brandState = useBrand();
+  const [brand, , { logoImg }] = brandState;
+  const [myLink, setMyLink] = useState(true);
   const [saveSheet, setSaveSheet] = useState(null); // { blob, name } on phones
   const preview = useRef(null);
 
@@ -81,7 +86,8 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
   }, [lookup.map((w) => w.id).join()]); // eslint-disable-line react-hooks/exhaustive-deps
   const captions = buildCaptions(info, { link, tags });
   const caption = captions.find((c) => c.id === captionId) || captions[0];
-  const captionText = edits[caption.id] ?? caption.text;
+  const brandLink = brand.enabled && myLink ? brand.link.trim() : '';
+  const captionText = edits[caption.id] ?? (brandLink ? `${caption.text}\n\n${brandLink}` : caption.text);
   const head = headline ?? defaultHeadline(info);
   const sub = subline ?? defaultSubline(info);
   const top = info.warnings[0];
@@ -106,14 +112,14 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
   };
 
   const fontReady = !font.css || fontState[font.id] === 'ok' || fontState[font.id] === 'failed';
-  const drawOpts = { size, style, font, headline: head, subline: sub, legend: showLegend, list: showList, banner: bannerOn ? bannerValue.trim() : '', bannerRight };
+  const drawOpts = { size, style, font, headline: head, subline: sub, legend: showLegend, list: showList, banner: bannerOn ? bannerValue.trim() : '', bannerRight, brand, logoImg };
   useEffect(() => {
     if (!preview.current || !fontReady) return;
     drawPost(preview.current, snap, crop, info, drawOpts, legendImg);
   }); // redraw on every change; drawing takes a few milliseconds
 
   // ---- Video: every loop scan drawn in this layout, then recorded.
-  const videoSig = JSON.stringify([focusKey, styleId, fontId, head, subline,showLegend, showList, drawOpts.banner, bannerRight, zone]);
+  const videoSig = JSON.stringify([brand.enabled, brand.name, brand.link, brand.primary, brand.accent, brand.logo?.length, focusKey, styleId, fontId, head, subline,showLegend, showList, drawOpts.banner, bannerRight, zone]);
   const makeVideo = async () => {
     setMessage(null);
     try {
@@ -288,6 +294,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
                 ))}
               </div>
             </div>
+            <BrandPanel brandState={brandState} />
             <div>
               <span className={label}>Font</span>
               <div className="flex flex-wrap gap-1.5">
@@ -387,6 +394,11 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
                 <label className="flex items-center gap-1.5">
                   <input type="checkbox" checked={link} onChange={(e) => setLink(e.target.checked)} /> Radar link
                 </label>
+                {brand.enabled && brand.link.trim() && (
+                  <label className="flex items-center gap-1.5">
+                    <input type="checkbox" checked={myLink} onChange={(e) => setMyLink(e.target.checked)} /> My link
+                  </label>
+                )}
                 {tag && (
                   <label className="flex items-center gap-1.5">
                     <input type="checkbox" checked={tags} onChange={(e) => setTags(e.target.checked)} /> {tag}

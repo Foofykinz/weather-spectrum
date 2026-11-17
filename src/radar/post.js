@@ -5,6 +5,7 @@
 
 import { warningsAt, watchesAtPoint } from './providers/warnings';
 import { LEGENDS, radarMode } from './legends';
+import { postTheme, logoSize, withAlpha } from '../brand/brand';
 
 export const SIZES = [
   { id: 'square', label: 'Square', note: '1080 x 1080', w: 1080, h: 1080 },
@@ -488,7 +489,7 @@ function drawBanner(ctx, text, right, color, y, w, h, font, M) {
 
 const CREDIT ='Unofficial graphic. Data: NOAA/NWS. Map: OpenFreeMap, © OpenStreetMap';
 
-// opts: { size, style, font, headline, subline, legend, list }
+// opts: { size, style, font, headline, subline, legend, list, brand, logoImg }
 export function drawPost(canvas, snap, crop, info, opts, legendImg) {
   const { size, style, font } = opts;
   setTz(info.tz);
@@ -498,6 +499,7 @@ export function drawPost(canvas, snap, crop, info, opts, legendImg) {
   const area = mapArea(size, style.id);
   const headWeight = font.headWeight || 700;
   const top = info.warnings[0];
+  const T = postTheme(opts.brand, opts.logoImg);
 
   ctx.fillStyle = '#0b1220';
   ctx.fillRect(0, 0, size.w, size.h);
@@ -508,37 +510,46 @@ export function drawPost(canvas, snap, crop, info, opts, legendImg) {
   const bannerH = opts.banner ? Math.round(Math.max(46, size.h * 0.055)) : 0;
 
   if (style.id === 'clean') {
-    // Headline in a box at top-left, credits along the bottom.
-    const ss = fitText(ctx, opts.subline, font.body, 400, Math.round(Math.max(22, size.h * 0.02)), size.w - M * 2 - 40, 12);
-    const hs = fitText(ctx, opts.headline, font.head, headWeight, Math.round(Math.max(54, size.h * 0.045)), size.w - M * 2 - 40, 16);
+    // Headline in a box at top-left (with the logo, if any), credits along the bottom.
+    const logo = logoSize(T.logo, 220, Math.round(Math.max(54, size.h * 0.045)) + 40);
+    const lw = logo.w ? logo.w + 18 : 0;
+    const ss = fitText(ctx, opts.subline, font.body, 400, Math.round(Math.max(22, size.h * 0.02)), size.w - M * 2 - 40 - lw, 12);
+    const hs = fitText(ctx, opts.headline, font.head, headWeight, Math.round(Math.max(54, size.h * 0.045)), size.w - M * 2 - 40 - lw, 16);
     ctx.font = `400 ${ss}px ${font.body}`;
     const sw = ctx.measureText(opts.subline).width;
     ctx.font = `${headWeight} ${hs}px ${font.head}`;
     const hw = ctx.measureText(opts.headline).width;
-    const bw = Math.max(hw, sw) + 40;
-    const bh = hs + ss + 44;
-    ctx.fillStyle = 'rgba(11,18,32,0.86)';
+    const bw = Math.max(hw, sw) + 40 + lw;
+    const bh = Math.max(hs + ss + 44, logo.h + 24);
+    ctx.fillStyle = withAlpha(T.primary, 0.86);
     roundRect(ctx, M, M, bw, bh, 12);
     ctx.fill();
-    ctx.fillStyle = top ? top.type.color : '#f59e0b';
+    ctx.fillStyle = top ? top.type.color : T.accentSolid;
     ctx.fillRect(M, M + 14, 5, bh - 28);
+    if (logo.w) ctx.drawImage(T.logo, M + 20, M + (bh - logo.h) / 2, logo.w, logo.h);
+    const tx = M + 22 + lw;
+    const ty = M + (bh - (hs + ss + 6)) / 2;
     ctx.textBaseline = 'top';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(opts.headline, M + 22, M + 16);
+    ctx.fillStyle = T.text;
+    ctx.fillText(opts.headline, tx, ty);
     ctx.font = `400 ${ss}px ${font.body}`;
-    ctx.fillStyle = '#fcd34d';
-    ctx.fillText(opts.subline, M + 22, M + 22 + hs);
+    ctx.fillStyle = T.sub;
+    ctx.fillText(opts.subline, tx, ty + hs + 6);
     if (opts.list) drawWarningList(ctx, info.warnings, size.w - M - 380, M + bh + 14 > size.h * 0.4 ? M : M + bh + 14, 380, font.body, info.past);
     if (opts.legend) drawLegend(ctx, info, M, size.h - M - 36 - bannerH, Math.min(440, size.w * 0.5), font.body, legendImg);
     if (bannerH) drawBanner(ctx, opts.banner, opts.bannerRight, top?.type.color, size.h - 34 - bannerH, size.w, bannerH, font.body, M);
-    ctx.fillStyle = 'rgba(11,18,32,0.75)';
+    ctx.fillStyle = withAlpha(T.primary, 0.8);
     ctx.fillRect(0, size.h - 34, size.w, 34);
     ctx.textBaseline = 'middle';
-    ctx.font = `600 17px ${font.body}`;
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillText('theweatherspectrum.com', M, size.h - 17);
-    ctx.font = `400 14px ${font.body}`;
-    ctx.fillStyle = '#cbd5e1';
+    let left = 0;
+    if (T.footName) {
+      fitText(ctx, T.footName, font.body, 600, 17, size.w * 0.45, 11);
+      ctx.fillStyle = T.footText;
+      ctx.fillText(T.footName, M, size.h - 17);
+      left = ctx.measureText(T.footName).width + M;
+    }
+    fitText(ctx, CREDIT, font.body, 400, 14, size.w - M * 2 - left, 9);
+    ctx.fillStyle = T.footMuted;
     ctx.textAlign = 'right';
     ctx.fillText(CREDIT, size.w - M, size.h - 17);
     ctx.textAlign = 'left';
@@ -552,29 +563,31 @@ export function drawPost(canvas, snap, crop, info, opts, legendImg) {
     ctx.fillRect(0, 0, size.w, area.head);
   } else {
     const g = ctx.createLinearGradient(0, 0, 0, area.head);
-    g.addColorStop(0, '#111a2e');
-    g.addColorStop(1, '#0b1220');
+    g.addColorStop(0, T.headTop);
+    g.addColorStop(1, T.headBottom);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, size.w, area.head);
   }
-  const dark = alertBand && luminance(top.type.color) > 0.35;
-  const accent = ctx.createLinearGradient(0, 0, size.w, 0);
-  accent.addColorStop(0, '#f97316');
-  accent.addColorStop(1, '#facc15');
-  ctx.fillStyle = alertBand ? 'rgba(0,0,0,0.35)' : accent;
+  const dark = alertBand ? luminance(top.type.color) > 0.35 : false;
+  ctx.fillStyle = alertBand ? 'rgba(0,0,0,0.35)' : T.accentFill(ctx, 0, size.w);
   ctx.fillRect(0, area.head - 6, size.w, 6);
 
+  // Logo on the right of the header.
+  const logo = logoSize(T.logo, size.w * 0.26, (area.head - 6) * 0.72);
+  if (logo.w) ctx.drawImage(T.logo, size.w - M - logo.w, (area.head - 6 - logo.h) / 2, logo.w, logo.h);
+  const textW = size.w - M * 2 - (logo.w ? logo.w + M * 0.6 : 0);
+
   const headText = alertBand ? opts.headline.toUpperCase() : opts.headline;
-  const ss = fitText(ctx, opts.subline, font.body, 400, Math.round(Math.max(18, area.head * 0.2)), size.w - M * 2, 12);
-  const hs = fitText(ctx, headText, font.head, headWeight, Math.round(area.head * 0.46), size.w - M * 2, 16);
+  const ss = fitText(ctx, opts.subline, font.body, 400, Math.round(Math.max(18, area.head * 0.2)), textW, 12);
+  const hs = fitText(ctx, headText, font.head, headWeight, Math.round(area.head * 0.46), textW, 16);
   const gap = 6;
   const block = hs + gap + ss;
   const y0 = Math.round((area.head - 6 - block) / 2);
   ctx.textBaseline = 'top';
-  ctx.fillStyle = dark ? '#0b1220' : '#ffffff';
+  ctx.fillStyle = alertBand ? (dark ? '#0b1220' : '#ffffff') : T.text;
   ctx.fillText(headText, M, y0);
   ctx.font = `400 ${ss}px ${font.body}`;
-  ctx.fillStyle = alertBand ? (dark ? '#1e293b' : 'rgba(255,255,255,0.88)') : '#fcd34d';
+  ctx.fillStyle = alertBand ? (dark ? '#1e293b' : 'rgba(255,255,255,0.88)') : T.sub;
   ctx.fillText(opts.subline, M, y0 + hs + gap);
 
   // Map overlays.
@@ -584,15 +597,18 @@ export function drawPost(canvas, snap, crop, info, opts, legendImg) {
 
   // Footer band.
   const fy = area.y + area.h;
-  ctx.fillStyle = '#0b1220';
+  ctx.fillStyle = T.foot;
   ctx.fillRect(0, fy, size.w, area.foot);
   ctx.textBaseline = 'middle';
-  ctx.font = `600 ${Math.round(area.foot * 0.4)}px ${font.body}`;
-  ctx.fillStyle = '#fbbf24';
-  ctx.fillText('theweatherspectrum.com', M, fy + area.foot / 2);
-  const left = ctx.measureText('theweatherspectrum.com').width;
-  fitText(ctx, CREDIT, font.body, 400, Math.round(area.foot * 0.3), size.w - M * 3 - left, 10);
-  ctx.fillStyle = '#94a3b8';
+  let left = 0;
+  if (T.footName) {
+    fitText(ctx, T.footName, font.body, 600, Math.round(area.foot * 0.4), size.w * 0.45, 11);
+    ctx.fillStyle = T.footText;
+    ctx.fillText(T.footName, M, fy + area.foot / 2);
+    left = ctx.measureText(T.footName).width + M;
+  }
+  fitText(ctx, CREDIT, font.body, 400, Math.round(area.foot * 0.3), size.w - M * 2 - left, 10);
+  ctx.fillStyle = T.footMuted;
   ctx.textAlign = 'right';
   ctx.fillText(CREDIT, size.w - M, fy + area.foot / 2);
   ctx.textAlign = 'left';

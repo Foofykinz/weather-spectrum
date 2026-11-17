@@ -5,6 +5,8 @@ import { snapshotMap } from '../../radar/snapshot';
 import { STYLES, mapArea, coveredEdges, drawPost, buildCaptions, defaultHeadline, defaultSubline } from '../../warnings/post';
 import { boundsFor, periodToParams } from '../../warnings/history';
 import TornadoWarningMap from './TornadoWarningMap';
+import BrandPanel from '../BrandPanel';
+import { useBrand } from '../../brand/brand';
 import { saveFile, savedMessage, isPhone } from '../../utils/saveFile';
 import SaveImageSheet from '../SaveImageSheet';
 
@@ -74,6 +76,9 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
   const [headline, setHeadline] = useState(null);
   const [subline, setSubline] = useState(null);
   const [message, setMessage] = useState(null);
+  const brandState = useBrand();
+  const [brand, , { logoImg }] = brandState;
+  const [myLink, setMyLink] = useState(true);
   const [saveSheet, setSaveSheet] = useState(null); // { blob, name } on phones
   const [format, setFormat] = useState('png'); // 'png' | 'jpeg'
   const mime = `image/${format}`;
@@ -96,7 +101,8 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
   }, [info.period, info.state]);
   const captions = useMemo(() => buildCaptions(info, { link: link ? shareUrl : null }), [info, link, shareUrl]);
   const caption = captions.find((c) => c.id === captionId) || captions[0];
-  const captionText = edits[caption.id] ?? caption.text;
+  const brandLink = brand.enabled && myLink ? brand.link.trim() : '';
+  const captionText = edits[caption.id] ?? (brandLink ? `${caption.text}\n\n${brandLink}` : caption.text);
 
   useEffect(() => {
     if (!preview.current || !fontReady) return;
@@ -108,8 +114,10 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
       subline: sub,
       stats: showStats,
       chart: showChart,
+      brand,
+      logoImg,
     });
-  }, [pic, info, size, style, font, fontState, fontReady, head, sub, showStats, showChart]);
+  }, [pic, info, size, style, font, fontState, fontReady, head, sub, showStats, showChart, brand, logoImg]);
 
   const pickFont = async (f) => {
     setFontId(f.id);
@@ -236,6 +244,7 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
                 {choices([['fit', 'Fit warnings'], ...(pageBounds ? [['page', 'My view', 'The area shown on the page map']] : [])], areaMode, setAreaMode)}
               </div>
             </div>
+            <BrandPanel brandState={brandState} />
             <div className={styleId === 'map' ? 'hidden' : ''}>
               <span className={label}>Font</span>
               <div className="flex flex-wrap gap-1.5">
@@ -277,6 +286,11 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
                 <label className="flex items-center gap-1.5">
                   <input type="checkbox" checked={link} onChange={(e) => setLink(e.target.checked)} /> Page link
                 </label>
+                {brand.enabled && brand.link.trim() && (
+                  <label className="flex items-center gap-1.5">
+                    <input type="checkbox" checked={myLink} onChange={(e) => setMyLink(e.target.checked)} /> My link
+                  </label>
+                )}
                 {edits[caption.id] != null && (
                   <button type="button" className="ml-auto text-amber-300 hover:text-amber-200" onClick={() => setEdits((s) => ({ ...s, [caption.id]: undefined }))}>
                     Undo my edits
