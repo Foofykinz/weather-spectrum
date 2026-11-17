@@ -1,0 +1,184 @@
+{
+ "moore-tornado-2013": {
+  "warnings": [
+   {
+    "phen": "SV",
+    "etn": 316,
+    "issued": "2013-05-20T19:12:00Z",
+    "expires": "2013-05-20T20:00:00Z",
+    "first": "NATIONAL WEATHER SERVICE METEOROLOGISTS DETECTED A SEVERE THUNDERSTORM LOCATED NEAR BRIDGE CREEK...MOVING NORTHEAST AT 40 MPH. HAZARDS IN THE WARNING INCLUDE",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "McClain, OK",
+     "Canadian, OK",
+     "Grady, OK",
+     "Oklahoma, OK",
+     "Cleveland, OK"
+    ],
+    "updates": [
+     {
+      "time": "2013-05-20T19:26:00Z",
+      "line": "A SEVERE THUNDERSTORM WARNING REMAINS IN EFFECT UNTIL 300 PM CDT FOR NORTHWESTERN MCCLAIN...WESTERN OKLAHOMA...NORTHEASTERN GRADY"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2013&wfo=KOUN&phenomena=SV&significance=W&eventid=0316"
+   },
+   {
+    "phen": "TO",
+    "etn": 24,
+    "issued": "2013-05-20T19:40:00Z",
+    "expires": "2013-05-20T20:15:00Z",
+    "first": "AT 238 PM CDT...NATIONAL WEATHER SERVICE METEOROLOGISTS DETECTED A SEVERE THUNDERSTORM CAPABLE OF PRODUCING A TORNADO. THIS DANGEROUS STORM WAS LOCATED NEAR NEWCASTLE...AND MOVING EAST AT 20 MPH.",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Grady, OK",
+     "Cleveland, OK",
+     "McClain, OK",
+     "Oklahoma, OK"
+    ],
+    "updates": [
+     {
+      "time": "2013-05-20T19:47:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 315 PM CDT FOR NORTHWESTERN MCCLAIN...SOUTHERN OKLAHOMA...NORTHEASTERN GRADY AND NORTHERN CLEVELAND COUNTIES"
+     },
+     {
+      "time": "2013-05-20T19:53:00Z",
+      "line": "THE TORNADO WARNING FOR NORTHEASTERN GRADY COUNTY IS CANCELLED"
+     },
+     {
+      "time": "2013-05-20T19:56:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 315 PM CDT FOR NORTHWESTERN MCCLAIN...SOUTH CENTRAL OKLAHOMA AND NORTHERN CLEVELAND COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2013&wfo=KOUN&phenomena=TO&significance=W&eventid=0024"
+   },
+   {
+    "phen": "TO",
+    "etn": 26,
+    "issued": "2013-05-20T20:01:00Z",
+    "expires": "2013-05-20T20:45:00Z",
+    "first": "AT 259 PM CDT...NATIONAL WEATHER SERVICE METEOROLOGISTS AND STORM SPOTTERS WERE TRACKING A LARGE AND EXTREMELY DANGEROUS TORNADO NEAR NEWCASTLE. DOPPLER RADAR SHOWED THIS TORNADO MOVING NORTHEAST AT 20 MPH.",
+    "tags": {
+     "tornado": null,
+     "emergency": true
+    },
+    "counties": [
+     "McClain, OK",
+     "Cleveland, OK",
+     "Oklahoma, OK"
+    ],
+    "updates": [
+     {
+      "time": "2013-05-20T20:09:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 345 PM CDT FOR NORTHWESTERN MCCLAIN...SOUTHERN OKLAHOMA AND NORTHERN CLEVELAND COUNTIES"
+     },
+     {
+      "time": "2013-05-20T20:16:00Z",
+      "line": "THE TORNADO WARNING FOR NORTHWESTERN MCCLAIN COUNTY IS CANCELLED"
+     },
+     {
+      "time": "2013-05-20T20:23:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 345 PM CDT FOR SOUTH CENTRAL OKLAHOMA AND NORTHERN CLEVELAND COUNTIES"
+     },
+     {
+      "time": "2013-05-20T20:33:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 345 PM CDT FOR SOUTH CENTRAL OKLAHOMA AND NORTHERN CLEVELAND COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2013&wfo=KOUN&phenomena=TO&significance=W&eventid=0026"
+   },
+   {
+    "phen": "TO",
+    "etn": 29,
+    "issued": "2013-05-20T20:40:00Z",
+    "expires": "2013-05-20T21:15:00Z",
+    "first": "AT 338 PM CDT...A THUNDERSTORM WITH A HISTORY OF PRODUCING TORNADOES WAS LOCATED NEAR STANLEY DRAPER LAKE. A TORNADO MAY DEVELOP AGAIN AT ANY TIME. DOPPLER RADAR SHOWED THIS DANGEROUS STORM MOVING EAST AT 30 MPH.",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Cleveland, OK",
+     "Lincoln, OK",
+     "Pottawatomie, OK",
+     "Oklahoma, OK"
+    ],
+    "updates": [
+     {
+      "time": "2013-05-20T20:53:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 415 PM CDT FOR SOUTHWESTERN LINCOLN...SOUTHEASTERN OKLAHOMA...EXTREME NORTHEASTERN CLEVELAND AND NORTHWESTERN POTTAWATOMIE COUNTIES"
+     },
+     {
+      "time": "2013-05-20T21:01:00Z",
+      "line": "THE TORNADO WARNING FOR EXTREME NORTHEASTERN CLEVELAND COUNTY IS CANCELLED"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2013&wfo=KOUN&phenomena=TO&significance=W&eventid=0029"
+   }
+  ]
+ },
+ "joplin-tornado-2011": {
+  "warnings": [
+   {
+    "phen": "TO",
+    "etn": 31,
+    "issued": "2011-05-22T22:17:00Z",
+    "expires": "2011-05-22T23:00:00Z",
+    "first": "AT 514 PM CDT...NATIONAL WEATHER SERVICE DOPPLER RADAR INDICATED A TORNADO NEAR RIVERTON...OR 4 MILES NORTH OF BAXTER SPRINGS...MOVING NORTHEAST AT 40 MPH.",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Cherokee, KS",
+     "Newton, MO",
+     "Jasper, MO"
+    ],
+    "updates": [
+     {
+      "time": "2011-05-22T22:30:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 600 PM CDT FOR NORTHWESTERN NEWTON...SOUTHWESTERN JASPER AND SOUTHEASTERN CHEROKEE COUNTIES"
+     },
+     {
+      "time": "2011-05-22T22:39:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 600 PM CDT FOR NORTHWESTERN NEWTON...SOUTHWESTERN JASPER AND SOUTHEASTERN CHEROKEE COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2011&wfo=KSGF&phenomena=TO&significance=W&eventid=0031"
+   },
+   {
+    "phen": "TO",
+    "etn": 32,
+    "issued": "2011-05-22T22:48:00Z",
+    "expires": "2011-05-22T23:30:00Z",
+    "first": "TRAINED WEATHER SPOTTERS REPORTED A TORNADO NEAR EASTERN JOPLIN...OR 9 MILES EAST OF GALENA...MOVING EAST AT 45 MPH. DAMAGING AND MULTIPLE VORTEX TORNADO WAS REPORTED WITH THIS STORM. * LOCATIONS IMPACTED INCLUDE AIRPORT DRIVE...ALBA...ATLAS...AVILLA",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Jasper, MO",
+     "Lawrence, MO",
+     "Newton, MO"
+    ],
+    "updates": [
+     {
+      "time": "2011-05-22T23:01:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 630 PM CDT FOR SOUTHWESTERN LAWRENCE...NORTHERN NEWTON AND SOUTHERN JASPER COUNTIES"
+     },
+     {
+      "time": "2011-05-22T23:19:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 630 PM CDT FOR SOUTHWESTERN LAWRENCE...NORTHERN NEWTON AND SOUTHEASTERN JASPER COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2011&wfo=KSGF&phenomena=TO&significance=W&eventid=0032"
+   }
+  ]
+ }
+}

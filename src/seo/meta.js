@@ -3,6 +3,7 @@
 // engines) and by useSeo() during in-app navigation.
 
 import { CITIES, RADARS, STATION_PAGES, WFO_NAMES, stateName } from './places';
+import { EVENTS, eventPath, eventTitle } from './events';
 
 export const SITE = 'https://theweatherspectrum.com';
 export const SITE_NAME = 'Weather Spectrum';
@@ -40,6 +41,12 @@ const STATIC = {
     title: 'About | Weather Spectrum',
     description: 'What Weather Spectrum is, where its radar and lightning data come from, and how it should and should not be used.',
     jsonLd: [{ '@type': 'AboutPage', name: 'About Weather Spectrum', url: `${SITE}/about` }, ORG],
+  },
+  '/events': {
+    title: 'Tornado Radar Replays: Historic Tornadoes on Real NEXRAD Radar | Weather Spectrum',
+    description:
+      'Replay historic tornadoes like Moore 2013 and Joplin 2011 on the real archived NEXRAD radar: reflectivity, velocity and correlation coefficient loops with the NWS warning timeline.',
+    jsonLd: [{ '@type': 'CollectionPage', name: 'Tornado radar replays', url: `${SITE}/events` }],
   },
   '/admin': { title: 'Admin | Weather Spectrum', description: 'Administration.', noindex: true },
   '/broadcast': { title: 'Broadcast | Weather Spectrum', description: 'Weather Spectrum live broadcast screen.', noindex: true },
@@ -79,11 +86,31 @@ function stationMeta(r) {
   };
 }
 
+function eventMeta(e) {
+  const r = RADARS[e.radar];
+  const icao = r?.icao || `K${e.radar}`;
+  return {
+    title: `${eventTitle(e)} | ${icao} Reflectivity & Velocity Replay`,
+    description: `Replay the real ${icao} NEXRAD radar of the ${e.dateText} ${e.place} ${e.rating} tornado: reflectivity, velocity (couplet) and correlation coefficient (debris signature) loops, with the NWS warning timeline and official facts.`,
+    jsonLd: [
+      {
+        '@type': 'Article',
+        headline: eventTitle(e),
+        url: SITE + eventPath(e),
+        about: { '@type': 'Event', name: `${e.dateText} ${e.place} tornado`, startDate: e.date, location: { '@type': 'Place', name: e.place } },
+        publisher: ORG,
+      },
+      breadcrumbs([['Home', '/'], ['Tornado radar replays', '/events'], [e.short, eventPath(e)]]),
+    ],
+  };
+}
+
 // All prerendered pages (path -> meta). Order is used for the sitemap.
 export function allPages() {
   const pages = { ...STATIC };
   for (const c of CITIES) pages[cityPath(c)] = cityMeta(c);
   for (const id of STATION_PAGES) pages[stationPath(RADARS[id])] = stationMeta(RADARS[id]);
+  for (const e of EVENTS) pages[eventPath(e)] = eventMeta(e);
   return pages;
 }
 
