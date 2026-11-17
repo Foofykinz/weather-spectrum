@@ -78,19 +78,7 @@ void main() {
   outColor = c;
 }`;
 
-let supported = null;
-export function glRadarSupported() {
-  if (supported !== null) return supported;
-  try {
-    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('gl') === '0') return (supported = false);
-    const gl = document.createElement('canvas').getContext('webgl2');
-    supported = !!gl && gl.getParameter(gl.MAX_TEXTURE_SIZE) >= 4096;
-    gl?.getExtension('WEBGL_lose_context')?.loseContext();
-  } catch {
-    supported = false;
-  }
-  return supported;
-}
+export { glRadarSupported } from './support';
 
 function compile(gl, type, src) {
   const s = gl.createShader(type);

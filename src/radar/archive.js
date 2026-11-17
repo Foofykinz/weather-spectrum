@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { listLevel3Before, fetchLevel3Key } from './providers/level3';
 import { listLevel2Before, fetchLevel2Key } from './providers/level2';
+import { glRadarSupported } from './gl/support';
 
 // Past radar: the real scans at or before a chosen time.
 //  - Single-radar products: the archived NOAA Level III files themselves,
@@ -13,7 +14,8 @@ export const ARCHIVE_FRAMES = 10;
 // format, from 2009. Level III single-radar products start April 2020;
 // before that, single-radar views switch to their Level II equivalents.
 export const ARCHIVE_START = new Date('2009-01-01T00:00:00Z');
-const ARCHIVE_DRAW_SIZE = 1024; // overview per frame; zooming in redraws the shown scan at full detail
+// Overview image per frame: only a backup when the GPU draws (it uses the data itself).
+const archiveDrawSize = () => (glRadarSupported() ? 512 : 1024);
 const CONCURRENCY = 3;
 
 // URL value <-> Date. Stored as UTC minutes: 2024-05-06T20:00Z
@@ -39,7 +41,7 @@ export async function loadArchive(product, site, tilt, end, signal, onProgress) 
   if (a.level2) {
     const keys = await listLevel2Before(site.icao, end, ARCHIVE_FRAMES, signal);
     return runFrames(keys, signal, onProgress, async (key) => {
-      const { validTime, details } = await fetchLevel2Key(key, a.level2, a.colors, { tilt, drawSize: ARCHIVE_DRAW_SIZE });
+      const { validTime, details } = await fetchLevel2Key(key, a.level2, a.colors, { tilt, drawSize: archiveDrawSize() });
       return { validTime, details, layer: product.layer(site, validTime, details) };
     });
   }
@@ -59,7 +61,7 @@ export async function loadArchive(product, site, tilt, end, signal, onProgress) 
     throw err;
   }
   return runFrames(keys, signal, onProgress, async (key) => {
-    const { validTime, details } = await fetchLevel3Key(key, a.colors, { drawSize: ARCHIVE_DRAW_SIZE });
+    const { validTime, details } = await fetchLevel3Key(key, a.colors, { drawSize: archiveDrawSize() });
     return { validTime, details, layer: product.layer(site, validTime, details) };
   });
 }

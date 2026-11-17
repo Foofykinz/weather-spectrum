@@ -4,6 +4,7 @@
 // Keys look like 2026/11/17/KTLX/KTLX20261117_103733_V06.
 
 import { buildAzimuthTable } from '../level3/geometry';
+import { glRadarSupported } from '../gl/support';
 
 const BUCKET = 'https://unidata-nexrad-level2.s3.amazonaws.com';
 export const LEVEL2_ATTRIBUTION =
@@ -134,7 +135,7 @@ function toResult(out, colors, id) {
 }
 
 const results = new Map(); // `${key}|${moment}|${tilt}@${size}` -> Promise
-const drawSize = () => (Math.min(window.innerWidth, window.innerHeight) < 700 ? 1536 : 2048);
+const drawSize = () => (glRadarSupported() ? 512 : Math.min(window.innerWidth, window.innerHeight) < 700 ? 1536 : 2048); // backup image only when the GPU draws
 
 export async function fetchLevel2Latest(site, moment, colors, signal, { tilt, drawSize: size } = {}) {
   const key = await latestLevel2Key(site.icao, signal);

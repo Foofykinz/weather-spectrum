@@ -18,6 +18,8 @@ import { makeScaler } from '../level3/scaling';
 
 const BUCKET = 'https://unidata-nexrad-level3.s3.amazonaws.com';
 
+import { glRadarSupported } from '../gl/support';
+
 export const LEVEL3_ATTRIBUTION =
   'Radar: NOAA NEXRAD Level III via <a href="https://registry.opendata.aws/noaa-nexrad/" target="_blank" rel="noopener noreferrer">NODD/Unidata</a>';
 
@@ -181,10 +183,12 @@ export async function listLevel3Tilts(site, letter, tilts, signal) {
 
 // Small cache of processed scans (each holds a drawn image, so keep it short).
 const cache = new Map(); // key -> result
-const CACHE_SIZE = 6; // enough for a quad view plus switching back
+const CACHE_SIZE = 44; // loops of two products for this warning and the next (broadcast), quad views
 
 // Smaller drawing on small screens to limit memory on phones.
-const drawSize = () => (Math.min(window.innerWidth, window.innerHeight) < 700 ? 1536 : 2048);
+// The full-size image is only a backup when the GPU draws the scan (it draws
+// from the data itself), so keep it small then.
+const drawSize = () => (glRadarSupported() ? 512 : Math.min(window.innerWidth, window.innerHeight) < 700 ? 1536 : 2048);
 
 // Requests for the same scan at the same drawing size share one download and
 // decode (e.g. two panels showing the same product), even if they overlap in time.

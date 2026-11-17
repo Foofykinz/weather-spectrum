@@ -4,7 +4,10 @@ import RadarMap from '../components/radar/RadarMap';
 import { getProduct } from '../radar/products';
 import N0Q_PALETTE from '../radar/data/iem-n0q-palette.json';
 import { useRadarFrame } from '../radar/useRadarFrame';
-import { subscribeWarnings } from '../radar/providers/warnings';
+import { subscribeWarnings, loadHistory } from '../radar/providers/warnings';
+import EventView from '../components/broadcast/EventView';
+import { isEventWorthy, sortEvents, boundsOf } from '../broadcast/event';
+import { nearestStation } from '../radar/stations';
 import { warningName, bannerText, bannerTime, zoneForStation } from '../radar/post';
 import { TOUR } from '../broadcast/cities';
 import { cityWeather } from '../broadcast/nws';
@@ -24,6 +27,7 @@ const SEGMENTS = [
   { id: 'forecast', ms: 13000, label: '5-Day Forecast' },
 ];
 const ZOOM = 8;
+const EVENT_MS = 25000; // time on each warning in event mode
 // TV-style radar: hide weak returns (clutter, insects, noise) below this many
 // dBZ. Light rain and most light snow are above it.
 const HIDE_BELOW_DBZ = 10;
@@ -262,7 +266,7 @@ function crawlText(state) {
     .sort((a, b) => (a.danger === 'emergency' ? -2 : a.danger === 'high' ? -1 : 0) - (b.danger === 'emergency' ? -2 : b.danger === 'high' ? -1 : 0) || a.type.rank - b.type.rank)
     .slice(0, 20)
     .map((w) => {
-      const st = (w.area || '').match(/,\s*([A-Z]{2})\b/)?.[1];
+      const st = (w.area || '').match(/,\s*([A-Z]{2})\b/)?.[1] || nearestStation(...boundsOf(w.geometry).center)?.state;
       const where = bannerText(w);
       return `${warningName(w)}${where ? `: ${where}` : ''} ${bannerTime(w, zoneForStation({ state: st }))}`.trim();
     });
@@ -380,7 +384,39 @@ function BroadcastPage() {
       // ignore
     }
   }, [cityIdx]);
-  useEffect(() => subscribeWarnings(setWarnState), []);
+  // Warnings: live, or (?replay=2024-05-07T02:59Z) those in effect at a past
+  // moment, to rehearse or demo event mode.
+  const replay = useMemo(() => {
+    const v = new URLSearchParams(window.location.search).get('replay');
+    const d = v ? new Date(/T\d{2}:\d{2}Z$/.test(v) ? v.replace('Z', ':00Z') : v) : null;
+    return d && !Number.isNaN(d.getTime()) && d < new Date() ? d : null;
+  }, []);
+  useEffect(() => {
+    if (!replay) return subscribeWarnings(setWarnState);
+    const c = new AbortController();
+    loadHistory([replay], c.signal)
+      .then((h) => setWarnState(h.get(replay.getTime())))
+      .catch(() => setWarnState({ warnings: [], error: true }));
+    return () => c.abort();
+  }, [replay]);
+
+  // ---- Event mode: the serious warnings take over, one at a time.
+  // ?event=all puts every active warning through event mode (for testing with live data).
+  const eventFilter = new URLSearchParams(window.location.search).get('event') === 'all' ? () => true : isEventWorthy;
+  const eventIds = (warnState?.warnings || []).filter(eventFilter).map((w) => w.id).join(',');
+  const events = useMemo(() => sortEvents((warnState?.warnings || []).filter(eventFilter)), [eventIds]); // eslint-disable-line react-hooks/exhaustive-deps
+  const eventMode = events.length > 0 && new URLSearchParams(window.location.search).get('event') !== '0';
+  const [eventId, setEventId] = useState(null);
+  const eventIdx = Math.max(0, events.findIndex((w) => w.id === eventId));
+  const current = eventMode ? events[eventIdx] : null;
+  useEffect(() => {
+    if (!eventMode) return undefined;
+    const id = setTimeout(() => setEventId(events[(eventIdx + 1) % events.length].id), EVENT_MS);
+    return () => clearTimeout(id);
+  }, [eventMode, eventIdx, events]);
+  // Event time zone: the warning's state (from its counties), else the nearest radar's.
+  const eventTz = current ? zoneForStation({ state: (current.area || '').match(/,\s*([A-Z]{2})\b/)?.[1] || nearestStation(...boundsOf(current.geometry).center)?.state }) || undefined : undefined;
+  const replayInfo = useMemo(() => (replay ? { time: replay, warningsFrame: warnState || { loading: true, at: replay } } : null), [replay, warnState]);
 
   // Weather for this city and the next one (loaded ahead of time).
   useEffect(() => {
@@ -405,8 +441,9 @@ function BroadcastPage() {
     if (map) map.flyTo([city.lat, city.lon], ZOOM, { duration: 5, easeLinearity: 0.2 });
   }, [cityIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Segment timer. Panels with no data are skipped.
+  // Segment timer (paused during event mode). Panels with no data are skipped.
   useEffect(() => {
+    if (eventMode) return undefined;
     const id = setTimeout(() => {
       let s = segIdx + 1;
       const d = weather[cityIdx];
@@ -429,9 +466,9 @@ function BroadcastPage() {
       setCityIdx(nextIdx);
     }, seg.ms);
     return () => clearTimeout(id);
-  }, [segIdx, cityIdx]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [segIdx, cityIdx, eventMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const tz = data && data !== 'error' ? data.tz : undefined;
+  const tz = current ? eventTz : data && data !== 'error' ? data.tz : undefined;
   const latest = loop ? loop.times[loop.times.length - 1] : frame.status === 'ok' ? frame.validTime : null;
   const radarTime = loop ? loop.times[Math.min(loopIdx, loop.times.length - 1)] : latest;
   const radarOld = latest && now - latest > 20 * 60e3;
@@ -444,6 +481,7 @@ function BroadcastPage() {
         @keyframes ws-bc-crawl { from { left: 100%; transform: translate(0, -50%); } to { left: 0; transform: translate(-100%, -50%); } }
         .ws-bc-in { animation: ws-bc-in 0.6s ease-out both; }
         @keyframes ws-bc-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+        .ws-bc-line { animation: ws-bc-in 0.7s ease-out both; }
         .ws-bc-stage .leaflet-control-attribution { font-size: 13px; background: rgba(11,21,48,0.75); color: #94a3b8; }
         .ws-bc-stage .leaflet-control-attribution a { color: #cbd5e1; }
       `}</style>
@@ -451,8 +489,13 @@ function BroadcastPage() {
         className="ws-bc-stage absolute left-1/2 top-1/2 text-white"
         style={{ width: W, height: H, transform: `translate(-50%, -50%) scale(${scale})`, transformOrigin: 'center' }}
       >
-        <div className="absolute inset-x-0 top-0 z-0" style={{ height: H - BAR, isolation: 'isolate' }}>
-          <RadarMap
+        {current && (
+          <div className="absolute inset-x-0 top-0 z-[600]" style={{ height: H - BAR, isolation: 'isolate' }}>
+            <EventView warning={current} list={events} index={eventIdx} replay={replayInfo} width={W} height={H - BAR} />
+          </div>
+        )}
+        <div className={`absolute inset-x-0 top-0 z-0 ${current ? 'hidden' : ''}`} style={{ height: H - BAR, isolation: 'isolate' }}>
+          {!current && <RadarMap
             product={product}
             layer={stillLayer}
             details={null}
@@ -469,11 +512,13 @@ function BroadcastPage() {
             primary={false}
             embed
             mapRef={mapRef}
-          />
+          />}
           <div className="pointer-events-none absolute inset-0 z-[500] transition-colors duration-700" style={{ background: dim ? 'rgba(5,10,30,0.45)' : 'transparent' }} />
         </div>
 
-        <div className="absolute inset-0 z-[600]">
+        <div className="pointer-events-none absolute inset-0 z-[700]">
+          {!current && (
+          <>
           <TitlePlate
             key={`${cityIdx}-${seg.id}`}
             label={seg.label}
@@ -495,6 +540,13 @@ function BroadcastPage() {
 
           {seg.id === 'now' && data?.obs && <Conditions key={cityIdx} obs={data.obs} tz={tz} />}
           {seg.id === 'forecast' && data?.days?.length > 0 && <Forecast key={cityIdx} days={data.days} />}
+          </>
+          )}
+          {replay && (
+            <div className="absolute bottom-[124px] right-6 bg-amber-600/90 px-4 py-1 text-[24px] font-bold uppercase text-white">
+              Replay: {replay.toLocaleString('en-US', { timeZone: tz, month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })}
+            </div>
+          )}
 
           {/* Bottom bar: logo, warning crawl, clock */}
           <div className="absolute inset-x-0 bottom-0 flex" style={{ height: BAR, borderTop: '4px solid #f97316' }}>
