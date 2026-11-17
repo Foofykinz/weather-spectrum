@@ -33,7 +33,7 @@
 import { fetchIemLatest, fetchIemScanTimes, iemXyzLayer, IEM_ATTRIBUTION } from './providers/iem';
 import { fetchNwsLatest, fetchNwsTimes, nwsWmsLayer, NWS_ATTRIBUTION } from './providers/nws';
 import { fetchLevel3Latest, probeLevel3, LEVEL3_ATTRIBUTION } from './providers/level3';
-import { fetchLevel2Latest, listLevel2Tilts, LEVEL2_ATTRIBUTION } from './providers/level2';
+import { fetchLevel2Live, listLevel2LiveTilts, LEVEL2_ATTRIBUTION } from './providers/level2';
 import nwsCcColors from './level3/nws-cc-colors.json';
 import nwsZdrColors from './level3/nws-zdr-colors.json';
 import nwsKdpColors from './level3/nws-kdp-colors.json';
@@ -390,14 +390,14 @@ function level2Product({ id, moment, colors, name, short, description, legend, p
     elevation: null, // read from the volume
     resolution: 'Native Level II (0.25 km × 0.5° on low tilts, 1° above)',
     source: 'NOAA Level II',
-    listTilts: (site, signal) => listLevel2Tilts(site, moment, signal),
+    listTilts: (site, signal) => listLevel2LiveTilts(site, moment, signal),
     layer: (_site, _t, details) => ({ kind: 'canvas', canvas: details.canvas, bounds: details.bounds, radial: details.radial }),
-    latest: (site, signal, { tilt, drawSize } = {}) => fetchLevel2Latest(site, moment, colors, signal, { tilt, drawSize }),
+    // Real-time chunk feed: each tilt appears as soon as the radar finishes it.
+    latest: (site, signal, { tilt, drawSize } = {}) => fetchLevel2Live(site, moment, colors, signal, { tilt, drawSize }),
     probe: probeLevel3,
     probeFormat,
-    // A volume reaches the archive only once it's complete: 5-15 minutes.
-    pollSeconds: 60,
-    freshness: { delayedAfterMin: 18, staleAfterMin: 30 },
+    pollSeconds: 30,
+    freshness: { delayedAfterMin: 10, staleAfterMin: 20 },
     legend,
     attribution: LEVEL2_ATTRIBUTION,
   };

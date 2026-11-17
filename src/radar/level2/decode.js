@@ -22,20 +22,33 @@ export const LEVEL2_MOMENTS = ['REF', 'VEL', 'SW ', 'ZDR', 'RHO'];
 
 const str = (b, o, n) => String.fromCharCode(...b.subarray(o, o + n));
 
-export function indexVolume(arrayBuffer) {
+// Records in a file or a real-time chunk -> decompressed message blocks.
+// A whole volume (or the first real-time chunk) starts with the 24-byte
+// "AR2V" header; later real-time chunks are bare records.
+export function recordsOf(arrayBuffer) {
   const file = new Uint8Array(arrayBuffer);
-  if (str(file, 0, 4) !== 'AR2V') throw new Error('Not a Level II volume.');
   const fv = new DataView(arrayBuffer);
   const blocks = [];
-  let o = 24;
+  let o = str(file, 0, 4) === 'AR2V' ? 24 : 0;
   while (o + 4 <= file.length) {
     const size = Math.abs(fv.getInt32(o));
-    if (!size) break;
+    if (!size || o + 4 + size > file.length) break;
     const rec = file.subarray(o + 4, o + 4 + size);
     blocks.push(str(rec, 0, 3) === 'BZh' ? bunzip(rec) : rec);
     o += 4 + size;
   }
+  return blocks;
+}
 
+export function indexVolume(arrayBuffer) {
+  if (str(new Uint8Array(arrayBuffer), 0, 4) !== 'AR2V') throw new Error('Not a Level II volume.');
+  return indexBlocks(recordsOf(arrayBuffer));
+}
+
+// Index decompressed message blocks (in order) into cuts and radials.
+// complete: false for a volume still being scanned; then every cut except
+// the newest one is finished (cuts arrive one after another).
+export function indexBlocks(blocks, complete = true) {
   const radials = [];
   let site = null;
   let vcp = null;
@@ -91,7 +104,9 @@ export function indexVolume(arrayBuffer) {
     c.elevation = c.radials.reduce((s, r) => s + r.elev, 0) / c.radials.length;
     c.start = Math.min(...c.radials.map((r) => r.time));
   }
-  return { site, vcp, cuts: [...cuts.values()].sort((a, b) => a.n - b.n) };
+  const list = [...cuts.values()].sort((a, b) => a.n - b.n);
+  // In a volume still being scanned, the newest cut is partial: leave it out.
+  return { site, vcp, complete, cuts: complete ? list : list.slice(0, -1) };
 }
 
 // Moment block header (28 bytes), then the gate data.

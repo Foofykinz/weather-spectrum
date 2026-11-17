@@ -20,7 +20,7 @@ function call(msg) {
       if (!job) return;
       pending.delete(e.data.id);
       if (e.data.ok) job.resolve(e.data);
-      else job.reject(new Error(e.data.error));
+      else job.reject(Object.assign(new Error(e.data.error), { code: e.data.code }));
     };
   }
   return new Promise((resolve, reject) => {
@@ -65,6 +65,59 @@ export async function listLevel2Tilts(site, moment, signal) {
   return (await call({ type: 'tilts', key, moment })).tilts;
 }
 
+// ---- real time (chunk feed): the newest finished tilt, typically 1-3
+// minutes behind the radar instead of 5-15 for complete archive files.
+// Radars missing from the real-time feed fall back to the archive files.
+export async function listLevel2LiveTilts(site, moment, signal) {
+  try {
+    return (await call({ type: 'livetilts', icao: site.icao, moment })).tilts;
+  } catch (err) {
+    if (err.code !== 'NO_DATA') throw err;
+    return listLevel2Tilts(site, moment, signal);
+  }
+}
+
+const liveLast = new Map(); // icao|moment|tilt -> { cutKey, result }
+export async function fetchLevel2Live(site, moment, colors, signal, { tilt, drawSize: size } = {}) {
+  const id = `${site.icao}|${moment}|${tilt || ''}`;
+  const last = liveLast.get(id);
+  let out;
+  try {
+    out = await call({ type: 'live', icao: site.icao, moment, tilt, colors, maxSize: size || drawSize(), known: last?.cutKey });
+  } catch (err) {
+    if (err.code !== 'NO_DATA') throw err;
+    return fetchLevel2Latest(site, moment, colors, signal, { tilt, drawSize: size }); // not in the real-time feed
+  }
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  if (out.unchanged && last) return last.result; // same tilt scan as last time: nothing to redraw
+  const result = toResult(out, colors, out.cutKey);
+  liveLast.set(id, { cutKey: out.cutKey, result });
+  while (liveLast.size > 8) liveLast.delete(liveLast.keys().next().value);
+  return result;
+}
+
+function toResult(out, colors, id) {
+  const m = out.meta;
+  const canvas = document.createElement('canvas');
+  canvas.width = out.image.width;
+  canvas.height = out.image.height;
+  canvas.getContext('2d').putImageData(new ImageData(out.image.rgba, out.image.width, out.image.height), 0, 0);
+  return {
+    validTime: new Date(m.scanTime),
+    details: {
+      vcp: m.vcp,
+      elevation: Number(m.tilt), // display angle (0.1°); the precise mean angle stays in radial for beam math
+      tilt: m.tilt,
+      radialDeg: Math.round((360 / m.nrad) * 10) / 10,
+      level2: true,
+      canvas,
+      bounds: out.image.bounds,
+      radial: { ...m, key: id, colors, data: out.data, starts: out.starts, deltas: out.deltas, azTable: buildAzimuthTable(out.starts, out.deltas) },
+      perf: { file: id },
+    },
+  };
+}
+
 const results = new Map(); // `${key}|${moment}|${tilt}@${size}` -> Promise
 const drawSize = () => (Math.min(window.innerWidth, window.innerHeight) < 700 ? 1536 : 2048);
 
@@ -77,27 +130,7 @@ export function fetchLevel2Key(key, moment, colors, { tilt, drawSize: size } = {
   const maxSize = size || drawSize();
   const id = `${key}|${moment}|${tilt || ''}@${maxSize}`;
   if (!results.has(id)) {
-    const job = call({ type: 'sweep', key, moment, tilt, colors, maxSize }).then((out) => {
-      const m = out.meta;
-      const canvas = document.createElement('canvas');
-      canvas.width = out.image.width;
-      canvas.height = out.image.height;
-      canvas.getContext('2d').putImageData(new ImageData(out.image.rgba, out.image.width, out.image.height), 0, 0);
-      return {
-        validTime: new Date(m.scanTime),
-        details: {
-          vcp: m.vcp,
-          elevation: Number(m.tilt), // display angle (0.1°); the precise mean angle stays in radial for beam math
-          tilt: m.tilt,
-          radialDeg: Math.round((360 / m.nrad) * 10) / 10,
-          level2: true,
-          canvas,
-          bounds: out.image.bounds,
-          radial: { ...m, key: id, colors, data: out.data, starts: out.starts, deltas: out.deltas, azTable: buildAzimuthTable(out.starts, out.deltas) },
-          perf: { file: key },
-        },
-      };
-    });
+    const job = call({ type: 'sweep', key, moment, tilt, colors, maxSize }).then((out) => toResult(out, colors, out.cutKey));
     job.catch(() => results.delete(id));
     results.set(id, job);
     while (results.size > 6) results.delete(results.keys().next().value);
