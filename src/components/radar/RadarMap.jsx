@@ -36,6 +36,39 @@ function Panes() {
 //   { kind: 'wms', url, params }  map images rendered on request (e.g. NWS)
 //   { kind: 'canvas', canvas, bounds }  an image we drew ourselves (Level III),
 //                                       already in the map's projection
+// Map tiles with weak returns hidden: pixels whose color is one of
+// spec.hideColors (exact palette colors, as 0xRRGGBB) become transparent.
+// Values are never changed, only left out.
+const FilteredTiles = L.TileLayer.extend({
+  createTile(coords, done) {
+    const size = this.getTileSize();
+    const canvas = document.createElement('canvas');
+    canvas.width = size.x;
+    canvas.height = size.y;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, size.x, size.y);
+      try {
+        const d = ctx.getImageData(0, 0, size.x, size.y);
+        const px = d.data;
+        const hide = this.options.hideColors;
+        for (let i = 0; i < px.length; i += 4) {
+          if (px[i + 3] && hide.has((px[i] << 16) | (px[i + 1] << 8) | px[i + 2])) px[i + 3] = 0;
+        }
+        ctx.putImageData(d, 0, 0);
+      } catch {
+        // can't read the pixels: show the tile unfiltered
+      }
+      done(null, canvas);
+    };
+    img.onerror = (e) => done(e, canvas);
+    img.src = this.getTileUrl(coords);
+    return canvas;
+  },
+});
+
 function createRadarLayer(spec, { opacity, maxNativeZoom, attribution }) {
   if (spec.kind === 'canvas') {
     // A decoded scan may be shared by several panels, but one canvas element
@@ -77,6 +110,7 @@ function createRadarLayer(spec, { opacity, maxNativeZoom, attribution }) {
     // because the server renders each image fresh for exactly this area.
     return L.tileLayer.wms(spec.url, { ...common, ...spec.params, tileSize: 512 });
   }
+  if (spec.hideColors) return new FilteredTiles(spec.url, { ...common, maxNativeZoom, hideColors: spec.hideColors });
   return L.tileLayer(spec.url, { ...common, maxNativeZoom });
 }
 

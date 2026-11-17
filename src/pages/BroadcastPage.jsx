@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Sun, Moon, Cloud, CloudSun, CloudMoon, CloudRain, CloudDrizzle, CloudLightning, CloudSnow, CloudFog, Wind, Snowflake } from 'lucide-react';
 import RadarMap from '../components/radar/RadarMap';
 import { getProduct } from '../radar/products';
+import N0Q_PALETTE from '../radar/data/iem-n0q-palette.json';
 import { useRadarFrame } from '../radar/useRadarFrame';
 import { subscribeWarnings } from '../radar/providers/warnings';
 import { warningName, bannerText, bannerTime, zoneForStation } from '../radar/post';
@@ -22,7 +23,16 @@ const SEGMENTS = [
   { id: 'now', ms: 10000, label: 'Current Conditions' },
   { id: 'forecast', ms: 13000, label: '5-Day Forecast' },
 ];
-const ZOOM = 7;
+const ZOOM = 8;
+// TV-style radar: hide weak returns (clutter, insects, noise) below this many
+// dBZ. Light rain and most light snow are above it.
+const HIDE_BELOW_DBZ = 10;
+// IEM's palette has one unique color per 0.5 dBZ step (index i -> -32 + 0.5(i-1)),
+// so "below the threshold" is an exact list of colors.
+const WEAK_COLORS = new Set(
+  N0Q_PALETTE.colors.slice(1, 1 + (HIDE_BELOW_DBZ + 32) / 0.5).map((c) => parseInt(c.slice(1), 16))
+);
+const radarLayer = (t) => ({ ...product.layer(null, t), hideColors: WEAK_COLORS });
 const LOOP_FRAMES = 8;
 const LOOP_MS = 500;
 const LOOP_HOLD = 4; // extra ticks on the newest image
@@ -80,6 +90,34 @@ function iconFor(text, day = true) {
   if (/partly|mostly sunny|mostly clear|few clouds/.test(t)) return day ? CloudSun : CloudMoon;
   if (/cloud|overcast/.test(t)) return Cloud;
   return day ? Sun : Moon;
+}
+
+// Download the radar map squares the next city will need, for every loop
+// frame, while the current city is on screen. When the camera lands, the
+// browser already has them, so the radar appears whole instead of square by
+// square. Same squares the map would load anyway, just earlier.
+const prefetched = [];
+function prefetchRadar(specs, city) {
+  const z = Math.min(ZOOM, product.maxNativeZoom || ZOOM);
+  // Web Mercator pixel position of the city at zoom z (the map's own projection).
+  const size = 256 * 2 ** z;
+  const lat = (city.lat * Math.PI) / 180;
+  const p = { x: ((city.lon + 180) / 360) * size, y: ((1 - Math.log(Math.tan(lat) + 1 / Math.cos(lat)) / Math.PI) / 2) * size };
+  const half = { x: W / 2, y: (H - BAR) / 2 };
+  const [x0, x1] = [Math.floor((p.x - half.x) / 256), Math.floor((p.x + half.x) / 256)];
+  const [y0, y1] = [Math.floor((p.y - half.y) / 256), Math.floor((p.y + half.y) / 256)];
+  prefetched.length = 0; // let the previous batch go
+  for (const spec of specs) {
+    if (spec.kind !== 'xyz') continue;
+    for (let x = x0; x <= x1; x++) {
+      for (let y = y0; y <= y1; y++) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous'; // same request mode as the map's own tiles, so the cached copy is reused
+        img.src = spec.url.replace('{s}', '').replace('{z}', z).replace('{x}', x).replace('{y}', y);
+        prefetched.push(img);
+      }
+    }
+  }
 }
 
 // ---------- pieces
@@ -285,6 +323,8 @@ function BroadcastPage() {
   const [weather, setWeather] = useState({}); // city index -> data | 'error'
   const [warnState, setWarnState] = useState(null);
   const frame = useRadarFrame(product, null, undefined);
+  const stillTime = frame.status === 'ok' ? frame.validTime.getTime() : 0;
+  const stillLayer = useMemo(() => (stillTime ? radarLayer(new Date(stillTime)) : null), [stillTime]);
 
   // Radar loop: the latest real mosaic images, refreshed every few minutes.
   // A new list replaces the old one only when a newer image exists.
@@ -299,7 +339,7 @@ function BroadcastPage() {
         const times = await product.frames(null, LOOP_FRAMES, ctl.signal);
         if (times.length < 2) return;
         setLoop((old) =>
-          old && old.times[old.times.length - 1].getTime() === times[times.length - 1].getTime() ? old : { times, specs: times.map((t) => product.layer(null, t)) }
+          old && old.times[old.times.length - 1].getTime() === times[times.length - 1].getTime() ? old : { times, specs: times.map(radarLayer) }
         );
       } catch {
         // keep the current loop; the still image is shown if there is none
@@ -350,6 +390,14 @@ function BroadcastPage() {
         .catch(() => setWeather((w) => ({ ...w, [i]: 'error' })));
     }
   }, [cityIdx, nextIdx]);
+
+  // Radar for the next city, loaded ahead of time (a few seconds in, so the
+  // current city's own squares go first).
+  useEffect(() => {
+    if (!loop) return undefined;
+    const id = setTimeout(() => prefetchRadar(loop.specs, TOUR[nextIdx]), 8000);
+    return () => clearTimeout(id);
+  }, [cityIdx, loop]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fly to the city at the start of its turn.
   useEffect(() => {
@@ -406,7 +454,7 @@ function BroadcastPage() {
         <div className="absolute inset-x-0 top-0 z-0" style={{ height: H - BAR, isolation: 'isolate' }}>
           <RadarMap
             product={product}
-            layer={frame.status === 'ok' ? frame.layer : null}
+            layer={stillLayer}
             details={null}
             opacity={0.85}
             initialView={{ lat: city.lat, lon: city.lon, zoom: ZOOM }}
