@@ -60,7 +60,7 @@ export default function StationPage() {
 
         <section className="mt-10">
           <h2 className="text-xl font-semibold text-white">Live radar</h2>
-          <div className="mt-4 h-[420px] sm:h-[500px] overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f17]">
+          <div className="isolate mt-4 h-[420px] sm:h-[500px] overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f17]">
             <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-slate-400">Loading live radar…</div>}>
               <RadarEmbed stationId={radar.id} center={{ lat: radar.lat, lon: radar.lon, zoom: 7 }} />
             </Suspense>

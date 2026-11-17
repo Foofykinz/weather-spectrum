@@ -1,12 +1,21 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import {
   FIRST_YEAR, STATES, loadTornadoWarnings, periodFromParams, periodToParams, periodLabel, periodInRange, shiftPeriod, sundayOf, summarize,
 } from '../warnings/history';
 import OFFICES from '../warnings/wfo-names.json';
 
 const TornadoWarningMap = lazy(() => import('../components/seo/TornadoWarningMap'));
+const WarningPostMaker = lazy(() => import('../components/seo/WarningPostMaker'));
+const THEME_KEY = 'ws-warnings-map-theme';
+const savedTheme = () => {
+  try {
+    return localStorage.getItem(THEME_KEY) === 'light' ? 'light' : 'dark';
+  } catch {
+    return 'dark';
+  }
+};
 
 // Every NWS tornado warning issued nationwide in a year, month or week.
 const OUTSIDE = { SJU: 'TJSJ', HFO: 'PHFO', GUM: 'PGUM', AFC: 'PAFC', AFG: 'PAFG', AJK: 'PAJK' };
@@ -31,6 +40,18 @@ export default function TornadoWarnings() {
   const [data, setData] = useState({ status: 'idle' });
   const [focus, setFocus] = useState(null);
   const [shown, setShown] = useState(PAGE);
+  const [theme, setThemeState] = useState('dark');
+  useEffect(() => setThemeState(savedTheme()), []);
+  const setTheme = (t) => {
+    setThemeState(t);
+    try {
+      localStorage.setItem(THEME_KEY, t);
+    } catch {
+      // not saved; fine
+    }
+  };
+  const mapRef = useRef(null);
+  const [post, setPost] = useState(null); // { pageBounds } while the post maker is open
   const label = periodLabel(period);
   const valid = periodInRange(period, now);
 
@@ -60,6 +81,14 @@ export default function TornadoWarnings() {
   const stats = useMemo(() => (list ? summarize(list, period) : null), [list, period]);
   const allStates = useMemo(() => (all ? summarize(all, period).byState : []), [all, period]);
   const max = stats ? Math.max(1, ...stats.bars.map((b) => b.count)) : 1;
+  const postInfo = useMemo(
+    () => (list && stats ? { period, now, state, count: list.length, stats, officeName: office } : null),
+    [list, stats, period, now, state]
+  );
+  const openPost = () => {
+    const b = mapRef.current?.getBounds();
+    setPost({ pageBounds: b ? [[b.getSouth(), b.getWest()], [b.getNorth(), b.getEast()]] : null });
+  };
 
   const popupHtml = useCallback((w) => {
     const radar = radarLink(w);
@@ -168,6 +197,14 @@ export default function TornadoWarnings() {
               <option key={s} value={s}>{STATES[s]} ({n})</option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={openPost}
+            disabled={!postInfo}
+            className="flex items-center gap-1.5 rounded-md border border-amber-500/70 bg-amber-500/15 px-3 py-1.5 text-sm font-semibold text-amber-200 hover:bg-amber-500/25 disabled:opacity-40"
+          >
+            <Share2 className="h-4 w-4" /> Make a post
+          </button>
         </div>
 
         <h2 className="mt-6 text-xl font-semibold text-white">
@@ -187,12 +224,25 @@ export default function TornadoWarnings() {
           ))}
         </div>
 
-        <div className="relative mt-4 h-[55vh] min-h-[320px] overflow-hidden rounded-2xl border border-white/10">
+        <div className="relative isolate mt-4 h-[55vh] min-h-[320px] overflow-hidden rounded-2xl border border-white/10">
           {typeof window !== 'undefined' && (
             <Suspense fallback={null}>
-              <TornadoWarningMap warnings={list || []} popupHtml={popupHtml} focus={focus} fit={!!state} />
+              <TornadoWarningMap warnings={list || []} popupHtml={popupHtml} focus={focus} fit={!!state} theme={theme} mapRef={mapRef} />
             </Suspense>
           )}
+          <div className="absolute right-2 top-2 z-[1000] flex rounded-md border border-slate-700 bg-slate-900/90 p-0.5 text-xs font-semibold" role="group" aria-label="Map style">
+            {[['dark', 'Dark'], ['light', 'Light']].map(([id, text]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setTheme(id)}
+                aria-pressed={theme === id}
+                className={`rounded px-2.5 py-1 ${theme === id ? 'bg-amber-500 text-slate-900' : 'text-slate-300 hover:text-white'}`}
+              >
+                {text}
+              </button>
+            ))}
+          </div>
           {data.status !== 'ok' && (
             <div className="absolute inset-x-0 top-3 z-[1000] mx-auto w-fit rounded-lg border border-slate-700 bg-slate-900/90 px-3 py-1.5 text-sm text-slate-200">
               {!valid
@@ -275,6 +325,12 @@ export default function TornadoWarnings() {
           </>
         )}
         {stats && list.length === 0 && <p className="mt-6 text-slate-300">No tornado warnings were issued{state ? ` in ${STATES[state]}` : ''} in {label}.</p>}
+
+        {post && postInfo && (
+          <Suspense fallback={null}>
+            <WarningPostMaker info={postInfo} warnings={list} pageBounds={post.pageBounds} theme={theme} onClose={() => setPost(null)} />
+          </Suspense>
+        )}
 
         <p className="mt-10 max-w-3xl text-xs leading-relaxed text-slate-500">
           Source: National Weather Service tornado warnings as archived by the{' '}

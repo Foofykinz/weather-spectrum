@@ -166,3 +166,42 @@ export function summarize(list, p) {
   const busiest = sorted(byDay)[0];
   return { byState: sorted(byState), byOffice: sorted(byOffice), bars, busiestDay: busiest ? { day: busiest[0], count: busiest[1] } : null };
 }
+
+// "May 1 to May 31, 2024", with the end cut at now for a period still under way.
+export function rangeText(p, now = new Date()) {
+  const [a, b] = periodRange(p);
+  const ongoing = b > now;
+  const last = ongoing ? now : new Date(b.getTime() - 86400e3);
+  const f = (d, year) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', ...(year ? { year: 'numeric' } : {}) });
+  return { text: `${f(a, a.getFullYear() !== last.getFullYear())} to ${f(last, true)}`, ongoing };
+}
+
+// For sentences: "in May 2024", "in 2026 so far", "from May 5 to May 11, 2024".
+export function periodPhrase(p, now = new Date()) {
+  const { text, ongoing } = rangeText(p, now);
+  if (p.kind === 'week') return `from ${text}`;
+  return `in ${periodLabel(p)}${ongoing ? ' so far' : ''}`;
+}
+
+// Area to frame a set of warnings: the lower 48 part of them, unless they're
+// all outside it (Alaska, Hawaii, Puerto Rico...). [[s, w], [n, e]]
+export const LOWER_48 = [[24.4, -125], [49.4, -66.9]];
+export function boundsFor(list) {
+  const inside = (w) => w.center[0] > 24 && w.center[0] < 50 && w.center[1] > -125.5 && w.center[1] < -66;
+  const use = list.some(inside) ? list.filter(inside) : list;
+  if (!use.length) return LOWER_48;
+  let [s, w, n, e] = [90, 180, -90, -180];
+  for (const x of use) {
+    const g = x.geometry.type === 'Polygon' ? [x.geometry.coordinates] : x.geometry.coordinates;
+    for (const poly of g) for (const [lon, lat] of poly[0]) {
+      s = Math.min(s, lat);
+      n = Math.max(n, lat);
+      w = Math.min(w, lon);
+      e = Math.max(e, lon);
+    }
+  }
+  // Not tighter than about 3 degrees, so one warning isn't a close-up of nothing.
+  const padLat = Math.max(0, (3 - (n - s)) / 2);
+  const padLon = Math.max(0, (4 - (e - w)) / 2);
+  return [[s - padLat, w - padLon], [n + padLat, e + padLon]];
+}

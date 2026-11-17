@@ -28,7 +28,7 @@ export default function EventPage() {
           {e.place} · {e.rating} · NEXRAD {station.icao} ({station.name})
         </p>
 
-        <div className="mt-6 h-[440px] sm:h-[560px] overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f17]">
+        <div className="isolate mt-6 h-[440px] sm:h-[560px] overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f17]">
           <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-slate-400">Loading the radar replay…</div>}>
             <EventReplay event={e} />
           </Suspense>

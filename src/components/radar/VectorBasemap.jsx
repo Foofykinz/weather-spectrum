@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 
 // Dark basemap from OpenFreeMap (https://openfreemap.org/): free, no API key,
@@ -6,14 +6,14 @@ import { useMap } from 'react-leaflet';
 //
 // OpenFreeMap serves *vector* map data, which Leaflet can't draw on its own,
 // so MapLibre GL renders it inside the Leaflet map. MapLibre is large, so it's
-// loaded only when the radar page opens â€” the rest of the site stays light.
+// loaded only when the radar page opens, so the rest of the site stays light.
 //
 // The style is split into two layers so the radar sits in between:
 //   below radar: land, water, roads           (Leaflet "tilePane")
 //   above radar: borders + place names        (our "labels" pane)
 // That keeps towns and state lines readable inside heavy precipitation.
 
-const STYLE_URL = 'https://tiles.openfreemap.org/styles/dark';
+const STYLE_URLS = { dark: 'https://tiles.openfreemap.org/styles/dark', light: 'https://tiles.openfreemap.org/styles/positron' };
 
 export const OPENFREEMAP_ATTRIBUTION =
   '<a href="https://openfreemap.org/" target="_blank" rel="noopener noreferrer">OpenFreeMap</a> ' +
@@ -32,6 +32,32 @@ const legiblePlaceName = (layer) =>
       }
     : layer;
 
+// Light theme: OpenFreeMap Positron, recolored ("slate"): gray-blue land,
+// muted blue water, and solid state and country lines that show at national
+// zoom (Positron's own are pale and dashed).
+const SLATE = { land: '#cfd5dd', land2: '#c7ced8', water: '#8ea6bb', state: '#7b8697', country: '#4b5563', stateLabel: '#374151' };
+function slateStyle(style) {
+  const layers = style.layers.map((l) => {
+    const paint = { ...(l.paint || {}) };
+    let extra = {};
+    if (l.id === 'background') paint['background-color'] = SLATE.land;
+    else if (l.id === 'water' || l.id === 'waterway') paint[l.type === 'fill' ? 'fill-color' : 'line-color'] = SLATE.water;
+    else if (l.type === 'fill' && (l.id === 'park' || l.id.startsWith('landuse') || l.id.startsWith('landcover'))) paint['fill-color'] = SLATE.land2;
+    else if (l.id === 'boundary_3') {
+      paint['line-color'] = SLATE.state;
+      delete paint['line-dasharray'];
+      paint['line-width'] = ['interpolate', ['linear'], ['zoom'], 3, 0.6, 7, 1.2, 11, 2];
+      extra = { minzoom: 2 };
+    } else if (l.id === 'boundary_2') {
+      paint['line-color'] = SLATE.country;
+      paint['line-opacity'] = 1;
+      paint['line-width'] = ['interpolate', ['linear'], ['zoom'], 3, 1.2, 8, 2.2];
+    } else if (l.id === 'label_state') paint['text-color'] = SLATE.stateLabel;
+    return { ...l, ...extra, paint };
+  });
+  return { ...style, layers };
+}
+
 function splitStyle(style) {
   const below = { ...style, layers: style.layers.filter((l) => !isOverlayLayer(l)) };
   const above = { ...style, layers: style.layers.filter(isOverlayLayer).map(legiblePlaceName) };
@@ -40,7 +66,8 @@ function splitStyle(style) {
 
 // split=false draws the whole style in one layer (labels under the radar). Used
 // in multi-panel views to halve the number of WebGL contexts per panel.
-export default function VectorBasemap({ labelsPane, onError, split = true }) {
+// theme: 'dark' (default) or 'light' (OpenFreeMap Positron, recolored: see slateStyle).
+export default function VectorBasemap({ labelsPane, onError, split = true, theme = 'dark' }) {
   const map = useMap();
 
   useEffect(() => {
@@ -54,7 +81,7 @@ export default function VectorBasemap({ labelsPane, onError, split = true }) {
           import('@maplibre/maplibre-gl-leaflet'),
           import('maplibre-gl'),
           import('maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url'),
-          fetch(STYLE_URL).then((r) => {
+          fetch(STYLE_URLS[theme] || STYLE_URLS.dark).then((r) => {
             if (!r.ok) throw new Error(`Basemap style returned ${r.status}`);
             return r.json();
           }),
@@ -63,13 +90,13 @@ export default function VectorBasemap({ labelsPane, onError, split = true }) {
         if (cancelled) return;
         maplibre.setWorkerUrl(workerUrl);
 
-        const { below, above } = splitStyle(style);
+        const { below, above } = splitStyle(theme === 'light' ? slateStyle(style) : style);
         const common = { interactive: false, attributionControl: false };
         if (split) {
           layers.push(maplibreGL({ ...common, style: below, pane: 'tilePane' }).addTo(map));
           layers.push(maplibreGL({ ...common, style: above, pane: labelsPane }).addTo(map));
         } else {
-          const whole = { ...style, layers: style.layers.map(legiblePlaceName) };
+          const whole = theme === 'light' ? slateStyle(style) : { ...style, layers: style.layers.map(legiblePlaceName) };
           layers.push(maplibreGL({ ...common, style: whole, pane: 'tilePane' }).addTo(map));
         }
         map._wsBasemaps = layers; // read by the post maker's snapshot
@@ -85,7 +112,7 @@ export default function VectorBasemap({ labelsPane, onError, split = true }) {
       layers.forEach((l) => map.removeLayer(l));
       map.attributionControl?.removeAttribution(OPENFREEMAP_ATTRIBUTION);
     };
-  }, [map, labelsPane, split]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [map, labelsPane, split, theme]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return null;
 }

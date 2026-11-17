@@ -41,7 +41,7 @@ export default function CityRadar() {
           {fmt(nearest.mi)} miles {compass(nearest.bearing)} of the city center.
         </p>
 
-        <div className="mt-6 h-[420px] sm:h-[520px] overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f17]">
+        <div className="isolate mt-6 h-[420px] sm:h-[520px] overflow-hidden rounded-2xl border border-white/10 bg-[#0b0f17]">
           <Suspense fallback={<div className="flex h-full items-center justify-center text-sm text-slate-400">Loading live radar…</div>}>
             <RadarEmbed stationId={primary.id} center={{ lat: city.lat, lon: city.lon, zoom: 8 }} />
           </Suspense>
