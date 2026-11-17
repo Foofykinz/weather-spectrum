@@ -12,6 +12,9 @@ export const SIZES = [
   { id: 'portrait', label: 'Tall', note: '1080 x 1350', w: 1080, h: 1350 },
 ];
 
+// Reels / Shorts / TikTok.
+export const VERTICAL = { id: 'vertical', label: 'Vertical', note: '1080 x 1920', w: 1080, h: 1920 };
+
 export const STYLES = [
   { id: 'spectrum', label: 'Spectrum', note: 'Navy bars, orange accent' },
   { id: 'alert', label: 'Alert', note: 'Banner in the warning color' },
@@ -506,8 +509,8 @@ export function drawPost(canvas, snap, crop, info, opts, legendImg) {
 
   if (style.id === 'clean') {
     // Headline in a box at top-left, credits along the bottom.
-    const hs = fitText(ctx, opts.headline, font.head, headWeight, 54, size.w - M * 4, 22);
-    const ss = 22;
+    const ss = fitText(ctx, opts.subline, font.body, 400, Math.round(Math.max(22, size.h * 0.02)), size.w - M * 2 - 40, 12);
+    const hs = fitText(ctx, opts.headline, font.head, headWeight, Math.round(Math.max(54, size.h * 0.045)), size.w - M * 2 - 40, 16);
     ctx.font = `400 ${ss}px ${font.body}`;
     const sw = ctx.measureText(opts.subline).width;
     ctx.font = `${headWeight} ${hs}px ${font.head}`;
@@ -561,14 +564,15 @@ export function drawPost(canvas, snap, crop, info, opts, legendImg) {
   ctx.fillStyle = alertBand ? 'rgba(0,0,0,0.35)' : accent;
   ctx.fillRect(0, area.head - 6, size.w, 6);
 
-  const hs = fitText(ctx, opts.headline, font.head, headWeight, Math.round(area.head * 0.46), size.w - M * 2, 22);
-  const ss = Math.round(Math.max(18, area.head * 0.2));
+  const headText = alertBand ? opts.headline.toUpperCase() : opts.headline;
+  const ss = fitText(ctx, opts.subline, font.body, 400, Math.round(Math.max(18, area.head * 0.2)), size.w - M * 2, 12);
+  const hs = fitText(ctx, headText, font.head, headWeight, Math.round(area.head * 0.46), size.w - M * 2, 16);
   const gap = 6;
   const block = hs + gap + ss;
   const y0 = Math.round((area.head - 6 - block) / 2);
   ctx.textBaseline = 'top';
   ctx.fillStyle = dark ? '#0b1220' : '#ffffff';
-  ctx.fillText(alertBand ? opts.headline.toUpperCase() : opts.headline, M, y0);
+  ctx.fillText(headText, M, y0);
   ctx.font = `400 ${ss}px ${font.body}`;
   ctx.fillStyle = alertBand ? (dark ? '#1e293b' : 'rgba(255,255,255,0.88)') : '#fcd34d';
   ctx.fillText(opts.subline, M, y0 + hs + gap);

@@ -12,7 +12,7 @@ import ProductPanel from '../components/radar/ProductPanel';
 import GlmStatus from '../components/radar/GlmStatus';
 import WarningsStatus from '../components/radar/WarningsStatus';
 import PastPicker from '../components/radar/PastPicker';
-import { useArchive, timeFromParam, timeToParam } from '../radar/archive';
+import { useArchive, loadArchive, timeFromParam, timeToParam } from '../radar/archive';
 import { getProduct, DEFAULT_PRODUCT_ID, LEVEL3_TILTS, archiveProductId } from '../radar/products';
 import { getStation, nearestStation } from '../radar/stations';
 import { useRadarFrame, useNow } from '../radar/useRadarFrame';
@@ -114,9 +114,10 @@ function SingleRadar() {
   const [loopError, setLoopError] = useState(null);
   const loopReq = useRef(null);
   const pastSpecs = React.useMemo(() => pastFrames?.map((f) => f.layer), [pastFrames]);
-  const warnTimes = pastFrames ? pastFrames.map((f) => f.validTime) : anim?.times;
-  const warningsAtTime = useWarningsHistory(warnTimes, warningsOn && (pastFrames ? true : !!anim));
-  const warnIndex = pastFrames ? Math.min(pastAnim.index, pastFrames.length - 1) : anim?.index;
+  const [video, setVideo] = useState(null); // { specs, times, index } while frames for a video are captured
+  const warnTimes = video ? video.times : pastFrames ? pastFrames.map((f) => f.validTime) : anim?.times;
+  const warningsAtTime = useWarningsHistory(warnTimes, warningsOn && (video || pastFrames ? true : !!anim));
+  const warnIndex = video ? video.index : pastFrames ? Math.min(pastAnim.index, pastFrames.length - 1) : anim?.index;
 
   // Past mode: products with no archive switch to the closest one that has one.
   useEffect(() => {
@@ -213,6 +214,47 @@ function SingleRadar() {
     }
   };
 
+  // Video: show each loop scan on the map in turn and copy it, with the
+  // warnings in effect at that scan. Returns [{ snap, time, alerts, details }].
+  const makeVideoFrames = async (onProgress) => {
+    const map = mapRef.current;
+    const ctl = new AbortController();
+    let src;
+    if (pastFrames) src = pastFrames;
+    else if (anim) src = anim.times.map((t, i) => ({ validTime: t, layer: anim.specs[i] }));
+    else if (product.archive && (product.scope !== 'site' || station))
+      src = await loadArchive(product, site, tilt, new Date(), ctl.signal, (d, n) => onProgress(`Loading scans ${d}/${n}`));
+    else if (canLoop) src = (await product.frames(site, LOOP_FRAMES, ctl.signal)).map((t) => ({ validTime: t, layer: product.layer(site, t) }));
+    else throw new Error('This product has no loop to make a video from.');
+    if (src.length < 2) throw new Error('Not enough scans for a video.');
+    const times = src.map((f) => f.validTime);
+    const { snapshotMap } = await import('../radar/snapshot');
+    const box = map.getContainer().getBoundingClientRect();
+    const scale = Math.min(2, Math.max(1, 1700 / box.height));
+    const wait = async (ok, ms) => {
+      for (let t = 0; t < ms && !ok(); t += 100) await new Promise((r) => setTimeout(r, 100));
+    };
+    const out = [];
+    setVideo({ specs: src.map((f) => f.layer), times, index: 0 });
+    try {
+      for (let i = 0; i < src.length; i++) {
+        onProgress(`Drawing scan ${i + 1}/${src.length}`);
+        setVideo((v) => ({ ...v, index: i }));
+        const t = times[i].getTime();
+        await wait(() => {
+          const w = map._wsWarnings;
+          return !warningsOn || (w && !w.loading && w.at?.getTime?.() === t);
+        }, 20000);
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const snap = await snapshotMap(map, scale);
+        out.push({ snap, time: times[i], alerts: warningsOn ? map._wsWarnings : null, details: src[i].details });
+      }
+    } finally {
+      setVideo(null);
+    }
+    return out;
+  };
+
   const pickNearest = useCallback(() => {
     const v = viewRef.current;
     const s = nearestStation(v.lat, v.lon);
@@ -281,7 +323,9 @@ function SingleRadar() {
         onBasemapError={setBasemapError}
         lightning={lightningOn && !past}
         animation={
-          pastFrames && pastAnim.playing
+          video
+            ? { specs: video.specs, index: video.index, onLoaded: noop }
+            : pastFrames && pastAnim.playing
             ? { specs: pastSpecs, index: pastAnim.index, onLoaded: noop }
             : anim
               ? { specs: anim.specs, index: anim.index, onLoaded: onFramesLoaded }
@@ -289,12 +333,12 @@ function SingleRadar() {
         }
         onLightningStatus={setLightningStatus}
         warnings={warningsOn}
-        warningsFrame={warnTimes && (pastFrames || anim) ? warningsAtTime(warnTimes[warnIndex]) : undefined}
+        warningsFrame={warnTimes && (video || pastFrames || anim) ?warningsAtTime(warnTimes[warnIndex]) : undefined}
         onWarningsStatus={setWarningsStatus}
         mapRef={mapRef}
       />
 
-      {post?.snap && <PostMaker snap={post.snap} base={post.base} onClose={() => setPost(null)} />}
+      {post?.snap && <PostMaker snap={post.snap} base={post.base} makeVideoFrames={makeVideoFrames} onClose={() => setPost(null)} />}
 
       {/* Top-left: navigation, product button, status. pointer-events-none lets
           map drags pass through the empty space between controls. */}

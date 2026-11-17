@@ -21,7 +21,7 @@ export function timeFromParam(v) {
 }
 export const timeToParam = (d) => d.toISOString().slice(0, 16) + 'Z';
 
-async function loadArchive(product, site, tilt, end, signal, onProgress) {
+export async function loadArchive(product, site, tilt, end, signal, onProgress) {
   const a = product.archive;
   if (a.times) {
     const times = await a.times(site, end, ARCHIVE_FRAMES, signal);

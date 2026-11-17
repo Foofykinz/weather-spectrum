@@ -63,9 +63,15 @@ function dangerOf({ tornadoThreat, stormThreat, floodThreat }) {
 
 // ---------- live warnings (NWS API)
 
+// Same warning, same key, in both the live NWS feed and the IEM archive:
+// office (3 letters) . phenomenon . significance . event number.
+const eventKey = (wfo, phen, sig, etn) => `${String(wfo).slice(-3)}.${phen}.${sig}.${Number(etn)}`;
+
 function liveWarning(f) {
   const p = f.properties;
+  const v = (p.parameters?.VTEC || []).map(parseVtec).find(Boolean);
   const w = {
+    key: v ? eventKey(v.office, v.phen, v.sig, v.etn) : p.id,
     id: p.id,
     type: WARN_BY_EVENT.get(p.event),
     geometry: f.geometry,
@@ -228,6 +234,7 @@ function pastWarning(f) {
   const type = WARN_BY_PHEN.get(p.phenomena);
   const isTor = p.phenomena === 'TO';
   const w = {
+    key: eventKey(p.wfo, p.phenomena, p.significance, p.eventid),
     id: f.id,
     type,
     geometry: f.geometry,
