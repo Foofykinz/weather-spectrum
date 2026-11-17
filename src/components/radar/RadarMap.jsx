@@ -495,6 +495,7 @@ export default function RadarMap({
   stormsTime, // undefined = live; a Date = the storms at that frame
   stormsRadar = null, // only this radar's detections (single-radar view)
   stormsTimes, // all loop frame times, preloaded
+  overlay, // GeoJSON features with their own fill/stroke colors (e.g. SPC outlooks)
 }) {
   return (
     <MapContainer
@@ -537,12 +538,42 @@ export default function RadarMap({
       {lightning && <GlmLayer onStatus={onLightningStatus} />}
       {warnings && <WarningsLayer frame={warningsFrame} onStatus={onWarningsStatus} />}
       {storms && <StormsLayer time={stormsTime} times={stormsTimes} radar={stormsRadar} />}
+      {overlay?.length > 0 && <GeoOverlay features={overlay} />}
       <MapSync group={syncGroup} />
       <AutoResize />
       {primary && <ViewWatcher onViewChange={onViewChange} />}
       {primary && <ZoomButtons />}
     </MapContainer>
   );
+}
+
+// Filled shapes from GeoJSON features that carry their own colors
+// (properties.fill / properties.stroke), e.g. SPC outlook areas. Drawn above
+// the radar and below warnings; not clickable.
+function GeoOverlay({ features }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map.getPane('outlook')) {
+      const pane = map.createPane('outlook');
+      pane.style.zIndex = '420';
+      pane.style.pointerEvents = 'none';
+    }
+    const renderer = L.svg({ pane: 'outlook' });
+    const layer = L.geoJSON(
+      { type: 'FeatureCollection', features },
+      {
+        pane: 'outlook',
+        renderer,
+        interactive: false,
+        style: (f) => ({ color: f.properties.stroke || '#ffffff', weight: 2, opacity: 0.95, fillColor: f.properties.fill || '#888888', fillOpacity: 0.5 }),
+      }
+    ).addTo(map);
+    return () => {
+      layer.remove();
+      renderer.remove();
+    };
+  }, [map, features]);
+  return null;
 }
 
 function MapHandle({ mapRef }) {

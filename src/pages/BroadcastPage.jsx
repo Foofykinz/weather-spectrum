@@ -8,6 +8,7 @@ import { subscribeWarnings, loadHistory } from '../radar/providers/warnings';
 import EventView from '../components/broadcast/EventView';
 import { isEventWorthy, sortEvents, boundsOf } from '../broadcast/event';
 import { nearestStation } from '../radar/stations';
+import { fetchOutlook, CATEGORIES, DEFAULT_FILL } from '../broadcast/spc';
 import { warningName, bannerText, bannerTime, zoneForStation } from '../radar/post';
 import { TOUR } from '../broadcast/cities';
 import { cityWeather } from '../broadcast/nws';
@@ -28,6 +29,12 @@ const SEGMENTS = [
 ];
 const ZOOM = 8;
 const EVENT_MS = 25000; // time on each warning in event mode
+// SPC outlook stop: every 10 cities, Days 1-3, 12 seconds each, over a
+// whole-country view (shifted east so the panel on the left doesn't cover it).
+const OUTLOOK_EVERY = 10;
+const OUTLOOK_MS = 12000;
+const US_VIEW = { lat: 38.3, lon: -108.6, zoom: 4.8 };
+const SPC_TZ = 'America/Chicago';
 // TV-style radar: hide weak returns (clutter, insects, noise) below this many
 // dBZ. Light rain and most light snow are above it.
 const HIDE_BELOW_DBZ = 10;
@@ -273,6 +280,71 @@ function crawlText(state) {
   return [head, ...listed, 'Unofficial broadcast. Always follow official warnings: weather.gov'].join('      •      ');
 }
 
+const DAY_NAME = { 1: 'Day 1 · Today', 2: 'Day 2 · Tomorrow', 3: 'Day 3' };
+
+function OutlookPanel({ data }) {
+  const top = data?.top;
+  const severe = top && top.level >= 1;
+  const color = (id) => data?.features.find((f) => f.properties.LABEL === id)?.properties.fill || DEFAULT_FILL[id];
+  const when = (d) => (d ? d.toLocaleString('en-US', { timeZone: SPC_TZ, weekday: 'short', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' }) : '');
+  const prob = (label, p) =>
+    p && p.pct > 0 ? (
+      <div className="flex justify-between border-b border-white/10 pb-1">
+        <span className="text-slate-300">{label}</span>
+        <span className="font-semibold text-white">
+          up to {p.pct}%{p.significant ? ', significant' : ''}
+        </span>
+      </div>
+    ) : null;
+  return (
+    <Panel className="ws-bc-in" style={{ left: 40, top: 200, width: 560, height: 700 }}>
+      <div className="p-6" style={shadow}>
+        {data === undefined && <div className="text-[34px] text-slate-300">Loading the outlook...</div>}
+        {data === null && <div className="text-[34px] text-slate-300">Outlook unavailable right now.</div>}
+        {data && (
+          <>
+            <div className="text-[26px] font-semibold uppercase tracking-wide text-amber-300">Highest risk</div>
+            {severe ? (
+              <div className="mt-1 inline-block px-4 py-1 text-[46px] font-bold leading-tight text-[#0b1530]" style={{ background: color(top.id) }}>
+                {top.name} <span className="text-[30px]">({top.level} of 5)</span>
+              </div>
+            ) : (
+              <div className="mt-1 text-[40px] font-bold leading-tight text-white">No severe storms expected</div>
+            )}
+            {!severe && top && <div className="mt-1 text-[28px] text-slate-200">General thunderstorms possible</div>}
+            {data.cities.length > 0 && (
+              <div className="mt-3 text-[26px] leading-snug text-slate-100">
+                <span className="font-semibold text-amber-200">Includes: </span>
+                {data.cities.slice(0, 6).join(' · ')}
+                {data.cities.length > 6 ? ' and more' : ''}
+              </div>
+            )}
+            {data.probs && (data.probs.tornado.pct || data.probs.wind.pct || data.probs.hail.pct) ? (
+              <div className="mt-4 space-y-1 text-[26px]">
+                <div className="text-[20px] uppercase tracking-wide text-slate-400">Chance within 25 miles of a point</div>
+                {prob('Tornado', data.probs.tornado)}
+                {prob('Damaging wind', data.probs.wind)}
+                {prob('Large hail', data.probs.hail)}
+              </div>
+            ) : null}
+            <div className="mt-5 grid grid-cols-2 gap-x-4 gap-y-1 text-[22px]">
+              {CATEGORIES.map((c) => (
+                <div key={c.id} className={`flex items-center gap-2 ${data.features.some((f) => f.properties.LABEL === c.id) ? 'text-white' : 'text-slate-500'}`}>
+                  <span className="inline-block h-5 w-5 shrink-0 border border-black/40" style={{ background: color(c.id) }} />
+                  {c.level ? `${c.level} ${c.short}` : c.short}
+                </div>
+              ))}
+            </div>
+            <div className="absolute bottom-4 left-6 right-6 text-[19px] leading-snug text-slate-400">
+              NOAA Storm Prediction Center. Issued {when(data.issued)}; valid {when(data.valid)} to {when(data.expire)}.
+            </div>
+          </>
+        )}
+      </div>
+    </Panel>
+  );
+}
+
 // ---------- page
 
 // If anything ever breaks the page, show a holding screen and start fresh,
@@ -416,6 +488,39 @@ function BroadcastPage() {
   }, [eventMode, eventIdx, events]);
   // Event time zone: the warning's state (from its counties), else the nearest radar's.
   const eventTz = current ? zoneForStation({ state: (current.area || '').match(/,\s*([A-Z]{2})\b/)?.[1] || nearestStation(...boundsOf(current.geometry).center)?.state }) || undefined : undefined;
+  // ---- SPC outlook stop (every OUTLOOK_EVERY cities; ?outlook=1 starts with it).
+  const [outlook, setOutlook] = useState(() => (new URLSearchParams(window.location.search).get('outlook') === '1' ? 1 : 0)); // 0 = off, else the day shown
+  const [outlooks, setOutlooks] = useState({}); // day -> data | null
+  useEffect(() => {
+    if (!outlook || outlook !== 1) return;
+    for (const day of [1, 2, 3]) fetchOutlook(day, replay, TOUR).then((d) => setOutlooks((o) => ({ ...o, [day]: d })));
+  }, [outlook, replay]);
+  useEffect(() => {
+    if (!outlook || eventMode) return undefined;
+    const id = setTimeout(() => {
+      if (outlook < 3 && outlooks[outlook + 1] !== null) setOutlook(outlook + 1);
+      else {
+        setOutlook(0);
+        setSegIdx(0);
+        setCityIdx((i) => (i + 1) % TOUR.length);
+      }
+    }, OUTLOOK_MS);
+    return () => clearTimeout(id);
+  }, [outlook, eventMode, outlooks]);
+  useEffect(() => {
+    if (outlook !== 1) return undefined;
+    // The map may not exist yet when the page starts on the outlook stop: retry briefly.
+    let tries = 0;
+    let t = 0;
+    const fly = () => {
+      if (mapRef.current) mapRef.current.flyTo([US_VIEW.lat, US_VIEW.lon], US_VIEW.zoom, { duration: 4, easeLinearity: 0.2 });
+      else if (tries++ < 20) t = setTimeout(fly, 250);
+    };
+    fly();
+    return () => clearTimeout(t);
+  }, [outlook]);
+  const outlookData = outlook ? outlooks[outlook] : undefined;
+
   const replayInfo = useMemo(() => (replay ? { time: replay, warningsFrame: warnState || { loading: true, at: replay } } : null), [replay, warnState]);
 
   // Weather for this city and the next one (loaded ahead of time).
@@ -441,9 +546,10 @@ function BroadcastPage() {
     if (map) map.flyTo([city.lat, city.lon], ZOOM, { duration: 5, easeLinearity: 0.2 });
   }, [cityIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Segment timer (paused during event mode). Panels with no data are skipped.
+  // Segment timer (paused during event mode and the outlook stop). Panels with
+  // no data are skipped; every OUTLOOK_EVERY cities the outlook stop comes next.
   useEffect(() => {
-    if (eventMode) return undefined;
+    if (eventMode || outlook) return undefined;
     const id = setTimeout(() => {
       let s = segIdx + 1;
       const d = weather[cityIdx];
@@ -462,17 +568,21 @@ function BroadcastPage() {
         window.location.reload();
         return;
       }
+      if ((cityIdx + 1) % OUTLOOK_EVERY === 0) {
+        setOutlook(1); // the city advances when the outlook stop ends
+        return;
+      }
       setSegIdx(0);
       setCityIdx(nextIdx);
     }, seg.ms);
     return () => clearTimeout(id);
-  }, [segIdx, cityIdx, eventMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [segIdx, cityIdx, eventMode, outlook]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tz = current ? eventTz : data && data !== 'error' ? data.tz : undefined;
   const latest = loop ? loop.times[loop.times.length - 1] : frame.status === 'ok' ? frame.validTime : null;
   const radarTime = loop ? loop.times[Math.min(loopIdx, loop.times.length - 1)] : latest;
   const radarOld = latest && now - latest > 20 * 60e3;
-  const dim = seg.id === 'now' || seg.id === 'forecast';
+  const dim = !outlook && (seg.id === 'now' || seg.id === 'forecast');
 
   return (
     <div className="fixed inset-0 z-[3000] overflow-hidden bg-black" style={{ fontFamily: FONT }}>
@@ -497,7 +607,7 @@ function BroadcastPage() {
         <div className={`absolute inset-x-0 top-0 z-0 ${current ? 'hidden' : ''}`} style={{ height: H - BAR, isolation: 'isolate' }}>
           {!current && <RadarMap
             product={product}
-            layer={stillLayer}
+            layer={outlook ? null : stillLayer}
             details={null}
             opacity={0.85}
             initialView={{ lat: city.lat, lon: city.lon, zoom: ZOOM }}
@@ -507,7 +617,8 @@ function BroadcastPage() {
             onSelectStation={noop}
             onTileErrors={noop}
             onBasemapError={noop}
-            animation={loop ? { specs: loop.specs, index: Math.min(loopIdx, loop.specs.length - 1), onLoaded: noop } : null}
+            overlay={outlook ? outlookData?.features : undefined}
+            animation={loop && !outlook ? { specs: loop.specs, index: Math.min(loopIdx, loop.specs.length - 1), onLoaded: noop } : null}
             warnings
             primary={false}
             embed
@@ -520,11 +631,12 @@ function BroadcastPage() {
           {!current && (
           <>
           <TitlePlate
-            key={`${cityIdx}-${seg.id}`}
-            label={seg.label}
-            city={`${city.name}, ${city.state}`}
+            key={outlook ? `outlook-${outlook}` : `${cityIdx}-${seg.id}`}
+            label={outlook ? 'Severe Weather Outlook' : seg.label}
+            city={outlook ? DAY_NAME[outlook] : `${city.name}, ${city.state}`}
             sub={seg.id === 'radar' && data?.obs?.temp != null ? `${data.obs.temp}° ${data.obs.text || ''}` : null}
           />
+          {outlook ? <OutlookPanel key={outlook} data={outlookData} /> : (
           <div className="absolute right-10 top-9 text-right text-[28px] font-semibold" style={shadow}>
             {radarTime ? (
               <div className={`inline-block px-4 py-1 ${radarOld ? 'bg-amber-600/90 text-white' : 'bg-[#0c1638]/85 text-slate-200'}`}>
@@ -537,9 +649,10 @@ function BroadcastPage() {
               Next: {TOUR[nextIdx].name}, {TOUR[nextIdx].state}
             </div>
           </div>
+          )}
 
-          {seg.id === 'now' && data?.obs && <Conditions key={cityIdx} obs={data.obs} tz={tz} />}
-          {seg.id === 'forecast' && data?.days?.length > 0 && <Forecast key={cityIdx} days={data.days} />}
+          {!outlook && seg.id === 'now' && data?.obs && <Conditions key={cityIdx} obs={data.obs} tz={tz} />}
+          {!outlook && seg.id === 'forecast' && data?.days?.length > 0 && <Forecast key={cityIdx} days={data.days} />}
           </>
           )}
           {replay && (
