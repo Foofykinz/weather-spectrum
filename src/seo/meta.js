@@ -42,6 +42,11 @@ const STATIC = {
     description: 'What Weather Spectrum is, where its radar and lightning data come from, and how it should and should not be used.',
     jsonLd: [{ '@type': 'AboutPage', name: 'About Weather Spectrum', url: `${SITE}/about` }, ORG],
   },
+  '/storm-lab-pro': {
+    title: 'Storm Lab Pro | Weather Spectrum',
+    description: 'Storm Lab Pro from Weather Spectrum is coming soon.',
+    jsonLd: [{ '@type': 'WebPage', name: 'Storm Lab Pro', url: `${SITE}/storm-lab-pro` }],
+  },
   '/events': {
     title: 'Tornado Radar Replays: Historic Tornadoes on Real NEXRAD Radar | Weather Spectrum',
     description:

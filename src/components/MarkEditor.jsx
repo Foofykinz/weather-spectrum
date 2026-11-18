@@ -3,9 +3,13 @@ import { MousePointer2, Type, MoveUpRight, Circle, Image as ImageIcon, Trash2 } 
 import { MARK_COLORS, hitMark, markBounds } from '../posts/marks';
 
 // Add labels, arrows, circles and a logo stamp on the post preview, and drag
-// them around. view: the preview's makeView() result (null while it isn't ready).
+// them around.
+// view: the preview's makeView() result (null while it isn't ready).
+// boxes (optional): the picture's own boxes, which can be dragged too:
+// { rects: ref to { id: {x,y,w,h} } in canvas pixels, base(id) -> {fx,fy},
+//   move(id, {fx,fy}) } with offsets as fractions of the picture size.
 // Returns { marks, panel, overlay, canvasProps }.
-export function useMarkEditor({ canvasRef, view, font, logoImg }) {
+export function useMarkEditor({ canvasRef, view, font, logoImg, boxes }) {
   const [marks, setMarks] = useState([]);
   const [tool, setTool] = useState('select');
   const [selId, setSelId] = useState(null);
@@ -54,7 +58,16 @@ export function useMarkEditor({ canvasRef, view, font, logoImg }) {
     if (tool === 'select') {
       const hit = hitMark(c, marks, v, p.x, p.y, opts);
       setSelId(hit?.id || null);
-      if (!hit) return;
+      if (!hit) {
+        const rects = boxes?.rects.current || {};
+        const box = Object.keys(rects)
+          .reverse()
+          .find((k) => { const b = rects[k]; return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h; });
+        if (!box) return;
+        drag.current = { box, start: p, base: boxes.base(box) };
+        e.currentTarget.setPointerCapture?.(e.pointerId);
+        return;
+      }
       const m = marks.find((x) => x.id === hit.id);
       drag.current = { id: hit.id, part: hit.part, start: p, a: v.toCanvas(m.a), b: m.b ? v.toCanvas(m.b) : null };
     } else if (tool === 'label' || tool === 'logo') {
@@ -75,6 +88,10 @@ export function useMarkEditor({ canvasRef, view, font, logoImg }) {
     const v = viewRef.current;
     if (!d || !v) return;
     const p = point(e);
+    if (d.box) {
+      const c = canvasRef.current;
+      return boxes.move(d.box, { fx: d.base.fx + (p.x - d.start.x) / c.width, fy: d.base.fy + (p.y - d.start.y) / c.height });
+    }
     if (d.part === 'b') return update(d.id, { b: v.toLatLng(p.x, p.y) });
     const dx = p.x - d.start.x;
     const dy = p.y - d.start.y;
@@ -109,7 +126,7 @@ export function useMarkEditor({ canvasRef, view, font, logoImg }) {
     ...(logoImg ? [['logo', 'Logo', ImageIcon]] : []),
   ];
   const hint = {
-    select: marks.length ? 'Drag a mark to move it. Drag the end of an arrow or the edge of a circle to change it.' : 'Pick Label, Arrow or Circle, then tap the picture.',
+    select: boxes ? 'Drag the boxes on the picture to move them. Pick Label, Arrow or Circle to add marks.' : marks.length ? 'Drag a mark to move it. Drag the end of an arrow or the edge of a circle to change it.' : 'Pick Label, Arrow or Circle, then tap the picture.',
     label: 'Tap the picture where the label goes.',
     arrow: 'Drag on the picture from the start to the tip of the arrow.',
     circle: 'Drag from the center outward.',
@@ -209,7 +226,7 @@ export function useMarkEditor({ canvasRef, view, font, logoImg }) {
     onPointerMove,
     onPointerUp,
     onPointerCancel: () => (drag.current = null),
-    style: { touchAction: tool !== 'select' || marks.length ? 'none' : 'auto', cursor: tool === 'select' ? (marks.length ? 'move' : 'default') : 'crosshair' },
+    style: { touchAction: tool !== 'select' || marks.length || boxes ? 'none' : 'auto', cursor: tool === 'select' ? (marks.length || boxes ? 'move' : 'default') : 'crosshair' },
   };
 
   return { marks, panel, overlay, canvasProps };

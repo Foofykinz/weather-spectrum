@@ -103,7 +103,14 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
   const stampLogo = brand.enabled ? logoImg : null;
   const viewFor = (p, s) => (p?.snap ? makeView(p.snap, { x: 0, y: 0, w: p.img.width, h: p.img.height }, mapArea(s, styleId)) : null);
   const view = useMemo(() => viewFor(pic, size), [pic, size, styleId]); // eslint-disable-line react-hooks/exhaustive-deps
-  const markEd = useMarkEditor({ canvasRef: preview, view, font: font.body, logoImg: stampLogo });
+  // Where the user dragged the info boxes (fractions of the picture size).
+  const [moves, setMoves] = useState({});
+  const boxRects = useRef({});
+  const boxes = useMemo(
+    () => (styleId === 'map' ? null : { rects: boxRects, base: (id) => ({ fx: boxRects.current[id]?.fx || 0, fy: boxRects.current[id]?.fy || 0 }), move: (id, m) => setMoves((s) => ({ ...s, [id]: m })) }),
+    [styleId, moves]
+  );
+  const markEd = useMarkEditor({ canvasRef: preview, view, font: font.body, logoImg: stampLogo, boxes });
   const head = headline ?? defaultHeadline(info);
   const sub = subline ?? defaultSubline(info);
   const fontReady = !font.css || fontState[font.id] === 'ok' || fontState[font.id] === 'failed';
@@ -119,19 +126,9 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
 
   useEffect(() => {
     if (!preview.current || !fontReady) return;
-    drawPost(preview.current, pic.img, info, {
-      size,
-      style,
-      font: fontState[font.id] === 'failed' ? FONTS[0] : font,
-      headline: head,
-      subline: sub,
-      stats: showStats,
-      chart: showChart,
-      brand,
-      logoImg,
-    });
+    boxRects.current = drawPost(preview.current, pic.img, info, drawOpts(size)) || {};
     drawMarks(preview.current, markEd.marks, view, { font: font.body, logoImg: stampLogo });
-  }, [pic, info, size, style, font, fontState, fontReady, head, sub, showStats, showChart, brand, logoImg, markEd.marks, view]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pic, info, size, style, font, fontState, fontReady, head, sub, showStats, showChart, brand, logoImg, markEd.marks, view, moves]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const drawOpts = (s) => ({
     size: s,
@@ -143,9 +140,10 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
     chart: showChart,
     brand,
     logoImg,
+    moves,
   });
   // Any change to the settings throws away images already made.
-  const batchSig = JSON.stringify([markEd.marks, theme, bounds, styleId, fontId, head, sub, showStats, showChart, format, brand, !!logoImg]);
+  const batchSig = JSON.stringify([markEd.marks, moves, theme, bounds, styleId, fontId, head, sub, showStats, showChart, format, brand, !!logoImg]);
   useEffect(() => setBatch(null), [batchSig]);
   useEffect(() => {
     if (!batch || batch.done || bPic.status !== 'ok' || bPic.key !== bKey) return;
@@ -299,6 +297,11 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
             </div>
             <BrandPanel brandState={brandState} />
             {markEd.panel}
+            {Object.keys(moves).length > 0 && styleId !== 'map' && (
+              <button type="button" className="-mt-2 text-xs text-sky-300 hover:text-sky-200" onClick={() => setMoves({})}>
+                Put the boxes back
+              </button>
+            )}
             <div className={styleId === 'map' ? 'hidden' : ''}>
               <span className={label}>Font</span>
               <div className="flex flex-wrap gap-1.5">

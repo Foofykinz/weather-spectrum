@@ -9,6 +9,7 @@ import NotFound from './pages/NotFound';
 import EventPage from './pages/EventPage';
 import EventsIndex from './pages/EventsIndex';
 import TornadoWarnings from './pages/TornadoWarnings';
+import StormLabPro from './pages/StormLabPro';
 import CookieConsent from './components/CookieConsent';
 import { initOneSignal } from './utils/oneSignalConfig';
 import { useSeo } from './seo/useSeo';
@@ -102,6 +103,7 @@ export function AppShell() {
           <Route path="/events" element={<EventsIndex />} />
           <Route path="/events/:slug" element={<EventPage />} />
           <Route path="/tornado-warnings" element={<TornadoWarnings />} />
+          <Route path="/storm-lab-pro" element={<StormLabPro />} />
           <Route path="/admin" element={<Suspense fallback={null}><Admin /></Suspense>} />
           <Route path="/broadcast" element={<Suspense fallback={loading}><BroadcastPage /></Suspense>} />
           <Route path="*" element={<NotFound />} />

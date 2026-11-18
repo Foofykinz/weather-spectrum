@@ -180,7 +180,10 @@ function drawChart(ctx, info, x, yBottom, w, h, u, font) {
   ctx.textAlign = 'left';
 }
 
-// opts: { size, style, font, headline, subline, stats, chart, brand, logoImg }
+// opts: { size, style, font, headline, subline, stats, chart, brand, logoImg, moves }
+// moves: { head|stats|chart: { fx, fy } } moves a box by that fraction of the
+// picture's width/height (so a moved box sits in about the same place in every
+// size). Returns where each box was drawn: { id: { x, y, w, h } }.
 export function drawPost(canvas, mapImg, info, opts) {
   const { size, style, font } = opts;
   canvas.width = size.w;
@@ -191,6 +194,17 @@ export function drawPost(canvas, mapImg, info, opts) {
   const M = Math.round(size.w * 0.035);
   const headWeight = font.headWeight || 700;
   const T = postTheme(opts.brand, opts.logoImg);
+  const boxes = {};
+  // Moves a box by the user's offset, kept inside the map area.
+  const place = (id, x, y, w, h) => {
+    const m = opts.moves?.[id];
+    let nx = x + (m ? m.fx * size.w : 0);
+    let ny = y + (m ? m.fy * size.h : 0);
+    nx = Math.max(area.x, Math.min(nx, area.x + area.w - w));
+    ny = Math.max(area.y, Math.min(ny, area.y + area.h - h));
+    boxes[id] = { x: nx, y: ny, w, h, fx: (nx - x) / size.w, fy: (ny - y) / size.h };
+    return [nx, ny];
+  };
 
   ctx.fillStyle = '#0b1220';
   ctx.fillRect(0, 0, size.w, size.h);
@@ -230,7 +244,7 @@ export function drawPost(canvas, mapImg, info, opts) {
       ctx.fillText(T.footName, M, M);
       ctx.textBaseline = 'alphabetic';
     }
-    return;
+    return boxes;
   }
 
   if (style.id === 'clean') {
@@ -246,14 +260,15 @@ export function drawPost(canvas, mapImg, info, opts) {
     const hw = ctx.measureText(opts.headline).width;
     const bw = Math.max(hw, sw) + 44 + lw;
     const bh = Math.max(hs + ss + 46, logo.h + 24);
+    const [hx, hy] = place('head', M, M, bw, bh);
     ctx.fillStyle = withAlpha(T.primary, 0.88);
-    roundRect(ctx, M, M, bw, bh, 12);
+    roundRect(ctx, hx, hy, bw, bh, 12);
     ctx.fill();
     ctx.fillStyle = T.accentSolid;
-    ctx.fillRect(M, M + 14, 5, bh - 28);
-    if (logo.w) ctx.drawImage(T.logo, M + 20, M + (bh - logo.h) / 2, logo.w, logo.h);
-    const tx = M + 24 + lw;
-    const ty = M + (bh - (hs + ss + 8)) / 2;
+    ctx.fillRect(hx, hy + 14, 5, bh - 28);
+    if (logo.w) ctx.drawImage(T.logo, hx + 20, hy + (bh - logo.h) / 2, logo.w, logo.h);
+    const tx = hx + 24 + lw;
+    const ty = hy + (bh - (hs + ss + 8)) / 2;
     ctx.textBaseline = 'top';
     ctx.fillStyle = T.text;
     ctx.fillText(opts.headline, tx, ty);
@@ -288,14 +303,19 @@ export function drawPost(canvas, mapImg, info, opts) {
   const bottom = area.y + area.h - M * 0.7;
   const statsW = Math.round(Math.min(470 * u, size.w * 0.48));
   let statsH = 0;
-  if (opts.stats) statsH = drawStats(ctx, info, M, bottom, statsW, u, font, T);
+  if (opts.stats) {
+    statsH = statsHeight(info, u);
+    const [sx, sy] = place('stats', M, bottom - statsH, statsW, statsH);
+    drawStats(ctx, info, sx, sy + statsH, statsW, u, font, T);
+  }
   if (opts.chart && info.count > 0) {
     const sideBySide = chartSideBySide(opts, size, u);
     const cw = sideBySide ? (opts.stats ? Math.min(460 * u, size.w - statsW - M * 3) : Math.min(560 * u, size.w - M * 2)) : statsW;
     const ch = chartHeight(u);
     const cx = sideBySide ? size.w - M - cw : M;
     const cyB = sideBySide ? bottom : bottom - statsH - 12 * u;
-    drawChart(ctx, info, cx, cyB, cw, ch, u, font);
+    const [kx, ky] = place('chart', cx, cyB - ch, cw, ch);
+    drawChart(ctx, info, kx, ky + ch, cw, ch, u, font);
   }
 
   // Footer.
@@ -317,6 +337,7 @@ export function drawPost(canvas, mapImg, info, opts) {
   ctx.fillText(CREDIT, size.w - M, fy + fh / 2);
   ctx.textAlign = 'left';
   ctx.textBaseline = 'alphabetic';
+  return boxes;
 }
 
 // ---- captions
