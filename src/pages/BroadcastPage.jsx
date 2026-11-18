@@ -29,6 +29,13 @@ const SEGMENTS = [
 ];
 const ZOOM = 8;
 const EVENT_MS = 25000; // time on each warning in event mode
+// Warning check-in: every CHECKIN_EVERY cities, if severe thunderstorm, flash
+// flood or snow squall warnings are in effect, show the top few on the warning
+// screen (tornado warnings and the most dangerous ones take over anyway).
+const CHECKIN_EVERY = 5;
+const CHECKIN_MAX = 3;
+const CHECKIN_MS = 20000;
+const CHECKIN_PHEN = new Set(['SV', 'FF', 'SQ']);
 // SPC outlook stop: every 10 cities, Days 1-3, 12 seconds each, over a
 // whole-country view (shifted east so the panel on the left doesn't cover it).
 const OUTLOOK_EVERY = 10;
@@ -406,6 +413,8 @@ function BroadcastPage() {
   // A new list replaces the old one only when a newer image exists.
   const [loop, setLoop] = useState(null); // { times, specs }
   const [loopIdx, setLoopIdx] = useState(0);
+  // The loop frame really on screen (a frame still loading isn't shown).
+  const [shownTime, setShownTime] = useState(null);
   useEffect(() => {
     let ctl;
     const load = async () => {
@@ -480,12 +489,43 @@ function BroadcastPage() {
   const eventMode = events.length > 0 && new URLSearchParams(window.location.search).get('event') !== '0';
   const [eventId, setEventId] = useState(null);
   const eventIdx = Math.max(0, events.findIndex((w) => w.id === eventId));
-  const current = eventMode ? events[eventIdx] : null;
+  // ---- Warning check-in (?checkin=1 starts with it, for testing).
+  const checkIds = (warnState?.warnings || []).filter((w) => CHECKIN_PHEN.has(w.type?.phen) && !isEventWorthy(w)).map((w) => w.id).join(',');
+  const checkins = useMemo(
+    () =>
+      [...(warnState?.warnings || []).filter((w) => CHECKIN_PHEN.has(w.type?.phen) && !isEventWorthy(w))]
+        .sort((a, b) => (b.danger === 'high') - (a.danger === 'high') || Date.parse(b.sent || 0) - Date.parse(a.sent || 0))
+        .slice(0, CHECKIN_MAX),
+    [checkIds] // eslint-disable-line react-hooks/exhaustive-deps
+  );
+  const [checkin, setCheckin] = useState(() => (new URLSearchParams(window.location.search).get('checkin') === '1' ? 0 : null)); // index while on, else null
+  const checkWarn = !eventMode && checkin != null && checkins.length ? checkins[Math.min(checkin, checkins.length - 1)] : null;
+  const current = eventMode ? events[eventIdx] : checkWarn;
   useEffect(() => {
     if (!eventMode) return undefined;
     const id = setTimeout(() => setEventId(events[(eventIdx + 1) % events.length].id), EVENT_MS);
     return () => clearTimeout(id);
   }, [eventMode, eventIdx, events]);
+  // Check-in timer: each warning in turn, then on with the tour (the outlook
+  // stop comes next when it's due).
+  const endCheckin = () => {
+    setCheckin(null);
+    if ((cityIdx + 1) % OUTLOOK_EVERY === 0) {
+      setOutlook(1);
+      return;
+    }
+    setSegIdx(0);
+    setCityIdx((i) => (i + 1) % TOUR.length);
+  };
+  useEffect(() => {
+    if (checkin == null || eventMode) return undefined;
+    if (!checkins.length && warnState) {
+      endCheckin();
+      return undefined;
+    }
+    const id = setTimeout(() => (checkin + 1 < checkins.length ? setCheckin(checkin + 1) : endCheckin()), CHECKIN_MS);
+    return () => clearTimeout(id);
+  }, [checkin, eventMode, checkins.length, !!warnState]); // eslint-disable-line react-hooks/exhaustive-deps
   // Event time zone: the warning's state (from its counties), else the nearest radar's.
   const eventTz = current ? zoneForStation({ state: (current.area || '').match(/,\s*([A-Z]{2})\b/)?.[1] || nearestStation(...boundsOf(current.geometry).center)?.state }) || undefined : undefined;
   // ---- SPC outlook stop (every OUTLOOK_EVERY cities; ?outlook=1 starts with it).
@@ -549,7 +589,7 @@ function BroadcastPage() {
   // Segment timer (paused during event mode and the outlook stop). Panels with
   // no data are skipped; every OUTLOOK_EVERY cities the outlook stop comes next.
   useEffect(() => {
-    if (eventMode || outlook) return undefined;
+    if (eventMode || outlook || checkin != null) return undefined;
     const id = setTimeout(() => {
       let s = segIdx + 1;
       const d = weather[cityIdx];
@@ -557,6 +597,10 @@ function BroadcastPage() {
       while (s < SEGMENTS.length && !has(SEGMENTS[s].id)) s++;
       if (s < SEGMENTS.length) {
         setSegIdx(s);
+        return;
+      }
+      if ((cityIdx + 1) % CHECKIN_EVERY === 0 && checkins.length) {
+        setCheckin(0); // the city advances when the check-in ends
         return;
       }
       if (Date.now() - START > RELOAD_MS) {
@@ -576,11 +620,13 @@ function BroadcastPage() {
       setCityIdx(nextIdx);
     }, seg.ms);
     return () => clearTimeout(id);
-  }, [segIdx, cityIdx, eventMode, outlook]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [segIdx, cityIdx, eventMode, outlook, checkin]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // The map is rebuilt after a warning screen: no frame is up until it loads.
+  useEffect(() => setShownTime(null), [!!current]); // eslint-disable-line react-hooks/exhaustive-deps
   const tz = current ? eventTz : data && data !== 'error' ? data.tz : undefined;
   const latest = loop ? loop.times[loop.times.length - 1] : frame.status === 'ok' ? frame.validTime : null;
-  const radarTime = loop ? loop.times[Math.min(loopIdx, loop.times.length - 1)] : latest;
+  const radarTime = loop ? shownTime : latest;
   const radarOld = latest && now - latest > 20 * 60e3;
   const dim = !outlook && (seg.id === 'now' || seg.id === 'forecast');
 
@@ -601,7 +647,14 @@ function BroadcastPage() {
       >
         {current && (
           <div className="absolute inset-x-0 top-0 z-[600]" style={{ height: H - BAR, isolation: 'isolate' }}>
-            <EventView warning={current} list={events} index={eventIdx} replay={replayInfo} width={W} height={H - BAR} />
+            <EventView
+              warning={current}
+              list={eventMode ? events : checkins}
+              index={eventMode ? eventIdx : Math.min(checkin, checkins.length - 1)}
+              replay={replayInfo}
+              width={W}
+              height={H - BAR}
+            />
           </div>
         )}
         <div className={`absolute inset-x-0 top-0 z-0 ${current ? 'hidden' : ''}`} style={{ height: H - BAR, isolation: 'isolate' }}>
@@ -618,7 +671,7 @@ function BroadcastPage() {
             onTileErrors={noop}
             onBasemapError={noop}
             overlay={outlook ? outlookData?.features : undefined}
-            animation={loop && !outlook ? { specs: loop.specs, index: Math.min(loopIdx, loop.specs.length - 1), onLoaded: noop } : null}
+            animation={loop && !outlook ? { specs: loop.specs, index: Math.min(loopIdx, loop.specs.length - 1), onLoaded: noop, holdUntilLoaded: true, onShown: (i) => setShownTime(loop.times[i]) } : null}
             warnings
             primary={false}
             embed

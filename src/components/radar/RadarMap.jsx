@@ -266,11 +266,35 @@ function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors })
 
 // Radar loop: one layer per frame, all added at once (hidden) so their images
 // download in the background; playback only changes which one is visible.
-function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, onLoaded }) {
+// holdUntilLoaded: never show a frame that is still loading (after the map
+// moves, or a new loop arrives); the last whole frame stays up instead, and
+// onShown(i) reports which frame is really on screen.
+function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, onLoaded, holdUntilLoaded, onShown }) {
   const map = useMap();
   const layers = useRef([]);
   const loadedCb = useRef(onLoaded);
   loadedCb.current = onLoaded;
+  const shownCb = useRef(onShown);
+  shownCb.current = onShown;
+  const shown = useRef(null); // the layer on screen (hold mode)
+  const stale = useRef(null); // the previous loop's last shown layer, until a new one is up
+  const want = useRef(index);
+  want.current = index;
+  const opacityRef = useRef(opacity);
+  opacityRef.current = opacity;
+  // Hold mode: show the wanted frame if it's whole, else keep the current one.
+  const showWanted = () => {
+    const l = layers.current[want.current];
+    if (!l || l.isLoading()) return;
+    layers.current.forEach((x) => x !== l && x.setOpacity(0));
+    l.setOpacity(opacityRef.current);
+    shown.current = l;
+    if (stale.current) {
+      map.removeLayer(stale.current);
+      stale.current = null;
+    }
+    shownCb.current?.(want.current);
+  };
 
   const gpu = useRef(null); // one GPU layer holding every decoded frame
   useEffect(() => {
@@ -287,18 +311,35 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
     layers.current = specs.map((spec) => {
       const l = createRadarLayer(spec, { opacity: 0, maxNativeZoom, attribution });
       l.once('load', () => loadedCb.current?.(++loaded));
+      if (holdUntilLoaded) l.on('load', () => l === layers.current[want.current] && showWanted());
       return l.addTo(map);
     });
     return () => {
-      layers.current.forEach((l) => map.removeLayer(l));
+      layers.current.forEach((l) => {
+        // Hold mode: the frame on screen stays until the new loop has one ready.
+        if (holdUntilLoaded && l === shown.current) {
+          if (stale.current) map.removeLayer(stale.current);
+          stale.current = l;
+          l.off('load');
+        } else map.removeLayer(l);
+      });
       layers.current = [];
+      shown.current = null;
     };
   }, [specs, map, maxNativeZoom, attribution]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (gpu.current) gpu.current.setIndex(index).setOpacity(opacity);
+    else if (holdUntilLoaded) showWanted();
     else layers.current.forEach((l, i) => l.setOpacity(i === index ? opacity : 0));
-  }, [index, opacity, specs]);
+  }, [index, opacity, specs]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(
+    () => () => {
+      if (stale.current) map.removeLayer(stale.current);
+    },
+    [map]
+  );
 
   return null;
 }
@@ -521,6 +562,8 @@ export default function RadarMap({
           maxNativeZoom={product.maxNativeZoom}
           attribution={product.attribution}
           onLoaded={animation.onLoaded}
+          holdUntilLoaded={animation.holdUntilLoaded}
+          onShown={animation.onShown}
         />
       )}
       {layer && !animation && (
