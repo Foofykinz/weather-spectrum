@@ -74,7 +74,7 @@ export default function StationPage() {
               <li key={p.id}>
                 <Link
                   to={`/radar?product=${p.id}&site=${radar.id}`}
-                  className="flex items-baseline justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 hover:border-orange-400/40"
+                  className="flex items-baseline justify-between gap-3 rounded-xl border border-white/10 bg-slate-900/60 px-4 py-3 hover:border-sky-400/40"
                 >
                   <span className="font-medium text-slate-100">{p.name}</span>
                   <span className="text-xs text-slate-400">{p.group}</span>
@@ -83,7 +83,7 @@ export default function StationPage() {
             ))}
           </ul>
           <p className="mt-3 text-sm">
-            <Link to={`/radar?layout=4&site=${radar.id}`} className="text-orange-300 hover:text-orange-200">
+            <Link to={`/radar?layout=4&site=${radar.id}`} className="text-sky-300 hover:text-sky-200">
               Open a four-panel view of {radar.icao}
             </Link>
           </p>
@@ -95,7 +95,7 @@ export default function StationPage() {
             <ul className="mt-3 space-y-2 text-sm text-slate-300">
               {cities.map((x) => (
                 <li key={x.city.slug}>
-                  <Link to={cityPath(x.city)} className="text-orange-300 hover:text-orange-200">{x.city.name} radar</Link>
+                  <Link to={cityPath(x.city)} className="text-sky-300 hover:text-sky-200">{x.city.name} radar</Link>
                   {' '}· {fmt(x.mi)} mi {compass((x.bearing + 180) % 360)} of the radar, lowest beam about{' '}
                   {fmt(Math.round(x.beamFt / 10) * 10)} ft above the radar&apos;s elevation
                 </li>
@@ -110,7 +110,7 @@ export default function StationPage() {
             {neighbors.map((x) => (
               <li key={x.s.id}>
                 {STATION_PAGES.includes(x.s.id) ? (
-                  <Link to={stationPath(RADARS[x.s.id])} className="text-orange-300 hover:text-orange-200">{x.s.icao}</Link>
+                  <Link to={stationPath(RADARS[x.s.id])} className="text-sky-300 hover:text-sky-200">{x.s.icao}</Link>
                 ) : (
                   <span className="text-slate-100">{x.s.icao}</span>
                 )}{' '}

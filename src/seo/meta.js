@@ -9,7 +9,7 @@ export const SITE = 'https://theweatherspectrum.com';
 export const SITE_NAME = 'Weather Spectrum';
 export const OG_IMAGE = `${SITE}/og-image.png`;
 
-const ORG = { '@type': 'Organization', name: SITE_NAME, url: SITE, logo: `${SITE}/apple-touch-icon.png` };
+const ORG = { '@type': 'Organization', name: SITE_NAME, url: SITE, logo: `${SITE}/logo-512.png` };
 
 function breadcrumbs(items) {
   return {

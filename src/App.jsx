@@ -1,6 +1,6 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import { Radar } from 'lucide-react';
+
 import Home from './pages/home';
 import About from './pages/About';
 import CityRadar from './pages/CityRadar';
@@ -30,9 +30,7 @@ function Header() {
     <header className="sticky top-0 z-50 border-b border-white/10 bg-gradient-to-r from-slate-900 to-blue-950/95 backdrop-blur">
       <div className="max-w-7xl mx-auto px-5 sm:px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <span className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-yellow-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
-            <Radar className="w-5 h-5 text-slate-900" aria-hidden />
-          </span>
+          <img src="/logo-96.png" alt="" width="40" height="40" className="w-10 h-10 shrink-0" />
           <span className="text-base sm:text-lg font-bold tracking-tight text-white">Weather Spectrum</span>
         </Link>
         <nav className="flex items-center gap-4 sm:gap-7 text-sm font-semibold whitespace-nowrap">

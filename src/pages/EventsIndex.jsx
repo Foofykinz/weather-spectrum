@@ -16,12 +16,12 @@ export default function EventsIndex() {
         <p className="mt-3 max-w-3xl leading-relaxed text-slate-300">
           Replay historic tornadoes on the real NEXRAD radar data from the time: reflectivity, velocity and correlation coefficient, with the National
           Weather Service warnings as they were issued. For any other date since 2009, use the Past button on the{' '}
-          <Link to="/radar" className="text-amber-300 hover:text-amber-200">radar</Link>.
+          <Link to="/radar" className="text-sky-300 hover:text-sky-200">radar</Link>.
         </p>
         <ul className="mt-8 grid gap-4 sm:grid-cols-2">
           {list.map((e) => (
             <li key={e.slug}>
-              <Link to={eventPath(e)} className="block h-full rounded-2xl border border-white/10 bg-slate-900/60 p-5 hover:border-amber-500/50">
+              <Link to={eventPath(e)} className="block h-full rounded-2xl border border-white/10 bg-slate-900/60 p-5 hover:border-sky-400/50">
                 <div className="text-lg font-semibold text-white">{eventTitle(e)}</div>
                 <div className="mt-1 text-sm text-slate-400">
                   {e.place} · {e.rating} · radar {getStation(e.radar).icao}

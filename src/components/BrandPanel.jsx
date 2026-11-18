@@ -30,7 +30,7 @@ export default function BrandPanel({ brandState }) {
           <input type="checkbox" checked={brand.enabled} onChange={(e) => setBrand({ enabled: e.target.checked })} />
           Use my branding
         </label>
-        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200">
+        <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex items-center gap-1 text-xs text-sky-300 hover:text-sky-200">
           {open ? 'Hide' : 'Edit'} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
         </button>
       </div>
@@ -73,7 +73,7 @@ export default function BrandPanel({ brandState }) {
               <span className={label}>Accent</span>
               <input type="color" value={brand.accent} onChange={(e) => setBrand({ accent: e.target.value, enabled: true })} className="h-8 w-14 cursor-pointer rounded border border-slate-700 bg-slate-950" />
             </label>
-            <button type="button" onClick={() => setBrand({ primary: DEFAULT_BRAND.primary, accent: DEFAULT_BRAND.accent })} className="mb-1 text-xs text-amber-300 hover:text-amber-200">
+            <button type="button" onClick={() => setBrand({ primary: DEFAULT_BRAND.primary, accent: DEFAULT_BRAND.accent })} className="mb-1 text-xs text-sky-300 hover:text-sky-200">
               Reset colors
             </button>
           </div>

@@ -4,13 +4,14 @@
 import { useEffect, useState } from 'react';
 
 const KEY = 'ws-post-brand';
-export const DEFAULT_BRAND = { enabled: false, name: '', link: '', logo: null, primary: '#0b1220', accent: '#f97316' };
+export const DEFAULT_BRAND = { enabled: false, name: '', link: '', logo: null, primary: '#0b1220', accent: '#38bdf8' };
 const DEFAULT_PRIMARY = DEFAULT_BRAND.primary;
 const DEFAULT_ACCENT = DEFAULT_BRAND.accent;
 
 function load() {
   try {
     const b = JSON.parse(localStorage.getItem(KEY) || 'null');
+    if (b?.accent === '#f97316') b.accent = DEFAULT_ACCENT; // the old default (orange) -> today's default
     return b ? { ...DEFAULT_BRAND, ...b } : DEFAULT_BRAND;
   } catch {
     return DEFAULT_BRAND;
@@ -105,7 +106,7 @@ export function postTheme(brand, logoImg) {
   const lightHead = luminance(primary) > 0.4;
   const text = lightHead ? '#0b1220' : '#ffffff';
   // Second line: the accent color if it reads well on the header, else the text color.
-  const sub = !custom ? '#fcd34d' : contrast(accent, primary) >= 3 ? accent : lightHead ? '#1e293b' : 'rgba(255,255,255,0.85)';
+  const sub = !custom ? '#7dd3fc' : contrast(accent, primary) >= 3 ? accent : lightHead ? '#1e293b' : 'rgba(255,255,255,0.85)';
   const name = on ? [brand.name, brand.link].map((s) => (s || '').trim()).filter(Boolean).join(' · ') : 'theweatherspectrum.com';
   return {
     branded: on,
@@ -115,19 +116,15 @@ export function postTheme(brand, logoImg) {
     text,
     sub,
     foot: primary,
-    footText: !custom ? '#fbbf24' : contrast(accent, primary) >= 3 ? accent : text,
+    footText: !custom ? '#7dd3fc' : contrast(accent, primary) >= 3 ? accent : text,
     footMuted: lightHead ? '#334155' : '#94a3b8',
-    number: !custom ? '#fbbf24' : contrast(accent, '#0b1220') >= 3 ? accent : '#ffffff',
+    number: !custom ? '#38bdf8' : contrast(accent, '#0b1220') >= 3 ? accent : '#ffffff',
     footName: name, // '' when branded with no name or link
     logo: on ? logoImg || null : null,
     accentFill(ctx, x0, x1) {
-      if (custom) return accent;
-      const g = ctx.createLinearGradient(x0, 0, x1, 0);
-      g.addColorStop(0, '#f97316');
-      g.addColorStop(1, '#facc15');
-      return g;
+      return custom ? accent : '#38bdf8';
     },
-    accentSolid: custom ? accent : '#f97316',
+    accentSolid: custom ? accent : '#38bdf8',
   };
 }
 

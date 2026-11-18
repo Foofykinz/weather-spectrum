@@ -56,7 +56,7 @@ export default function CookieConsent() {
           <p className="text-slate-300">
             We use essential cookies for site functionality and analytics cookies to understand how you use our site. 
             By clicking "Accept", you consent to our use of cookies. 
-            <a href="/privacy-policy" className="text-orange-400 hover:text-orange-300 ml-1 underline">
+            <a href="/privacy-policy" className="text-sky-400 hover:text-sky-300 ml-1 underline">
               Learn more
             </a>
           </p>
@@ -70,7 +70,7 @@ export default function CookieConsent() {
           </button>
           <button
             onClick={handleAccept}
-            className="px-4 py-2 text-sm bg-orange-500 text-slate-950 rounded-lg hover:bg-orange-400 transition-colors font-semibold"
+            className="px-4 py-2 text-sm bg-sky-400 text-slate-950 rounded-lg hover:bg-sky-300 transition-colors font-semibold"
           >
             Accept All
           </button>

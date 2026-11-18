@@ -15,7 +15,7 @@ export default function LoopControls({ anim, onToggle, onScrub, onLive }) {
         type="button"
         onClick={onToggle}
         aria-label={anim.playing ? 'Pause loop' : 'Play loop'}
-        className="w-7 h-7 shrink-0 flex items-center justify-center rounded-md border border-amber-500/70 bg-amber-500/15 text-amber-200"
+        className="w-7 h-7 shrink-0 flex items-center justify-center rounded-md border border-sky-400/70 bg-sky-400/15 text-sky-200"
       >
         {anim.playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
       </button>
@@ -30,7 +30,7 @@ export default function LoopControls({ anim, onToggle, onScrub, onLive }) {
         value={anim.index}
         onChange={(e) => onScrub(Number(e.target.value))}
         aria-label="Loop frame"
-        className="flex-1 min-w-0 accent-amber-500"
+        className="flex-1 min-w-0 accent-sky-400"
       />
       <button type="button" onClick={onLive} className="shrink-0 rounded-md border border-slate-700 px-2 py-1 font-semibold text-slate-200 hover:bg-slate-800">
         Live

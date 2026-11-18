@@ -43,7 +43,7 @@ export default function PastPicker({ time, onShow, onLive, onClose }) {
           aria-label="Date and time (your local time)"
           className="min-w-0 flex-1 rounded-md border border-slate-700/80 bg-slate-950 px-2 py-1.5 text-xs text-slate-100 [color-scheme:dark]"
         />
-        <button type="submit" disabled={!valid} className={`${btn} border-amber-500/70 bg-amber-500/15 text-amber-200 disabled:opacity-40`}>
+        <button type="submit" disabled={!valid} className={`${btn} border-sky-400/70 bg-sky-400/15 text-sky-200 disabled:opacity-40`}>
           Show
         </button>
       </form>

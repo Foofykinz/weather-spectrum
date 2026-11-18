@@ -173,7 +173,7 @@ function drawChart(ctx, info, x, yBottom, w, h, u, font) {
     }
     if (b.count === max && max > 0) {
       ctx.font = `600 ${Math.round(14 * u)}px ${font.body}`;
-      ctx.fillStyle = '#fbbf24';
+      ctx.fillStyle = '#38bdf8';
       ctx.fillText(String(b.count), bx + bw / 2, bottom - bh - 18 * u);
     }
   });

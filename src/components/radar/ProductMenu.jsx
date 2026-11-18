@@ -90,7 +90,7 @@ function TiltPopover({ anchor, station, source, selected, onPick, onClose }) {
             role="menuitemradio"
             aria-checked={active}
             onClick={() => onPick(t.tilt)}
-            className={`flex w-full items-center justify-between px-3 py-1.5 text-left ${active ? 'bg-amber-500/15 text-amber-200' : 'hover:bg-slate-800'}`}
+            className={`flex w-full items-center justify-between px-3 py-1.5 text-left ${active ? 'bg-sky-400/15 text-sky-200' : 'hover:bg-slate-800'}`}
           >
             <span>Tilt {i + 1}</span>
             <span className="tabular-nums text-xs text-slate-400">{t.elevation.toFixed(1)}°</span>
@@ -122,7 +122,7 @@ export default function ProductMenu({ groups, productId, tiltParam, station, onP
               const tiltLabel = active && idx > 0 ? `Tilt ${idx + 1}` : 'Tilt';
               const isOpen = open?.id === p.id;
               return (
-                <li key={p.id} className={`rounded-md ${active ? 'bg-amber-500/10 ring-1 ring-inset ring-amber-500/60' : ''}`}>
+                <li key={p.id} className={`rounded-md ${active ? 'bg-sky-400/10 ring-1 ring-inset ring-sky-400/60' : ''}`}>
                   <div className="flex items-center gap-1">
                     <button
                       type="button"
@@ -131,7 +131,7 @@ export default function ProductMenu({ groups, productId, tiltParam, station, onP
                       className={`flex-1 min-w-0 text-left rounded-md px-2 py-1.5 ${active ? '' : 'hover:bg-slate-800'}`}
                     >
                       <span className="flex items-center justify-between gap-2">
-                        <span className={`truncate ${active ? 'text-amber-300 font-medium' : 'text-slate-200'}`}>{p.name}</span>
+                        <span className={`truncate ${active ? 'text-sky-300 font-medium' : 'text-slate-200'}`}>{p.name}</span>
                         {p.scope !== 'site' && <span className="shrink-0 text-[10px] uppercase text-slate-500">Mosaic</span>}
                       </span>
                     </button>
@@ -143,7 +143,7 @@ export default function ProductMenu({ groups, productId, tiltParam, station, onP
                         onClick={(e) => setOpen(isOpen ? null : { id: p.id, anchor: e.currentTarget })}
                         className={`mr-1 shrink-0 flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[11px] font-semibold ${
                           isOpen || (active && idx > 0)
-                            ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
+                            ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
                             : 'border-slate-600 text-slate-300 hover:bg-slate-800'
                         }`}
                       >

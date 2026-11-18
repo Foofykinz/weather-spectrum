@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Copy, Share2, X } from 'lucide-react';
+import { Download, Copy, Share2, X, Layers } from 'lucide-react';
 import { SIZES, VERTICAL, FONTS, loadFont } from '../../radar/post';
 import { snapshotMap } from '../../radar/snapshot';
 import { STYLES, mapArea, coveredEdges, drawPost, buildCaptions, defaultHeadline, defaultSubline } from '../../warnings/post';
@@ -7,8 +7,10 @@ import { boundsFor, periodToParams } from '../../warnings/history';
 import TornadoWarningMap from './TornadoWarningMap';
 import BrandPanel from '../BrandPanel';
 import { useBrand } from '../../brand/brand';
-import { saveFile, savedMessage, isPhone } from '../../utils/saveFile';
+import { saveFile, savedMessage, isPhone, saveAll } from '../../utils/saveFile';
 import SaveImageSheet from '../SaveImageSheet';
+import { makeView, drawMarks } from '../../posts/marks';
+import { useMarkEditor } from '../MarkEditor';
 
 // Post image + captions for the tornado warnings of a period.
 // info: { period, now, state, count, stats, officeName }; warnings: the list
@@ -17,7 +19,7 @@ const ALL_SIZES = [...SIZES, { ...VERTICAL, label: 'Story' }];
 
 // Draws the warnings on a map of exactly the post's map size, off screen, and
 // copies it once the basemap has finished drawing.
-function useMapPicture(warnings, theme, bounds, size, styleId, edges) {
+function useMapPicture(warnings, theme, bounds, size, styleId, edges, enabled = true) {
   const area = mapArea(size, styleId);
   const SCALE = 1.6; // map detail: labels at 1.6x
   const css = { w: Math.round(area.w / SCALE), h: Math.round(area.h / SCALE) };
@@ -30,6 +32,7 @@ function useMapPicture(warnings, theme, bounds, size, styleId, edges) {
   const frame = useMemo(() => (fTop < 0 ? null : { top: fTop, bottom: fBottom }), [fTop, fBottom]);
   const key = `${theme}|${bounds.flat().join(',')}|${css.w}x${css.h}|${frame ? `${frame.top},${frame.bottom}` : 'view'}`;
   useEffect(() => {
+    if (!enabled) return undefined;
     let alive = true;
     setPic((p) => ({ status: 'working', img: p.img }));
     (async () => {
@@ -47,18 +50,19 @@ function useMapPicture(warnings, theme, bounds, size, styleId, edges) {
       await new Promise((r) => setTimeout(r, 400));
       if (!alive || !mapRef.current) return;
       const snap = await snapshotMap(mapRef.current, SCALE);
-      if (alive) setPic({ status: 'ok', img: snap.canvas, basemap: ready() });
+      if (alive) setPic({ status: 'ok', img: snap.canvas, snap, basemap: ready(), key });
     })();
     return () => {
       alive = false;
     };
-  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key, enabled]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!enabled) return [pic, null, key];
   const offscreen = (
     <div key={key} aria-hidden style={{ position: 'fixed', left: -10000, top: 0, width: css.w, height: css.h, pointerEvents: 'none' }}>
       <TornadoWarningMap warnings={warnings} theme={theme} bounds={bounds} frame={frame} mapRef={mapRef} still />
     </div>
   );
-  return [pic, offscreen];
+  return [pic, offscreen, key];
 }
 
 export default function WarningPostMaker({ info, warnings, pageBounds, theme: pageTheme, onClose }) {
@@ -91,6 +95,15 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
   const bounds = areaMode === 'page' && pageBounds ? pageBounds : fitBounds;
   const edges = areaMode === 'fit' ? coveredEdges(info, size, styleId, { stats: showStats, chart: showChart }) : null;
   const [pic, offscreen] = useMapPicture(warnings, theme, bounds, size, styleId, edges);
+  // "Save all sizes": one off-screen map per size, in turn.
+  const [batch, setBatch] = useState(null); // { i, files } while making; { files, done: true } when ready
+  const bSize = batch && !batch.done ? ALL_SIZES[batch.i] : size;
+  const bEdges = areaMode === 'fit' ? coveredEdges(info, bSize, styleId, { stats: showStats, chart: showChart }) : null;
+  const [bPic, bOffscreen, bKey] = useMapPicture(warnings, theme, bounds, bSize, styleId, bEdges, !!batch && !batch.done);
+  const stampLogo = brand.enabled ? logoImg : null;
+  const viewFor = (p, s) => (p?.snap ? makeView(p.snap, { x: 0, y: 0, w: p.img.width, h: p.img.height }, mapArea(s, styleId)) : null);
+  const view = useMemo(() => viewFor(pic, size), [pic, size, styleId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const markEd = useMarkEditor({ canvasRef: preview, view, font: font.body, logoImg: stampLogo });
   const head = headline ?? defaultHeadline(info);
   const sub = subline ?? defaultSubline(info);
   const fontReady = !font.css || fontState[font.id] === 'ok' || fontState[font.id] === 'failed';
@@ -117,7 +130,45 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
       brand,
       logoImg,
     });
-  }, [pic, info, size, style, font, fontState, fontReady, head, sub, showStats, showChart, brand, logoImg]);
+    drawMarks(preview.current, markEd.marks, view, { font: font.body, logoImg: stampLogo });
+  }, [pic, info, size, style, font, fontState, fontReady, head, sub, showStats, showChart, brand, logoImg, markEd.marks, view]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const drawOpts = (s) => ({
+    size: s,
+    style,
+    font: fontState[font.id] === 'failed' ? FONTS[0] : font,
+    headline: head,
+    subline: sub,
+    stats: showStats,
+    chart: showChart,
+    brand,
+    logoImg,
+  });
+  // Any change to the settings throws away images already made.
+  const batchSig = JSON.stringify([markEd.marks, theme, bounds, styleId, fontId, head, sub, showStats, showChart, format, brand, !!logoImg]);
+  useEffect(() => setBatch(null), [batchSig]);
+  useEffect(() => {
+    if (!batch || batch.done || bPic.status !== 'ok' || bPic.key !== bKey) return;
+    const c = document.createElement('canvas');
+    drawPost(c, bPic.img, info, drawOpts(bSize));
+    drawMarks(c, markEd.marks, viewFor(bPic, bSize), { font: font.body, logoImg: stampLogo });
+    c.toBlob(
+      (blob) => {
+        if (!blob) {
+          setBatch(null);
+          setMessage("The images couldn't be made in this browser.");
+          return;
+        }
+        const files = [...batch.files, { name: fileName().replace(/\.(png|jpg)$/, `-${bSize.id === 'vertical' ? 'story' : bSize.id}.$1`), blob }];
+        setBatch(batch.i + 1 < ALL_SIZES.length ? { i: batch.i + 1, files } : { files, done: true });
+      },
+      mime,
+      0.92
+    );
+  }, [batch, bPic, bKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const saveBatch = async () => {
+    setMessage(await saveAll(batch.files, fileName().replace(/\.(png|jpg)$/, '-all-sizes.zip')));
+  };
 
   const pickFont = async (f) => {
     setFontId(f.id);
@@ -177,7 +228,7 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
 
   const chip = (on) =>
     `rounded-md border px-2.5 py-1.5 text-xs font-semibold ${
-      on ? 'border-amber-500/70 bg-amber-500/15 text-amber-200' : 'border-slate-700/80 text-slate-300 hover:bg-slate-800'
+      on ? 'border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700/80 text-slate-300 hover:bg-slate-800'
     }`;
   const label = 'block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5';
   const input = 'w-full rounded-md border border-slate-700/80 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100';
@@ -199,6 +250,7 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
         </div>
       )}
       {offscreen}
+      {bOffscreen}
       <div
         role="dialog"
         aria-label="Make a post"
@@ -214,8 +266,9 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
 
         <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-w-0">
-            <div className="relative">
-              <canvas ref={preview} className="mx-auto block h-auto max-h-[65vh] w-auto max-w-full rounded-md border border-slate-800" />
+            <div className="relative mx-auto w-fit max-w-full">
+              <canvas ref={preview} {...markEd.canvasProps} className="block h-auto max-h-[65vh] w-auto max-w-full rounded-md border border-slate-800" />
+              {markEd.overlay}
               {pic.status === 'working' && (
                 <div className="absolute inset-x-0 top-3 mx-auto w-fit rounded-md bg-slate-950/90 px-3 py-1.5 text-xs text-slate-200">Drawing the map…</div>
               )}
@@ -245,6 +298,7 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
               </div>
             </div>
             <BrandPanel brandState={brandState} />
+            {markEd.panel}
             <div className={styleId === 'map' ? 'hidden' : ''}>
               <span className={label}>Font</span>
               <div className="flex flex-wrap gap-1.5">
@@ -292,7 +346,7 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
                   </label>
                 )}
                 {edits[caption.id] != null && (
-                  <button type="button" className="ml-auto text-amber-300 hover:text-amber-200" onClick={() => setEdits((s) => ({ ...s, [caption.id]: undefined }))}>
+                  <button type="button" className="ml-auto text-sky-300 hover:text-sky-200" onClick={() => setEdits((s) => ({ ...s, [caption.id]: undefined }))}>
                     Undo my edits
                   </button>
                 )}
@@ -312,6 +366,24 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
               {canShare && (
                 <button type="button" onClick={share} disabled={pic.status !== 'ok'} className={`${chip(false)} flex items-center gap-1.5 disabled:opacity-50`}>
                   <Share2 className="w-4 h-4" /> Share
+                </button>
+              )}
+              {batch?.done ? (
+                <button type="button" onClick={saveBatch} className={`${chip(true)} flex items-center gap-1.5`}>
+                  <Download className="w-4 h-4" /> Save all {batch.files.length} sizes
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMessage(null);
+                    setBatch({ i: 0, files: [] });
+                  }}
+                  disabled={!!batch}
+                  title="Square, Wide, Tall and Story, each laid out for its shape"
+                  className={`${chip(false)} flex items-center gap-1.5 disabled:opacity-50`}
+                >
+                  <Layers className="w-4 h-4" /> {batch ? `Making ${batch.i + 1} of ${ALL_SIZES.length}...` : 'Make all sizes'}
                 </button>
               )}
             </div>

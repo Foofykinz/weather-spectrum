@@ -32,7 +32,7 @@ export default function SaveImageSheet({ blob, name, onClose }) {
     <div className="fixed inset-0 z-[2100] flex flex-col bg-slate-950 text-slate-100" role="dialog" aria-label="Save image">
       <div className="flex items-start gap-3 border-b border-slate-800 px-4 py-3">
         <p className="flex-1 text-sm leading-snug">
-          <span className="font-semibold text-amber-300">Press and hold the image</span>, then tap{' '}
+          <span className="font-semibold text-sky-300">Press and hold the image</span>, then tap{' '}
           <span className="font-semibold">{apple ? 'Save to Photos' : 'Download image'}</span>.
           {!apple && <span className="block text-xs text-slate-400">It goes to your Gallery or Photos app (Download album).</span>}
         </p>
@@ -49,7 +49,7 @@ export default function SaveImageSheet({ blob, name, onClose }) {
       </div>
       <div className="flex flex-wrap items-center justify-center gap-2 border-t border-slate-800 px-4 py-3">
         {canShare && (
-          <button type="button" onClick={share} className="flex items-center gap-1.5 rounded-md border border-amber-500/70 bg-amber-500/15 px-3 py-2 text-sm font-semibold text-amber-200">
+          <button type="button" onClick={share} className="flex items-center gap-1.5 rounded-md border border-sky-400/70 bg-sky-400/15 px-3 py-2 text-sm font-semibold text-sky-200">
             <Share2 className="h-4 w-4" /> Share or save
           </button>
         )}

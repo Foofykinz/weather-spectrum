@@ -49,7 +49,7 @@ export default function CityRadar() {
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
             to={`/radar?product=site-reflectivity&site=${primary.id}&at=${at}`}
-            className="inline-flex items-center rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 px-5 py-2.5 font-semibold text-slate-950 shadow-lg shadow-orange-500/20"
+            className="inline-flex items-center rounded-xl ws-spectrum px-5 py-2.5 font-semibold text-slate-950 shadow-lg shadow-sky-400/20"
           >
             Open full radar
           </Link>
@@ -91,7 +91,7 @@ export default function CityRadar() {
                   <tr key={x.s.id}>
                     <td className="px-4 py-2">
                       {STATION_PAGES.includes(x.s.id) ? (
-                        <Link to={stationPath(RADARS[x.s.id])} className="text-orange-300 hover:text-orange-200">{x.s.icao}</Link>
+                        <Link to={stationPath(RADARS[x.s.id])} className="text-sky-300 hover:text-sky-200">{x.s.icao}</Link>
                       ) : (
                         x.s.icao
                       )}{' '}
@@ -124,7 +124,7 @@ export default function CityRadar() {
             <div><dt className="text-slate-400">NWS office</dt><dd className="mt-0.5 text-slate-100">{WFO_NAMES[primary.wfo]}</dd></div>
             <div><dt className="text-slate-400">Radar type</dt><dd className="mt-0.5 text-slate-100">WSR-88D (NEXRAD)</dd></div>
             {STATION_PAGES.includes(primary.id) && (
-              <div><dt className="text-slate-400">More</dt><dd className="mt-0.5"><Link to={stationPath(primary)} className="text-orange-300 hover:text-orange-200">{primary.icao} station page</Link></dd></div>
+              <div><dt className="text-slate-400">More</dt><dd className="mt-0.5"><Link to={stationPath(primary)} className="text-sky-300 hover:text-sky-200">{primary.icao} station page</Link></dd></div>
             )}
           </dl>
           <p className="mt-4 text-xs text-slate-500">Station data: Iowa Environmental Mesonet NEXRAD network list. Live status: Iowa Environmental Mesonet and NOAA NEXRAD Level III data.</p>
@@ -134,7 +134,7 @@ export default function CityRadar() {
           <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400">Radar for other cities</h2>
           <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
             {others.map((c) => (
-              <li key={c.slug}><Link to={cityPath(c)} className="text-orange-300 hover:text-orange-200">{c.name} radar</Link></li>
+              <li key={c.slug}><Link to={cityPath(c)} className="text-sky-300 hover:text-sky-200">{c.name} radar</Link></li>
             ))}
           </ul>
         </section>

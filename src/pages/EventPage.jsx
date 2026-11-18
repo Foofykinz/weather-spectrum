@@ -82,7 +82,7 @@ export default function EventPage() {
                       ))}
                     </ul>
                   )}
-                  <a href={w.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-amber-300 hover:text-amber-200">
+                  <a href={w.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs text-sky-300 hover:text-sky-200">
                     Full warning text (IEM archive)
                   </a>
                 </li>
@@ -92,7 +92,7 @@ export default function EventPage() {
 
           <aside>
             <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-300">Fast facts</h2>
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-sky-300">Fast facts</h2>
               <dl className="mt-3 space-y-2 text-sm">
                 {e.facts.map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-4 border-b border-white/5 pb-1.5">
@@ -106,7 +106,7 @@ export default function EventPage() {
                 {e.sources.map((s) => (
                   <li key={s.label}>
                     {s.url ? (
-                      <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-amber-300 hover:text-amber-200">
+                      <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-sky-300 hover:text-sky-200">
                         {s.label}
                       </a>
                     ) : (
@@ -118,7 +118,7 @@ export default function EventPage() {
             </div>
             {others.length > 0 && (
               <div className="mt-6 rounded-2xl border border-white/10 bg-slate-900/60 p-5">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-amber-300">More radar replays</h2>
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-sky-300">More radar replays</h2>
                 <ul className="mt-2 space-y-1 text-sm">
                   {others.map((o) => (
                     <li key={o.slug}>

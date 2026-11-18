@@ -308,7 +308,7 @@ export function defaultSubline(info) {
 
 // ---------- drawing
 
-function mapArea(size, style) {
+export function mapArea(size, style) {
   if (style === 'clean') return { x: 0, y: 0, w: size.w, h: size.h };
   const head = Math.round(Math.max(96, size.h * 0.12));
   const foot = Math.round(Math.max(48, size.h * 0.05));
@@ -465,14 +465,14 @@ function drawWarningList(ctx, warnings, x, y, w, font, past) {
 function drawBanner(ctx, text, right, color, y, w, h, font, M) {
   ctx.fillStyle = 'rgba(11,18,32,0.92)';
   ctx.fillRect(0, y, w, h);
-  ctx.fillStyle = color || '#f59e0b';
+  ctx.fillStyle = color || '#38bdf8';
   ctx.fillRect(0, y, Math.round(h * 0.18), h);
   ctx.textBaseline = 'middle';
   let rw = 0;
   if (right) {
     ctx.font = `600 ${Math.round(h * 0.38)}px ${font}`;
     rw = ctx.measureText(right).width + M;
-    ctx.fillStyle = '#fcd34d';
+    ctx.fillStyle = '#7dd3fc';
     ctx.textAlign = 'right';
     ctx.fillText(right, w - M, y + h / 2);
     ctx.textAlign = 'left';

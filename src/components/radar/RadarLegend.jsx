@@ -15,7 +15,7 @@ function Header({ title, units, info, onInfo }) {
           onClick={onInfo}
           aria-expanded={info}
           aria-label="About this legend"
-          className={`${units ? '' : 'ml-auto '}shrink-0 rounded p-0.5 ${info ? 'text-amber-300' : 'text-slate-400 hover:text-slate-200'}`}
+          className={`${units ? '' : 'ml-auto '}shrink-0 rounded p-0.5 ${info ? 'text-sky-300' : 'text-slate-400 hover:text-slate-200'}`}
         >
           <Info className="w-3.5 h-3.5" />
         </button>
@@ -88,7 +88,7 @@ function CategoryLegend({ legend }) {
         type="button"
         onClick={() => setExpanded((e) => !e)}
         aria-expanded={expanded}
-        className="ws-legend-more text-[10px] text-amber-300 hover:text-amber-200"
+        className="ws-legend-more text-[10px] text-sky-300 hover:text-sky-200"
       >
         {expanded ? 'Hide category names' : 'Show category names'}
       </button>

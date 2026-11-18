@@ -14,7 +14,7 @@ export default function About() {
   return (
     <div className="bg-gradient-to-b from-slate-900 to-slate-950">
       <div className="max-w-3xl mx-auto px-5 sm:px-6 py-16 sm:py-20">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">About</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">About</p>
         <h1 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight text-white">Weather Spectrum</h1>
         <p className="mt-5 text-lg leading-relaxed text-gray-300">
           Weather Spectrum is a radar viewer for anyone who follows severe weather closely.
@@ -26,7 +26,7 @@ export default function About() {
         <ul className="mt-4 space-y-3">
           {FEATURES.map((f) => (
             <li key={f} className="flex gap-3 text-slate-300 leading-relaxed">
-              <span className="mt-2.5 w-1.5 h-1.5 shrink-0 rounded-full bg-orange-400" aria-hidden />
+              <span className="mt-2.5 w-1.5 h-1.5 shrink-0 rounded-full bg-sky-400" aria-hidden />
               {f}
             </li>
           ))}
@@ -38,7 +38,7 @@ export default function About() {
           from the providers&apos; own color tables or from the values in the data itself. Sources include NOAA and the
           National Weather Service, NOAA NEXRAD Level III data, GOES-19 and GOES-18 lightning data, the Iowa
           Environmental Mesonet and OpenFreeMap. See the{' '}
-          <Link to="/" className="text-orange-300 hover:text-orange-200">data sources</Link> on the home page for details.
+          <Link to="/" className="text-sky-300 hover:text-sky-200">data sources</Link> on the home page for details.
         </p>
 
         <h2 className="mt-12 text-xl font-semibold text-white">Independence and safety</h2>
@@ -50,7 +50,7 @@ export default function About() {
 
         <h2 className="mt-12 text-xl font-semibold text-white">Contact</h2>
         <p className="mt-4 text-slate-300">
-          <a href="mailto:theweatherspectrum@gmail.com" className="text-orange-300 hover:text-orange-200">
+          <a href="mailto:theweatherspectrum@gmail.com" className="text-sky-300 hover:text-sky-200">
             theweatherspectrum@gmail.com
           </a>
         </p>
@@ -58,7 +58,7 @@ export default function About() {
         <div className="mt-12">
           <Link
             to="/radar"
-            className="inline-flex items-center rounded-xl bg-gradient-to-r from-orange-500 to-yellow-500 px-6 py-3 font-semibold text-slate-950 shadow-lg shadow-orange-500/20"
+            className="inline-flex items-center rounded-xl ws-spectrum px-6 py-3 font-semibold text-slate-950 shadow-lg shadow-sky-400/20"
           >
             Open Live Radar
           </Link>

@@ -28,7 +28,7 @@ export default function TiltSelector({ tilts, selected, onSelect, loading }) {
             aria-checked={active}
             onClick={() => onSelect(t.tilt)}
             className={`rounded px-2 py-1 text-xs tabular-nums font-semibold border ${
-              active ? 'border-amber-500/70 bg-amber-500/15 text-amber-200' : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+              active ? 'border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700 text-slate-300 hover:bg-slate-800'
             }`}
           >
             {t.elevation.toFixed(1)}°

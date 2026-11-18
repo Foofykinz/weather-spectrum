@@ -66,7 +66,7 @@ async function svgImage(svg) {
   }
 }
 
-// Returns { canvas, scale, toLatLng(x, y) } where x, y are canvas pixels.
+// Returns { canvas, scale, toLatLng(x, y), toPoint(lat, lng) } where x, y are canvas pixels.
 // toLatLng uses the view at capture time, so later map moves don't matter.
 export async function snapshotMap(map, scale = 2) {
   const root = map.getContainer();
@@ -81,6 +81,10 @@ export async function snapshotMap(map, scale = 2) {
   const origin = map.getPixelBounds().min;
   const zoom = map.getZoom();
   const toLatLng = (x, y) => map.unproject(origin.add([x / scale, y / scale]), zoom);
+  const toPoint = (lat, lng) => {
+    const p = map.project([lat, lng], zoom).subtract(origin);
+    return { x: p.x * scale, y: p.y * scale };
+  };
 
   // Let map images that are still arriving finish (up to 3 seconds).
   await new Promise((r) => setTimeout(r, 60));
@@ -119,5 +123,5 @@ export async function snapshotMap(map, scale = 2) {
     }
   }
   ctx.globalAlpha = 1;
-  return { canvas, scale, toLatLng };
+  return { canvas, scale, toLatLng, toPoint };
 }

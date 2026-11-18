@@ -36,7 +36,7 @@ export default function GlmStatus({ status, now, compact = false }) {
           onClick={() => setInfo((v) => !v)}
           aria-expanded={info}
           aria-label="About lightning data"
-          className={`ml-auto shrink-0 rounded p-0.5 ${info ? 'text-amber-300' : 'text-slate-400 hover:text-slate-200'}`}
+          className={`ml-auto shrink-0 rounded p-0.5 ${info ? 'text-sky-300' : 'text-slate-400 hover:text-slate-200'}`}
         >
           <Info className="w-3.5 h-3.5" />
         </button>

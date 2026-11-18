@@ -28,7 +28,7 @@ export default function LayoutSwitch({ layout, onChange }) {
           aria-label={o.label}
           title={o.label}
           onClick={() => onChange(o.n)}
-          className={`flex h-7 w-8 items-center justify-center rounded ${layout === o.n ? 'bg-amber-500/20 text-amber-200' : 'text-slate-300 hover:bg-slate-800'}`}
+          className={`flex h-7 w-8 items-center justify-center rounded ${layout === o.n ? 'bg-sky-400/20 text-sky-200' : 'text-slate-300 hover:bg-slate-800'}`}
         >
           <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden>
             {o.icon}

@@ -15,6 +15,24 @@ export function saveFile(blobOrUrl, name) {
   if (typeof blobOrUrl !== 'string') setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
+// Several images at once. Phones: the share sheet, which can put them all in
+// Photos. Elsewhere (or if sharing isn't possible): one zip download.
+// files: [{ name, blob }]. Must be called from a tap/click. Returns a message.
+export async function saveAll(files, zipName) {
+  const list = files.map((f) => new File([f.blob], f.name, { type: f.blob.type }));
+  if (isPhone() && navigator.canShare?.({ files: list })) {
+    try {
+      await navigator.share({ files: list });
+      return null;
+    } catch (err) {
+      if (err.name === 'AbortError') return null;
+    }
+  }
+  const { makeZip } = await import('./zip');
+  saveFile(await makeZip(files), zipName);
+  return `${files.length} images saved in one zip file (${zipName}).`;
+}
+
 // What to tell people after starting a download: phones don't put downloads
 // in the photo gallery, so say where to look.
 export const savedMessage = (kind = 'Image') => {

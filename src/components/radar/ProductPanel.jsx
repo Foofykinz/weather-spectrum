@@ -57,7 +57,7 @@ export default function ProductPanel({
             aria-label="Radar station"
             value={station?.id || ''}
             onChange={(e) => onSelectStation(e.target.value)}
-            className="flex-1 min-w-0 rounded-md bg-slate-800 border border-slate-700 px-2 py-1.5 text-slate-100 focus:outline-none focus:border-amber-500"
+            className="flex-1 min-w-0 rounded-md bg-slate-800 border border-slate-700 px-2 py-1.5 text-slate-100 focus:outline-none focus:border-sky-400"
           >
             {!station && <option value="">Select a radar…</option>}
             {stationsByState.map(([state, list]) => (
@@ -101,7 +101,7 @@ export default function ProductPanel({
           step="0.05"
           value={opacity}
           onChange={(e) => onOpacity(Number(e.target.value))}
-          className="flex-1 min-w-0 accent-amber-500"
+          className="flex-1 min-w-0 accent-sky-400"
         />
         <span className="w-9 text-right text-xs tabular-nums text-slate-300">{Math.round(opacity * 100)}%</span>
       </div>

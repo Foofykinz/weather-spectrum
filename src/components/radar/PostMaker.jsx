@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Download, Copy, Share2, X } from 'lucide-react';
+import { Download, Copy, Share2, X, Layers } from 'lucide-react';
 import { LEGENDS } from '../../radar/legends';
 import {
   SIZES,
@@ -20,11 +20,14 @@ import {
   bannerText,
   bannerTime,
   warningName,
+  mapArea,
 } from '../../radar/post';
+import { makeView, drawMarks } from '../../posts/marks';
+import { useMarkEditor } from '../MarkEditor';
 import { videoType, recordVideo } from '../../radar/video';
 import BrandPanel from '../BrandPanel';
 import { useBrand } from '../../brand/brand';
-import { saveFile, savedMessage, isPhone } from '../../utils/saveFile';
+import { saveFile, savedMessage, isPhone, saveAll } from '../../utils/saveFile';
 import SaveImageSheet from '../SaveImageSheet';
 
 // Make a Facebook-ready radar image of the current map view, with caption
@@ -111,15 +114,21 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
       .catch(() => setFontState((s) => ({ ...s, [f.id]: 'failed' })));
   };
 
+  const stampLogo = brand.enabled ? logoImg : null;
+  const view = useMemo(() => makeView(snap, crop, mapArea(size, styleId)), [snap, crop, size, styleId]);
+  const markEd = useMarkEditor({ canvasRef: preview, view, font: font.body, logoImg: stampLogo });
+  const addMarks = (c, s, sn, cr) => drawMarks(c, markEd.marks, makeView(sn, cr, mapArea(s, styleId)), { font: font.body, logoImg: stampLogo });
+
   const fontReady = !font.css || fontState[font.id] === 'ok' || fontState[font.id] === 'failed';
   const drawOpts = { size, style, font, headline: head, subline: sub, legend: showLegend, list: showList, banner: bannerOn ? bannerValue.trim() : '', bannerRight, brand, logoImg };
   useEffect(() => {
     if (!preview.current || !fontReady) return;
     drawPost(preview.current, snap, crop, info, drawOpts, legendImg);
+    addMarks(preview.current, size, snap, crop);
   }); // redraw on every change; drawing takes a few milliseconds
 
   // ---- Video: every loop scan drawn in this layout, then recorded.
-  const videoSig = JSON.stringify([brand.enabled, brand.name, brand.link, brand.primary, brand.accent, brand.logo?.length, focusKey, styleId, fontId, head, subline,showLegend, showList, drawOpts.banner, bannerRight, zone]);
+  const videoSig = JSON.stringify([brand.enabled, brand.name, brand.link, brand.primary, brand.accent, brand.logo?.length, markEd.marks, focusKey, styleId, fontId, head, subline,showLegend, showList, drawOpts.banner, bannerRight, zone]);
   const makeVideo = async () => {
     setMessage(null);
     try {
@@ -135,6 +144,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
         const fv = alertsInView(f.alerts, f.snap, fc);
         const fi = { ...base, ...fv, tz: zone, time: f.time, frame: { details: f.details }, warnings: arrange(fv.warnings) };
         drawPost(c, f.snap, fc, fi, { ...drawOpts, headline: headline ?? defaultHeadline(fi), subline: subline ?? defaultSubline(fi) }, legendImg);
+        addMarks(c, size, f.snap, fc);
         return c;
       });
       const res = await recordVideo(frames, { onProgress: (p) => setVid({ status: 'working', msg: `Recording ${Math.round(p * 100)}%` }) });
@@ -204,6 +214,31 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
     }
   };
 
+  // Every size at once, each laid out for its shape.
+  const [allBusy, setAllBusy] = useState(false);
+  const saveAllSizes = async () => {
+    setMessage(null);
+    setAllBusy(true);
+    try {
+      const files = [];
+      for (const s of [...SIZES, { ...VERTICAL, id: 'story' }]) {
+        const c = document.createElement('canvas');
+        const sc = cropFor(snap, s, styleId);
+        const sv = alertsInView(base.alerts, snap, sc);
+        const si = { ...base, ...sv, tz: zone, warnings: arrange(sv.warnings) };
+        drawPost(c, snap, sc, si, { ...drawOpts, size: s, headline: headline ?? defaultHeadline(si), subline: subline ?? defaultSubline(si) }, legendImg);
+        addMarks(c, s, snap, sc);
+        const blob = await new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error('empty'))), 'image/png'));
+        files.push({ name: fileName().replace(/\.png$/, `-${s.id}.png`), blob });
+      }
+      setMessage(await saveAll(files, fileName().replace(/\.png$/, '-all-sizes.zip')));
+    } catch (err) {
+      blobError(err);
+    } finally {
+      setAllBusy(false);
+    }
+  };
+
   const canShare = typeof navigator !== 'undefined' && !!navigator.canShare && navigator.canShare({ files: [new File([''], 'a.png', { type: 'image/png' })] });
   const share = async () => {
     let blob;
@@ -223,7 +258,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
 
   const chip = (on) =>
     `rounded-md border px-2.5 py-1.5 text-xs font-semibold ${
-      on ? 'border-amber-500/70 bg-amber-500/15 text-amber-200' : 'border-slate-700/80 text-slate-300 hover:bg-slate-800'
+      on ? 'border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700/80 text-slate-300 hover:bg-slate-800'
     }`;
   const label = 'block text-[11px] font-semibold uppercase tracking-wide text-slate-400 mb-1.5';
   const input = 'w-full rounded-md border border-slate-700/80 bg-slate-950 px-2.5 py-1.5 text-sm text-slate-100';
@@ -251,10 +286,10 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
 
         <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_20rem]">
           <div className="min-w-0">
-            <canvas
-              ref={preview}
-              className={`mx-auto h-auto max-h-[60vh] w-auto max-w-full rounded-md border border-slate-800 ${showVideo ? 'hidden' : 'block'}`}
-            />
+            <div className={`relative mx-auto w-fit max-w-full ${showVideo ? 'hidden' : ''}`}>
+              <canvas ref={preview} {...markEd.canvasProps} className="block h-auto max-h-[60vh] w-auto max-w-full rounded-md border border-slate-800" />
+              {markEd.overlay}
+            </div>
             {showVideo && (
               <video src={vid.url} controls autoPlay loop muted playsInline className="mx-auto block max-h-[60vh] max-w-full rounded-md border border-slate-800" />
             )}
@@ -295,6 +330,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
               </div>
             </div>
             <BrandPanel brandState={brandState} />
+            {markEd.panel}
             <div>
               <span className={label}>Font</span>
               <div className="flex flex-wrap gap-1.5">
@@ -405,7 +441,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
                   </label>
                 )}
                 {edits[caption.id] != null && (
-                  <button type="button" className="ml-auto text-amber-300 hover:text-amber-200" onClick={() => setEdits((s) => ({ ...s, [caption.id]: undefined }))}>
+                  <button type="button" className="ml-auto text-sky-300 hover:text-sky-200" onClick={() => setEdits((s) => ({ ...s, [caption.id]: undefined }))}>
                     Undo my edits
                   </button>
                 )}
@@ -453,6 +489,11 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
               {canShare && mode === 'image' && (
                 <button type="button" onClick={share} className={`${chip(false)} flex items-center gap-1.5`}>
                   <Share2 className="w-4 h-4" /> Share
+                </button>
+              )}
+              {mode === 'image' && (
+                <button type="button" onClick={saveAllSizes} disabled={allBusy} title="Square, Wide, Tall and Story, each laid out for its shape" className={`${chip(false)} flex items-center gap-1.5 disabled:opacity-50`}>
+                  <Layers className="w-4 h-4" /> {allBusy ? 'Making...' : 'Save all sizes'}
                 </button>
               )}
             </div>

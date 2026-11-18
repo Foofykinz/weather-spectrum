@@ -54,13 +54,13 @@ export default function Home() {
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900">
         <div className="absolute inset-0" style={{ backgroundImage: GRID }} aria-hidden />
         <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-500 opacity-10 blur-3xl" aria-hidden />
-        <div className="absolute -bottom-32 right-0 w-96 h-96 rounded-full bg-orange-500 opacity-10 blur-3xl" aria-hidden />
+        <div className="absolute -bottom-32 right-0 w-96 h-96 rounded-full bg-sky-400 opacity-10 blur-3xl" aria-hidden />
 
         <div className="relative max-w-5xl mx-auto px-5 sm:px-6 pt-24 pb-28 sm:pt-32 sm:pb-36 text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">Weather Spectrum</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">Weather Spectrum</p>
           <h1 className="mt-5 text-4xl sm:text-6xl md:text-7xl font-bold leading-[1.05] tracking-tight text-white">
             Live weather radar
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-yellow-400 to-orange-500">
+            <span className="block ws-spectrum-text">
               from NOAA NEXRAD
             </span>
           </h1>
@@ -72,10 +72,10 @@ export default function Home() {
           <div className="mt-11">
             <Link to="/radar" className="relative inline-block group">
               <span
-                className="absolute inset-0 rounded-2xl bg-gradient-to-r from-orange-500 to-yellow-500 blur-xl opacity-60 group-hover:opacity-90 transition-opacity"
+                className="absolute inset-0 rounded-2xl ws-spectrum blur-xl opacity-60 group-hover:opacity-90 transition-opacity"
                 aria-hidden
               />
-              <span className="relative flex items-center gap-3 rounded-2xl bg-gradient-to-r from-orange-500 to-yellow-500 px-10 sm:px-14 py-5 text-xl font-bold text-slate-950 shadow-2xl">
+              <span className="relative flex items-center gap-3 rounded-2xl ws-spectrum px-10 sm:px-14 py-5 text-xl font-bold text-slate-950 shadow-2xl">
                 Live Radar
                 <ArrowRight className="w-6 h-6" aria-hidden />
               </span>
@@ -85,7 +85,7 @@ export default function Home() {
           <ul className="mt-12 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-gray-400 max-w-3xl mx-auto">
             {PRODUCTS.map((p) => (
               <li key={p} className="flex items-center gap-2">
-                <span className="w-1 h-1 rounded-full bg-orange-400/70" aria-hidden />
+                <span className="w-1 h-1 rounded-full bg-sky-400/70" aria-hidden />
                 {p}
               </li>
             ))}
@@ -101,7 +101,7 @@ export default function Home() {
             <ul className="space-y-2">
               {CITIES.map((c) => (
                 <li key={c.slug}>
-                  <Link to={cityPath(c)} className="text-orange-300 hover:text-orange-200 font-medium">
+                  <Link to={cityPath(c)} className="text-sky-300 hover:text-sky-200 font-medium">
                     {c.name} weather radar
                   </Link>
                   <span className="text-sm text-slate-400"> · {RADARS[c.primary].icao}</span>
@@ -111,7 +111,7 @@ export default function Home() {
             <ul className="space-y-2">
               {STATION_PAGES.map((id) => (
                 <li key={id}>
-                  <Link to={stationPath(RADARS[id])} className="text-orange-300 hover:text-orange-200 font-medium">
+                  <Link to={stationPath(RADARS[id])} className="text-sky-300 hover:text-sky-200 font-medium">
                     {RADARS[id].icao} NEXRAD radar
                   </Link>
                   <span className="text-sm text-slate-400"> · {RADARS[id].name}, {RADARS[id].state}</span>
@@ -135,7 +135,7 @@ export default function Home() {
             {SOURCES.map((s) => (
               <div key={s.name} className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
                 <dt>
-                  <a href={s.href} target="_blank" rel="noopener noreferrer" className="font-semibold text-white hover:text-orange-300 transition-colors">
+                  <a href={s.href} target="_blank" rel="noopener noreferrer" className="font-semibold text-white hover:text-sky-300 transition-colors">
                     {s.name}
                   </a>
                 </dt>

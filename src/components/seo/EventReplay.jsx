@@ -89,7 +89,7 @@ export default function EventReplay({ event }) {
             onClick={() => setPid(id)}
             aria-pressed={pid === id}
             className={`rounded-md border px-2 py-1 text-xs font-semibold backdrop-blur ${
-              pid === id ? 'border-amber-500/70 bg-amber-500/20 text-amber-200' : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
+              pid === id ? 'border-sky-400/70 bg-sky-400/20 text-sky-200' : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
           >
             {label}
@@ -107,7 +107,7 @@ export default function EventReplay({ event }) {
                 type="button"
                 onClick={() => setPlaying((p) => !p)}
                 aria-label={playing ? 'Pause replay' : 'Play replay'}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-amber-500/70 bg-amber-500/15 text-amber-200"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-sky-400/70 bg-sky-400/15 text-sky-200"
               >
                 {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
               </button>
@@ -124,7 +124,7 @@ export default function EventReplay({ event }) {
                   setIdx(Number(e.target.value));
                 }}
                 aria-label="Replay frame"
-                className="min-w-0 flex-1 accent-amber-500"
+                className="min-w-0 flex-1 accent-sky-400"
               />
             </>
           ) : arch.status === 'error' ? (

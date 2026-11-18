@@ -264,7 +264,7 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
           onClick={() => updateParams({ ltg: lightningOn ? null : '1' })}
           aria-pressed={lightningOn}
           title="Lightning (GOES GLM satellite flashes)"
-          className={`flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-semibold ${lightningOn ? 'border-amber-500/70 bg-amber-500/15 text-amber-200' : 'border-slate-700/80 hover:bg-slate-800'}`}
+          className={`flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-semibold ${lightningOn ? 'border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700/80 hover:bg-slate-800'}`}
         >
           <Zap className="w-4 h-4" />
           <span className="hidden sm:inline">Lightning</span>
@@ -274,7 +274,7 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
           onClick={() => updateParams({ warn: warningsOn ? '0' : null })}
           aria-pressed={warningsOn}
           title="NWS warning polygons (tornado, severe thunderstorm, flash flood and more)"
-          className={`flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-semibold ${warningsOn ? 'border-amber-500/70 bg-amber-500/15 text-amber-200' : 'border-slate-700/80 hover:bg-slate-800'}`}
+          className={`flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-semibold ${warningsOn ? 'border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700/80 hover:bg-slate-800'}`}
         >
           <AlertTriangle className="w-4 h-4" />
           <span className="hidden sm:inline">Warnings</span>

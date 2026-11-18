@@ -139,7 +139,7 @@ export default function TornadoWarnings() {
                 type="button"
                 onClick={() => switchTo(k)}
                 aria-pressed={period.kind === k}
-                className={`rounded-md px-3 py-1.5 text-sm font-semibold capitalize ${period.kind === k ? 'bg-amber-500 text-slate-900' : 'text-slate-300 hover:text-white'}`}
+                className={`rounded-md px-3 py-1.5 text-sm font-semibold capitalize ${period.kind === k ? 'bg-sky-400 text-slate-900' : 'text-slate-300 hover:text-white'}`}
               >
                 {k}
               </button>
@@ -201,7 +201,7 @@ export default function TornadoWarnings() {
             type="button"
             onClick={openPost}
             disabled={!postInfo}
-            className="flex items-center gap-1.5 rounded-md border border-amber-500/70 bg-amber-500/15 px-3 py-1.5 text-sm font-semibold text-amber-200 hover:bg-amber-500/25 disabled:opacity-40"
+            className="flex items-center gap-1.5 rounded-md border border-sky-400/70 bg-sky-400/15 px-3 py-1.5 text-sm font-semibold text-sky-200 hover:bg-sky-400/25 disabled:opacity-40"
           >
             <Share2 className="h-4 w-4" /> Make a post
           </button>
@@ -237,7 +237,7 @@ export default function TornadoWarnings() {
                 type="button"
                 onClick={() => setTheme(id)}
                 aria-pressed={theme === id}
-                className={`rounded px-2.5 py-1 ${theme === id ? 'bg-amber-500 text-slate-900' : 'text-slate-300 hover:text-white'}`}
+                className={`rounded px-2.5 py-1 ${theme === id ? 'bg-sky-400 text-slate-900' : 'text-slate-300 hover:text-white'}`}
               >
                 {text}
               </button>
@@ -274,7 +274,7 @@ export default function TornadoWarnings() {
                   <ol className="mt-2 space-y-1 text-sm">
                     {stats.byState.slice(0, 10).map(([s, n]) => (
                       <li key={s} className="flex justify-between gap-3 border-b border-white/5 py-1">
-                        <button type="button" onClick={() => go(period, { state: s })} className="text-left text-amber-300 hover:text-amber-200">{STATES[s]}</button>
+                        <button type="button" onClick={() => go(period, { state: s })} className="text-left text-sky-300 hover:text-sky-200">{STATES[s]}</button>
                         <span className="tabular-nums text-slate-300">{n}</span>
                       </li>
                     ))}
@@ -305,9 +305,9 @@ export default function TornadoWarnings() {
                       {w.locations} <span className="text-slate-500">· NWS {office(w.wfo)}</span>
                     </span>
                     <span className="flex shrink-0 gap-3 text-xs">
-                      <button type="button" onClick={() => setFocus(w.key)} className="text-amber-300 hover:text-amber-200">Map</button>
-                      {radar && <a href={radar} className="text-amber-300 hover:text-amber-200">Radar</a>}
-                      <a href={w.link} target="_blank" rel="noopener noreferrer" className="text-amber-300 hover:text-amber-200">Text</a>
+                      <button type="button" onClick={() => setFocus(w.key)} className="text-sky-300 hover:text-sky-200">Map</button>
+                      {radar && <a href={radar} className="text-sky-300 hover:text-sky-200">Radar</a>}
+                      <a href={w.link} target="_blank" rel="noopener noreferrer" className="text-sky-300 hover:text-sky-200">Text</a>
                     </span>
                   </li>
                 );

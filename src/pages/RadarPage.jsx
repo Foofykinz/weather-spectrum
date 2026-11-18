@@ -383,13 +383,13 @@ function SingleRadar() {
             aria-expanded={panelOpen}
             className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
               panelOpen
-                ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
+                ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
           >
             <Layers className="w-4 h-4" />
             <span>{product.short}</span>
-            {product.scope === 'site' && station && <span className="text-amber-300">{station.icao}</span>}
+            {product.scope === 'site' && station && <span className="text-sky-300">{station.icao}</span>}
           </button>
           <button
             type="button"
@@ -399,7 +399,7 @@ function SingleRadar() {
             title={past ? "Lightning isn't available for past dates" : 'Lightning (GOES GLM satellite flashes)'}
             className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur disabled:opacity-40 ${
               lightningOn && !past
-                ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
+                ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
           >
@@ -413,7 +413,7 @@ function SingleRadar() {
             title="NWS warning polygons (tornado, severe thunderstorm, flash flood and more)"
             className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
               warningsOn
-                ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
+                ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
           >
@@ -427,7 +427,7 @@ function SingleRadar() {
             title="Storm markers: rotation, tornado vortex signatures, large hail and storm motion (NWS radar algorithms)"
             className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
               stormsOn
-                ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
+                ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
           >
@@ -442,7 +442,7 @@ function SingleRadar() {
             title="Past radar: pick a date and time"
             className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
               past || pickerOpen
-                ? 'border-amber-500/70 bg-amber-500/15 text-amber-200'
+                ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
           >
