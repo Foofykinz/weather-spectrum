@@ -268,7 +268,9 @@ function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors })
 // download in the background; playback only changes which one is visible.
 // holdUntilLoaded: never show a frame that is still loading (after the map
 // moves, or a new loop arrives); the last whole frame stays up instead, and
-// onShown(i) reports which frame is really on screen.
+// onShown(i) reports which frame is really on screen. A new loop reuses the
+// frames it shares with the old one (same image address), so a refresh only
+// downloads the new scan.
 function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, onLoaded, holdUntilLoaded, onShown }) {
   const map = useMap();
   const layers = useRef([]);
@@ -278,6 +280,7 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
   shownCb.current = onShown;
   const shown = useRef(null); // the layer on screen (hold mode)
   const stale = useRef(null); // the previous loop's last shown layer, until a new one is up
+  const pool = useRef(new Map()); // hold mode: the previous loop's layers, by image address
   const want = useRef(index);
   want.current = index;
   const opacityRef = useRef(opacity);
@@ -308,23 +311,49 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
       };
     }
     let loaded = 0;
+    const old = pool.current;
+    pool.current = new Map();
     layers.current = specs.map((spec) => {
+      const key = holdUntilLoaded && spec.kind === 'xyz' ? spec.url : null;
+      const reuse = key && old.get(key);
+      if (reuse) {
+        old.delete(key);
+        if (!reuse.isLoading()) loadedCb.current?.(++loaded);
+        return reuse;
+      }
       const l = createRadarLayer(spec, { opacity: 0, maxNativeZoom, attribution });
+      l.wsKey = key;
       l.once('load', () => loadedCb.current?.(++loaded));
-      if (holdUntilLoaded) l.on('load', () => l === layers.current[want.current] && showWanted());
+      if (holdUntilLoaded) {
+        l.on('load', () => l === layers.current[want.current] && showWanted());
+        // The frame on screen redraws after the map moves: hide it rather
+        // than show it square by square, until a whole frame is ready.
+        l.on('loading', () => {
+          if (l !== shown.current) return;
+          l.setOpacity(0);
+          shown.current = null;
+          shownCb.current?.(null);
+        });
+      }
       return l.addTo(map);
     });
+    // Old frames not in the new loop: the one on screen stays until a new
+    // frame is up; the rest go now.
+    old.forEach((l) => {
+      if (l === shown.current) {
+        if (stale.current) map.removeLayer(stale.current);
+        stale.current = l;
+        shown.current = null;
+        l.off('load');
+      } else map.removeLayer(l);
+    });
+    if (holdUntilLoaded) showWanted();
     return () => {
-      layers.current.forEach((l) => {
-        // Hold mode: the frame on screen stays until the new loop has one ready.
-        if (holdUntilLoaded && l === shown.current) {
-          if (stale.current) map.removeLayer(stale.current);
-          stale.current = l;
-          l.off('load');
-        } else map.removeLayer(l);
-      });
+      if (holdUntilLoaded) {
+        // Kept for the next loop (removed then if it doesn't use them).
+        layers.current.forEach((l) => pool.current.set(l.wsKey || l, l));
+      } else layers.current.forEach((l) => map.removeLayer(l));
       layers.current = [];
-      shown.current = null;
     };
   }, [specs, map, maxNativeZoom, attribution]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -337,6 +366,9 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
   useEffect(
     () => () => {
       if (stale.current) map.removeLayer(stale.current);
+      pool.current.forEach((l) => map.removeLayer(l));
+      pool.current = new Map();
+      layers.current.forEach((l) => map.removeLayer(l));
     },
     [map]
   );

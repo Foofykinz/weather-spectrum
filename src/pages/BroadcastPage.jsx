@@ -12,6 +12,7 @@ import { fetchOutlook, CATEGORIES, DEFAULT_FILL } from '../broadcast/spc';
 import { warningName, bannerText, bannerTime, zoneForStation } from '../radar/post';
 import { TOUR } from '../broadcast/cities';
 import { cityWeather } from '../broadcast/nws';
+import { tempsNear, tempLayer } from '../broadcast/temps';
 
 // 24/7 broadcast page, made to be captured by OBS as a 1920x1080 browser
 // source. Runs itself: flies from city to city showing radar, current
@@ -580,6 +581,48 @@ function BroadcastPage() {
     return () => clearTimeout(id);
   }, [cityIdx, loop]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Current temperatures at the airport stations around the city (?temps=0 hides them).
+  const showTemps = !current && !outlook && new URLSearchParams(window.location.search).get('temps') !== '0';
+  useEffect(() => {
+    if (!showTemps) return undefined;
+    let alive = true;
+    let layer = null;
+    let t = 0;
+    // Half the view in degrees at the tour zoom (the panel is 1920 x 968).
+    const halfLon = ((W / 2 / (256 * 2 ** ZOOM)) * 360) * 1.05;
+    const halfLat = halfLon * ((H - BAR) / W) * Math.cos((city.lat * Math.PI) / 180) * 1.1;
+    const draw = async (tries = 0) => {
+      const map = mapRef.current;
+      if (!map) {
+        if (tries < 40 && alive) t = setTimeout(() => draw(tries + 1), 250);
+        return;
+      }
+      const obs = await tempsNear(city, halfLat, halfLon);
+      if (!alive || !obs.length) return;
+      if (!map.getPane('temps')) Object.assign(map.createPane('temps').style, { zIndex: 460, pointerEvents: 'none' });
+      layer = tempLayer(map, obs, ZOOM).addTo(map);
+      map.attributionControl?.addAttribution('Temperatures: ASOS via IEM');
+    };
+    draw();
+    return () => {
+      alive = false;
+      clearTimeout(t);
+      if (layer) layer.remove();
+    };
+  }, [cityIdx, showTemps]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // During a warning screen or the outlook, keep the radar for the city that
+  // comes back next downloaded (refreshed every 2 minutes, as the browser keeps
+  // radar images for 5): the same city after event mode, else the next one.
+  const away = !!current || !!outlook;
+  useEffect(() => {
+    if (!away || !loop) return undefined;
+    const target = TOUR[eventMode ? cityIdx : nextIdx];
+    prefetchRadar(loop.specs, target);
+    const id = setInterval(() => prefetchRadar(loop.specs, target), 120e3);
+    return () => clearInterval(id);
+  }, [away, loop, eventMode, cityIdx]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Fly to the city at the start of its turn.
   useEffect(() => {
     const map = mapRef.current;
@@ -671,7 +714,7 @@ function BroadcastPage() {
             onTileErrors={noop}
             onBasemapError={noop}
             overlay={outlook ? outlookData?.features : undefined}
-            animation={loop && !outlook ? { specs: loop.specs, index: Math.min(loopIdx, loop.specs.length - 1), onLoaded: noop, holdUntilLoaded: true, onShown: (i) => setShownTime(loop.times[i]) } : null}
+            animation={loop && !outlook ? { specs: loop.specs, index: Math.min(loopIdx, loop.specs.length - 1), onLoaded: noop, holdUntilLoaded: true, onShown: (i) => setShownTime(i == null ? null : loop.times[i]) } : null}
             warnings
             primary={false}
             embed
