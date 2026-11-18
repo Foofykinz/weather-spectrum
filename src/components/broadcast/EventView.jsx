@@ -201,14 +201,14 @@ export default function EventView({ warning, list, index, replay, width, height 
         </div>
         <div className="flex flex-1 items-center justify-between bg-[#0c1638]/90 px-8">
           <span className="truncate text-[38px] font-semibold text-white">{bannerText(w) || w.office}</span>
-          <span className="ml-6 whitespace-nowrap text-[34px] font-semibold text-amber-300">{bannerTime(w, tz)}</span>
+          <span className="ml-6 whitespace-nowrap text-[34px] font-semibold text-sky-300">{bannerTime(w, tz)}</span>
         </div>
       </div>
 
       {/* Other event warnings */}
       {list.length > 1 && (
         <div className="absolute right-6 top-[96px] z-[700] w-[420px] bg-[#0c1638]/90 p-3 text-[22px]" style={shadow}>
-          <div className="mb-1 text-[20px] font-bold uppercase tracking-wide text-amber-300">
+          <div className="mb-1 text-[20px] font-bold uppercase tracking-wide text-sky-300">
             Active ({index + 1} of {list.length})
           </div>
           {list.slice(0, 7).map((x, i) => (
@@ -225,16 +225,16 @@ export default function EventView({ warning, list, index, replay, width, height 
       {/* Narration: quoted from the NWS warning */}
       {(shown.length > 0 || detection) && (
         <div key={warning.id} className="absolute bottom-[56px] left-6 right-6 z-[700] bg-[#0c1638]/90 px-5 py-3" style={{ borderLeft: `8px solid ${color}`, ...shadow }}>
-          <div className="mb-1 text-[18px] font-bold uppercase tracking-wide text-amber-300">From the National Weather Service warning</div>
+          <div className="mb-1 text-[18px] font-bold uppercase tracking-wide text-sky-300">From the National Weather Service warning</div>
           {shown.map((l, i) => (
             <div key={l.label} className="ws-bc-line mb-1 text-[25px] leading-snug text-white" style={{ animationDelay: `${0.4 + i * 1.2}s` }}>
-              <span className="font-bold text-amber-200">{l.label}: </span>
+              <span className="font-bold text-sky-200">{l.label}: </span>
               {l.text}
             </div>
           ))}
           {detection && (
             <div className="ws-bc-line text-[22px] text-slate-200" style={{ animationDelay: `${0.4 + shown.length * 1.2}s` }}>
-              <span className="font-bold text-amber-200">Radar detection: </span>
+              <span className="font-bold text-sky-200">Radar detection: </span>
               {detection} (automated, NWS radar algorithms)
             </div>
           )}

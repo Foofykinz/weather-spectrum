@@ -146,9 +146,9 @@ function Panel({ title, className = '', style, children }) {
         ...style,
       }}
     >
-      <div className="h-2" style={{ background: 'linear-gradient(90deg, #f97316, #facc15)' }} />
+      <div className="h-2" style={{ background: 'linear-gradient(90deg, #1d4ed8, #06b6d4, #22c55e, #facc15, #f97316, #dc2626)' }} />
       {title && (
-        <div className="px-6 py-2 text-[34px] font-bold uppercase tracking-wide text-[#0b1530]" style={{ background: 'linear-gradient(90deg, #f97316, #facc15)' }}>
+        <div className="px-6 py-2 text-[34px] font-bold uppercase tracking-wide text-[#0b1530]" style={{ background: 'linear-gradient(90deg, #38bdf8, #7dd3fc)' }}>
           {title}
         </div>
       )}
@@ -160,12 +160,12 @@ function Panel({ title, className = '', style, children }) {
 function TitlePlate({ label, city, sub }) {
   return (
     <div className="absolute left-10 top-9" style={shadow}>
-      <div className="inline-block px-5 py-1 text-[30px] font-bold uppercase tracking-wider text-[#0b1530]" style={{ background: 'linear-gradient(90deg, #f97316, #facc15)' }}>
+      <div className="inline-block px-5 py-1 text-[30px] font-bold uppercase tracking-wider text-[#0b1530]" style={{ background: 'linear-gradient(90deg, #38bdf8, #7dd3fc)' }}>
         {label}
       </div>
-      <div className="mt-1 px-5 py-2 text-[64px] font-bold uppercase leading-none text-white" style={{ background: 'rgba(12,22,56,0.88)', borderLeft: '6px solid #f97316' }}>
+      <div className="mt-1 px-5 py-2 text-[64px] font-bold uppercase leading-none text-white" style={{ background: 'rgba(12,22,56,0.88)', borderLeft: '6px solid #38bdf8' }}>
         {city}
-        {sub && <span className="ml-4 text-[34px] font-semibold normal-case text-amber-300">{sub}</span>}
+        {sub && <span className="ml-4 text-[34px] font-semibold normal-case text-sky-300">{sub}</span>}
       </div>
     </div>
   );
@@ -184,10 +184,10 @@ function Conditions({ obs, tz }) {
   return (
     <Panel className="ws-bc-in" style={{ left: 1110, top: 170, width: 770, height: 640 }}>
       <div className="flex items-center gap-8 px-8 pt-6" style={shadow}>
-        <Icon className="h-36 w-36 text-amber-300" strokeWidth={1.6} />
+        <Icon className="h-36 w-36 text-sky-300" strokeWidth={1.6} />
         <div>
           <div className="text-[150px] font-bold leading-none text-white">{obs.temp != null ? `${obs.temp}°` : '--'}</div>
-          <div className="mt-1 text-[40px] font-semibold text-amber-200">{obs.text || ''}</div>
+          <div className="mt-1 text-[40px] font-semibold text-sky-200">{obs.text || ''}</div>
         </div>
       </div>
       <div className="mt-5 grid grid-cols-2 gap-x-10 gap-y-2 px-8 text-[34px]" style={shadow}>
@@ -214,7 +214,7 @@ function Forecast({ days }) {
           const Icon = iconFor(d.text, d.day);
           return (
             <div key={i} className={`flex flex-col items-center px-4 pt-4 text-center ${i ? 'border-l border-white/15' : ''}`}>
-              <div className="text-[42px] font-bold uppercase text-amber-300">{d.name}</div>
+              <div className="text-[42px] font-bold uppercase text-sky-300">{d.name}</div>
               <Icon className="my-2 h-24 w-24 text-white" strokeWidth={1.6} />
               <div className="flex h-[84px] items-center text-[30px] font-semibold leading-tight text-slate-100">{d.text}</div>
               <div className="mt-2 text-[52px] font-bold leading-none">
@@ -249,7 +249,7 @@ function Crawl({ text }) {
       <div
         key={shown}
         ref={ref}
-        className="ws-bc-crawl absolute top-1/2 whitespace-pre text-[40px] font-semibold text-amber-200"
+        className="ws-bc-crawl absolute top-1/2 whitespace-pre text-[40px] font-semibold text-sky-200"
         style={{ animationDuration: `${dur}s`, ...shadow }}
         onAnimationIteration={() => latest.current !== shown && setShown(latest.current)}
       >
@@ -303,7 +303,7 @@ function OutlookPanel({ data }) {
         {data === null && <div className="text-[34px] text-slate-300">Outlook unavailable right now.</div>}
         {data && (
           <>
-            <div className="text-[26px] font-semibold uppercase tracking-wide text-amber-300">Highest risk</div>
+            <div className="text-[26px] font-semibold uppercase tracking-wide text-sky-300">Highest risk</div>
             {severe ? (
               <div className="mt-1 inline-block px-4 py-1 text-[46px] font-bold leading-tight text-[#0b1530]" style={{ background: color(top.id) }}>
                 {top.name} <span className="text-[30px]">({top.level} of 5)</span>
@@ -314,7 +314,7 @@ function OutlookPanel({ data }) {
             {!severe && top && <div className="mt-1 text-[28px] text-slate-200">General thunderstorms possible</div>}
             {data.cities.length > 0 && (
               <div className="mt-3 text-[26px] leading-snug text-slate-100">
-                <span className="font-semibold text-amber-200">Includes: </span>
+                <span className="font-semibold text-sky-200">Includes: </span>
                 {data.cities.slice(0, 6).join(' · ')}
                 {data.cities.length > 6 ? ' and more' : ''}
               </div>
@@ -367,7 +367,7 @@ class Recover extends React.Component {
       <div className="fixed inset-0 z-[3000] flex items-center justify-center bg-[#0b1530] text-white" style={{ fontFamily: FONT }}>
         <div className="text-center">
           <div className="text-[64px] font-bold uppercase">Weather Spectrum</div>
-          <div className="mt-2 text-[36px] text-amber-300">We&apos;ll be right back</div>
+          <div className="mt-2 text-[36px] text-sky-300">We&apos;ll be right back</div>
         </div>
       </div>
     );
@@ -662,15 +662,19 @@ function BroadcastPage() {
           )}
 
           {/* Bottom bar: logo, warning crawl, clock */}
-          <div className="absolute inset-x-0 bottom-0 flex" style={{ height: BAR, borderTop: '4px solid #f97316' }}>
-            <div className="flex w-[330px] flex-col justify-center px-6 text-[#0b1530]" style={{ background: 'linear-gradient(135deg, #f97316, #facc15)' }}>
-              <div className="text-[40px] font-bold uppercase leading-none">Weather</div>
-              <div className="text-[40px] font-bold uppercase leading-none">Spectrum</div>
+          <div className="absolute inset-x-0 bottom-0 flex" style={{ height: BAR, paddingTop: 4 }}>
+            <div className="absolute inset-x-0 top-0 h-[4px]" style={{ background: 'linear-gradient(90deg, #1d4ed8, #06b6d4, #22c55e, #facc15, #f97316, #dc2626)' }} />
+            <div className="flex w-[330px] items-center gap-3 px-4" style={{ background: '#0b1530' }}>
+              <img src="/logo-192.png" alt="" className="h-[88px] w-[88px] shrink-0" />
+              <div style={shadow}>
+                <div className="text-[30px] font-bold uppercase leading-none">Weather</div>
+                <div className="text-[30px] font-bold uppercase leading-none text-sky-300">Spectrum</div>
+              </div>
             </div>
             <Crawl text={crawlText(warnState)} />
             <div className="flex w-[300px] flex-col items-end justify-center px-6" style={{ background: '#12204f', ...shadow }}>
               <div className="text-[52px] font-bold leading-none">{fmt(now, tz, { hour: 'numeric', minute: '2-digit' })}</div>
-              <div className="text-[24px] font-semibold text-amber-200">
+              <div className="text-[24px] font-semibold text-sky-200">
                 {fmt(now, tz, { timeZoneName: 'short' }).split(' ').pop()} {fmt(now, tz, { weekday: 'short', month: 'short', day: 'numeric' })}
               </div>
             </div>
