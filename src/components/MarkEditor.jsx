@@ -6,8 +6,9 @@ import { MARK_COLORS, hitMark, markBounds } from '../posts/marks';
 // them around.
 // view: the preview's makeView() result (null while it isn't ready).
 // boxes (optional): the picture's own boxes, which can be dragged too:
-// { rects: ref to { id: {x,y,w,h} } in canvas pixels, base(id) -> {fx,fy},
-//   move(id, {fx,fy}) } with offsets as fractions of the picture size.
+// { rects: ref to { id: {x,y,w,h,s} } in canvas pixels, set(id, {px,py,s}) }
+// with px/py the top-left corner as fractions of the picture size and s the
+// box's scale. Drag a box to move it, or its corner handle to resize it.
 // Returns { marks, panel, overlay, canvasProps }.
 export function useMarkEditor({ canvasRef, view, font, logoImg, boxes }) {
   const [marks, setMarks] = useState([]);
@@ -48,6 +49,20 @@ export function useMarkEditor({ canvasRef, view, font, logoImg, boxes }) {
     return { x: ((e.clientX - r.left) * c.width) / r.width, y: ((e.clientY - r.top) * c.height) / r.height };
   };
 
+  // The box under a point, and whether it's on the box's resize corner.
+  const boxAt = (p) => {
+    const rects = boxes?.rects.current || {};
+    const c = canvasRef.current;
+    const reach = Math.max(22, (34 * c.width) / 1080);
+    const ids = Object.keys(rects).reverse();
+    for (const id of ids) {
+      const b = rects[id];
+      if (Math.abs(p.x - (b.x + b.w)) <= reach && Math.abs(p.y - (b.y + b.h)) <= reach) return { id, corner: true };
+    }
+    const id = ids.find((k) => { const b = rects[k]; return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h; });
+    return id ? { id, corner: false } : null;
+  };
+
   const onPointerDown = (e) => {
     const v = viewRef.current;
     const c = canvasRef.current;
@@ -59,12 +74,9 @@ export function useMarkEditor({ canvasRef, view, font, logoImg, boxes }) {
       const hit = hitMark(c, marks, v, p.x, p.y, opts);
       setSelId(hit?.id || null);
       if (!hit) {
-        const rects = boxes?.rects.current || {};
-        const box = Object.keys(rects)
-          .reverse()
-          .find((k) => { const b = rects[k]; return p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h; });
-        if (!box) return;
-        drag.current = { box, start: p, base: boxes.base(box) };
+        const hit2 = boxAt(p);
+        if (!hit2) return;
+        drag.current = { box: hit2.id, corner: hit2.corner, start: p, base: { ...boxes.rects.current[hit2.id] } };
         e.currentTarget.setPointerCapture?.(e.pointerId);
         return;
       }
@@ -86,11 +98,20 @@ export function useMarkEditor({ canvasRef, view, font, logoImg, boxes }) {
   const onPointerMove = (e) => {
     const d = drag.current;
     const v = viewRef.current;
+    const c = canvasRef.current;
+    if (!d && boxes && tool === 'select' && c && e.pointerType === 'mouse') {
+      const h = boxAt(point(e));
+      e.currentTarget.style.cursor = h?.corner ? 'nwse-resize' : h || marks.length ? 'move' : 'default';
+    }
     if (!d || !v) return;
     const p = point(e);
     if (d.box) {
-      const c = canvasRef.current;
-      return boxes.move(d.box, { fx: d.base.fx + (p.x - d.start.x) / c.width, fy: d.base.fy + (p.y - d.start.y) / c.height });
+      const b = d.base;
+      const dx = p.x - d.start.x;
+      const dy = p.y - d.start.y;
+      if (!d.corner) return boxes.set(d.box, { px: (b.x + dx) / c.width, py: (b.y + dy) / c.height, s: b.s });
+      const k = Math.max(0.2, ((b.w + dx) / b.w + (b.h + dy) / b.h) / 2);
+      return boxes.set(d.box, { px: b.x / c.width, py: b.y / c.height, s: b.s * k });
     }
     if (d.part === 'b') return update(d.id, { b: v.toLatLng(p.x, p.y) });
     const dx = p.x - d.start.x;
@@ -126,7 +147,7 @@ export function useMarkEditor({ canvasRef, view, font, logoImg, boxes }) {
     ...(logoImg ? [['logo', 'Logo', ImageIcon]] : []),
   ];
   const hint = {
-    select: boxes ? 'Drag the boxes on the picture to move them. Pick Label, Arrow or Circle to add marks.' : marks.length ? 'Drag a mark to move it. Drag the end of an arrow or the edge of a circle to change it.' : 'Pick Label, Arrow or Circle, then tap the picture.',
+    select: boxes ? 'Drag a box on the picture to move it, or its corner handle to resize it. Pick Label, Arrow or Circle to add marks.' : marks.length ? 'Drag a mark to move it. Drag the end of an arrow or the edge of a circle to change it.' : 'Pick Label, Arrow or Circle, then tap the picture.',
     label: 'Tap the picture where the label goes.',
     arrow: 'Drag on the picture from the start to the tip of the arrow.',
     circle: 'Drag from the center outward.',
@@ -218,6 +239,25 @@ export function useMarkEditor({ canvasRef, view, font, logoImg, boxes }) {
         className="pointer-events-none absolute rounded border-2 border-dashed border-sky-300/90"
         style={{ left: pct(r.x - 6, c.width), top: pct(r.y - 6, c.height), width: pct(r.w + 12, c.width), height: pct(r.h + 12, c.height) }}
       />
+    );
+  }
+
+  // Resize handles on the picture's boxes (on screen only, never saved).
+  if (boxes && c?.width && tool === 'select') {
+    const pct = (v, total) => `${(v / total) * 100}%`;
+    const rects = boxes.rects.current || {};
+    overlay = (
+      <>
+        {overlay}
+        {Object.entries(rects).map(([id, b]) => (
+          <div
+            key={id}
+            aria-hidden
+            className="pointer-events-none absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-sm border-2 border-white bg-sky-400 shadow"
+            style={{ left: pct(b.x + b.w, c.width), top: pct(b.y + b.h, c.height) }}
+          />
+        ))}
+      </>
     );
   }
 

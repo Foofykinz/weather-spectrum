@@ -181,9 +181,10 @@ function drawChart(ctx, info, x, yBottom, w, h, u, font) {
 }
 
 // opts: { size, style, font, headline, subline, stats, chart, brand, logoImg, moves }
-// moves: { head|stats|chart: { fx, fy } } moves a box by that fraction of the
-// picture's width/height (so a moved box sits in about the same place in every
-// size). Returns where each box was drawn: { id: { x, y, w, h } }.
+// moves: { head|stats|chart: { px, py, s } } puts a box's top-left corner at
+// that fraction of the picture's width/height (so a moved box sits in about
+// the same place in every size) and scales it by s. Returns where each box was
+// drawn: { id: { x, y, w, h, s } }.
 export function drawPost(canvas, mapImg, info, opts) {
   const { size, style, font } = opts;
   canvas.width = size.w;
@@ -195,15 +196,23 @@ export function drawPost(canvas, mapImg, info, opts) {
   const headWeight = font.headWeight || 700;
   const T = postTheme(opts.brand, opts.logoImg);
   const boxes = {};
-  // Moves a box by the user's offset, kept inside the map area.
-  const place = (id, x, y, w, h) => {
-    const m = opts.moves?.[id];
-    let nx = x + (m ? m.fx * size.w : 0);
-    let ny = y + (m ? m.fy * size.h : 0);
-    nx = Math.max(area.x, Math.min(nx, area.x + area.w - w));
-    ny = Math.max(area.y, Math.min(ny, area.y + area.h - h));
-    boxes[id] = { x: nx, y: ny, w, h, fx: (nx - x) / size.w, fy: (ny - y) / size.h };
-    return [nx, ny];
+  // Sizes and moves a box (w x h at normal size) by the user's settings, kept
+  // inside the map area, and sets the canvas up to draw it at 0,0 at normal
+  // size. anchor(w, h): its usual top-left for that drawn size. Call
+  // ctx.restore() when the box is drawn. Returns its drawn height.
+  const place = (id, w, h, anchor) => {
+    const m = opts.moves?.[id] || {};
+    const k = Math.max(0.5, Math.min(m.s || 1, 2.2, area.w / w, area.h / h));
+    const sw = w * k;
+    const sh = h * k;
+    const [x, y] = m.px != null ? [m.px * size.w, m.py * size.h] : anchor(sw, sh);
+    const nx = Math.max(area.x, Math.min(x, area.x + area.w - sw));
+    const ny = Math.max(area.y, Math.min(y, area.y + area.h - sh));
+    boxes[id] = { x: nx, y: ny, w: sw, h: sh, s: k };
+    ctx.save();
+    ctx.translate(nx, ny);
+    ctx.scale(k, k);
+    return sh;
   };
 
   ctx.fillStyle = '#0b1220';
@@ -260,7 +269,9 @@ export function drawPost(canvas, mapImg, info, opts) {
     const hw = ctx.measureText(opts.headline).width;
     const bw = Math.max(hw, sw) + 44 + lw;
     const bh = Math.max(hs + ss + 46, logo.h + 24);
-    const [hx, hy] = place('head', M, M, bw, bh);
+    place('head', bw, bh, () => [M, M]);
+    const hx = 0;
+    const hy = 0;
     ctx.fillStyle = withAlpha(T.primary, 0.88);
     roundRect(ctx, hx, hy, bw, bh, 12);
     ctx.fill();
@@ -275,6 +286,7 @@ export function drawPost(canvas, mapImg, info, opts) {
     ctx.font = `600 ${ss}px ${font.body}`;
     ctx.fillStyle = T.sub;
     ctx.fillText(opts.subline, tx, ty + hs + 8);
+    ctx.restore();
   } else {
     const g = ctx.createLinearGradient(0, 0, 0, area.head);
     g.addColorStop(0, T.headTop);
@@ -304,18 +316,19 @@ export function drawPost(canvas, mapImg, info, opts) {
   const statsW = Math.round(Math.min(470 * u, size.w * 0.48));
   let statsH = 0;
   if (opts.stats) {
-    statsH = statsHeight(info, u);
-    const [sx, sy] = place('stats', M, bottom - statsH, statsW, statsH);
-    drawStats(ctx, info, sx, sy + statsH, statsW, u, font, T);
+    const h = statsHeight(info, u);
+    statsH = place('stats', statsW, h, (w2, h2) => [M, bottom - h2]);
+    drawStats(ctx, info, 0, h, statsW, u, font, T);
+    ctx.restore();
   }
   if (opts.chart && info.count > 0) {
     const sideBySide = chartSideBySide(opts, size, u);
     const cw = sideBySide ? (opts.stats ? Math.min(460 * u, size.w - statsW - M * 3) : Math.min(560 * u, size.w - M * 2)) : statsW;
     const ch = chartHeight(u);
-    const cx = sideBySide ? size.w - M - cw : M;
     const cyB = sideBySide ? bottom : bottom - statsH - 12 * u;
-    const [kx, ky] = place('chart', cx, cyB - ch, cw, ch);
-    drawChart(ctx, info, kx, ky + ch, cw, ch, u, font);
+    place('chart', cw, ch, (w2, h2) => [sideBySide ? size.w - M - w2 : M, cyB - h2]);
+    drawChart(ctx, info, 0, ch, cw, ch, u, font);
+    ctx.restore();
   }
 
   // Footer.

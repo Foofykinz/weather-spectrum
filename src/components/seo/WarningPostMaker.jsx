@@ -106,8 +106,9 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
   // Where the user dragged the info boxes (fractions of the picture size).
   const [moves, setMoves] = useState({});
   const boxRects = useRef({});
+  const [, setRectsKey] = useState('');
   const boxes = useMemo(
-    () => (styleId === 'map' ? null : { rects: boxRects, base: (id) => ({ fx: boxRects.current[id]?.fx || 0, fy: boxRects.current[id]?.fy || 0 }), move: (id, m) => setMoves((s) => ({ ...s, [id]: m })) }),
+    () => (styleId === 'map' ? null : { rects: boxRects, set: (id, m) => setMoves((s) => ({ ...s, [id]: m })) }),
     [styleId, moves]
   );
   const markEd = useMarkEditor({ canvasRef: preview, view, font: font.body, logoImg: stampLogo, boxes });
@@ -127,6 +128,7 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
   useEffect(() => {
     if (!preview.current || !fontReady) return;
     boxRects.current = drawPost(preview.current, pic.img, info, drawOpts(size)) || {};
+    setRectsKey(JSON.stringify(boxRects.current)); // redraw the resize handles
     drawMarks(preview.current, markEd.marks, view, { font: font.body, logoImg: stampLogo });
   }, [pic, info, size, style, font, fontState, fontReady, head, sub, showStats, showChart, brand, logoImg, markEd.marks, view, moves]); // eslint-disable-line react-hooks/exhaustive-deps
 
