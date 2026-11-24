@@ -5,6 +5,7 @@
 // Text on screen is quoted from the NWS alert.
 
 import L from 'leaflet';
+import { warningsAt } from '../radar/providers/warnings';
 
 const NWS = 'https://api.weather.gov/alerts/active';
 const IEM_ZONES = 'https://mesonet.agron.iastate.edu/api/1/vtec/county_zone.geojson';
@@ -191,14 +192,14 @@ export function windInView(alerts, view) {
   });
 }
 
-// Shaded zones, least serious drawn first.
-export function zoneLayer(alerts) {
+// Shaded zones, least serious drawn first, in the given map pane.
+export function zoneLayer(alerts, pane = 'windzones') {
   const group = L.layerGroup();
-  const renderer = L.svg({ pane: 'windzones' });
+  const renderer = L.svg({ pane });
   for (const a of [...alerts].sort((x, y) => y.type.rank - x.type.rank)) {
     for (const g of a.shapes) {
       L.geoJSON(g, {
-        pane: 'windzones',
+        pane,
         renderer,
         interactive: false,
         // Warnings strongest, watches lighter, advisories lightest.
@@ -207,6 +208,13 @@ export function zoneLayer(alerts) {
     }
   }
   return group;
+}
+
+// Alerts whose zones contain a point, most serious first.
+export function zoneAlertsAt(alerts, lat, lon) {
+  return alerts
+    .filter((a) => warningsAt(a.shapes.map((geometry) => ({ geometry })), lat, lon).length)
+    .sort((x, y) => x.type.rank - y.type.rank);
 }
 
 // "Wed 10 PM to Thu 10 PM EST" in the given time zone.

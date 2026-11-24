@@ -37,11 +37,17 @@ function loadState(st) {
 // and every state with a NEXRAD radar near the view (radars are spread out
 // enough that this catches each state the view reaches).
 function statesNear(city, halfLat, halfLon) {
-  const set = new Set([city.state]);
+  const set = new Set(city.state ? [city.state] : []);
   for (const s of STATIONS) {
     if (s.state.length === 2 && Math.abs(s.lat - city.lat) < halfLat + 1.5 && Math.abs(s.lon - city.lon) < halfLon + 1.5) set.add(s.state);
   }
   return [...set];
+}
+
+// Readings inside [[s, w], [n, e]]: kind 'temps' or 'wind'.
+export function obsInBounds([[s, w], [n, e]], kind) {
+  const c = { lat: (s + n) / 2, lon: (w + e) / 2 };
+  return (kind === 'wind' ? windNear : tempsNear)(c, (n - s) / 2, (e - w) / 2);
 }
 
 async function obsNear(city, halfLat, halfLon, maxAge) {
@@ -68,7 +74,7 @@ const colorOf = (t) => (t <= 20 ? '#c7d2fe' : t <= 32 ? '#7dd3fc' : t <= 50 ? '#
 // Leaflet layer: one small label per station, thinned out so no
 // two are closer than `gap` pixels at `zoom`. The city's own spot is kept clear
 // for the map label.
-function labelLayer(map, obs, zoom, gap, html) {
+function labelLayer(map, obs, zoom, gap, html, pane = 'temps') {
   const placed = [];
   const group = L.layerGroup();
   for (const o of obs) {
@@ -76,7 +82,7 @@ function labelLayer(map, obs, zoom, gap, html) {
     if (placed.some((q) => Math.abs(q.x - p.x) < gap && Math.abs(q.y - p.y) < gap * 0.6)) continue;
     placed.push(p);
     L.marker([o.lat, o.lon], {
-      pane: 'temps',
+      pane,
       interactive: false,
       keyboard: false,
       icon: L.divIcon({
@@ -91,20 +97,21 @@ function labelLayer(map, obs, zoom, gap, html) {
 
 const LABEL = 'transform:translate(-50%,-50%);line-height:1;text-shadow:0 0 3px #000,0 0 3px #000,0 1px 2px #000;white-space:nowrap';
 
-export function tempLayer(map, obs, zoom, gap = 70) {
+// size: font scale (1 = broadcast size); pane: the map pane to draw in.
+export function tempLayer(map, obs, zoom, gap = 70, { size = 1, pane } = {}) {
   return labelLayer(map, obs, zoom, gap, (o) => {
     const t = Math.round(o.temp);
-    return `<div style="${LABEL};font-weight:700;font-size:24px;color:${colorOf(t)}">${t}°</div>`;
-  });
+    return `<div style="${LABEL};font-weight:700;font-size:${24 * size}px;color:${colorOf(t)}">${t}°</div>`;
+  }, pane);
 }
 
 const windColor = (v) => (v < 20 ? '#cbd5e1' : v < 30 ? '#86efac' : v < 40 ? '#fde047' : v < 50 ? '#fdba74' : v < 58 ? '#f87171' : '#e879f9');
 
 // Gusts in bold; steady wind (no gust reported) smaller and lighter.
-export function windLayer(map, obs, zoom, gap = 70) {
+export function windLayer(map, obs, zoom, gap = 70, { size = 1, pane } = {}) {
   return labelLayer(map, obs, zoom, gap, (o) =>
     o.isGust
-      ? `<div style="${LABEL};font-weight:800;font-size:26px;color:${windColor(o.speed)}">${o.speed}</div>`
-      : `<div style="${LABEL};font-weight:600;font-size:20px;opacity:0.85;color:${windColor(o.speed)}">${o.speed}</div>`
-  );
+      ? `<div style="${LABEL};font-weight:800;font-size:${26 * size}px;color:${windColor(o.speed)}">${o.speed}</div>`
+      : `<div style="${LABEL};font-weight:600;font-size:${20 * size}px;opacity:0.85;color:${windColor(o.speed)}">${o.speed}</div>`
+  , pane);
 }

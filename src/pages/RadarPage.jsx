@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Layers, ArrowLeft, Zap, Play, AlertTriangle, History, Image as ImageIcon, Target } from 'lucide-react';
+import { Layers, ArrowLeft, Play, History, Image as ImageIcon, SlidersHorizontal } from 'lucide-react';
 import PostMaker from '../components/radar/PostMaker';
 import LoopControls from '../components/radar/LoopControls';
 import LayoutSwitch from '../components/radar/LayoutSwitch';
@@ -9,6 +9,7 @@ import RadarMap from '../components/radar/RadarMap';
 import RadarLegend from '../components/radar/RadarLegend';
 import RadarStatus from '../components/radar/RadarStatus';
 import ProductPanel from '../components/radar/ProductPanel';
+import OverlayPanel from '../components/radar/OverlayPanel';
 import GlmStatus from '../components/radar/GlmStatus';
 import WarningsStatus from '../components/radar/WarningsStatus';
 import PastPicker from '../components/radar/PastPicker';
@@ -17,6 +18,7 @@ import { getProduct, DEFAULT_PRODUCT_ID, LEVEL3_TILTS, archiveProductId } from '
 import { getStation, nearestStation } from '../radar/stations';
 import { useRadarFrame, useNow } from '../radar/useRadarFrame';
 import { useWarningsHistory } from '../radar/useWarningsHistory';
+import { useZoneAlertsLayer, useStationObsLayer } from '../radar/useZoneOverlays';
 
 // Per-viewer conveniences only (last map view & opacity). Safe if storage is blocked.
 const VIEW_KEY = 'ws.radar.view';
@@ -68,6 +70,7 @@ function SingleRadar() {
     return o >= 0.1 && o <= 1 ? o : 0.85;
   });
   const [panelOpen, setPanelOpen] = useState(false);
+  const [overlaysOpen, setOverlaysOpen] = useState(false);
   const [tileErrors, setTileErrors] = useState(0);
   const [basemapError, setBasemapError] = useState(null);
 
@@ -82,6 +85,9 @@ function SingleRadar() {
   const warningsOn = params.get('warn') !== '0'; // on unless turned off
   const stormsOn = params.get('storms') !== '0'; // storm markers, on unless turned off
   const [warningsStatus, setWarningsStatus] = useState(null);
+  // Wind and winter alerts (on unless &zones=0) and station readings (&obs=temps|wind).
+  const zonesOn = params.get('zones') !== '0';
+  const obsMode = ['temps', 'wind'].includes(params.get('obs')) ? params.get('obs') : null;
 
   // Past radar (&time=2024-05-06T20:00Z): real archived scans up to that time.
   const pastTime = timeFromParam(params.get('time'));
@@ -106,6 +112,8 @@ function SingleRadar() {
           : { status: 'loading', past: true, progress: archive.progress };
   const now = useNow();
   const mapRef = useRef(null);
+  const zones = useZoneAlertsLayer(mapRef, zonesOn && !past);
+  const obs = useStationObsLayer(mapRef, past ? null : obsMode);
   const [post, setPost] = useState(null); // null | { busy: true } | { snap, base } | { error }
 
   // ---- Radar loop (products with a `frames` list: IEM and NWS imagery).
@@ -379,7 +387,10 @@ function SingleRadar() {
           </Link>
           <button
             type="button"
-            onClick={() => setPanelOpen((o) => !o)}
+            onClick={() => {
+              setPanelOpen((o) => !o);
+              setOverlaysOpen(false);
+            }}
             aria-expanded={panelOpen}
             className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
               panelOpen
@@ -393,50 +404,29 @@ function SingleRadar() {
           </button>
           <button
             type="button"
-            onClick={() => updateParams({ ltg: lightningOn ? null : '1' })}
-            aria-pressed={lightningOn}
-            disabled={past}
-            title={past ? "Lightning isn't available for past dates" : 'Lightning (GOES GLM satellite flashes)'}
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur disabled:opacity-40 ${
-              lightningOn && !past
-                ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
-                : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
-            }`}
-          >
-            <Zap className="w-4 h-4" />
-            <span className="hidden sm:inline">Lightning</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => updateParams({ warn: warningsOn ? '0' : null })}
-            aria-pressed={warningsOn}
-            title="NWS warning polygons (tornado, severe thunderstorm, flash flood and more)"
+            onClick={() => {
+              setOverlaysOpen((o) => !o);
+              setPanelOpen(false);
+              setPickerOpen(false);
+            }}
+            aria-expanded={overlaysOpen}
+            title="Warnings, storm markers, lightning, wind and winter alerts, station readings"
             className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
-              warningsOn
+              overlaysOpen
                 ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
           >
-            <AlertTriangle className="w-4 h-4" />
-            <span className="hidden sm:inline">Warnings</span>
+            <SlidersHorizontal className="w-4 h-4" />
+            <span>Overlays</span>
+            <span className="rounded bg-slate-700/80 px-1.5 text-[11px] text-slate-200">{[lightningOn && !past, warningsOn, stormsOn, zonesOn && !past, !!obsMode && !past].filter(Boolean).length}</span>
           </button>
           <button
             type="button"
-            onClick={() => updateParams({ storms: stormsOn ? '0' : null })}
-            aria-pressed={stormsOn}
-            title="Storm markers: rotation, tornado vortex signatures, large hail and storm motion (NWS radar algorithms)"
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
-              stormsOn
-                ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
-                : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
-            }`}
-          >
-            <Target className="w-4 h-4" />
-            <span className="hidden sm:inline">Storms</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setPickerOpen((o) => !o)}
+            onClick={() => {
+              setPickerOpen((o) => !o);
+              setOverlaysOpen(false);
+            }}
             aria-pressed={past}
             aria-expanded={pickerOpen}
             title="Past radar: pick a date and time"
@@ -491,7 +481,19 @@ function SingleRadar() {
           pastMode={past}
         />
 
-        {pickerOpen && !panelOpen && (
+        <OverlayPanel
+          open={overlaysOpen && !panelOpen}
+          onClose={() => setOverlaysOpen(false)}
+          warnings={warningsOn}
+          storms={stormsOn}
+          lightning={lightningOn}
+          zones={zonesOn}
+          obs={obsMode}
+          onChange={updateParams}
+          pastMode={past}
+        />
+
+        {pickerOpen && !panelOpen && !overlaysOpen && (
           <PastPicker
             key={pastTime ? pastTime.getTime() : 'live'}
             time={pastTime}
@@ -504,7 +506,7 @@ function SingleRadar() {
           />
         )}
 
-        {!panelOpen && (
+        {!panelOpen && !overlaysOpen && (
           <div className="pointer-events-auto sm:max-w-md">
             <RadarStatus product={product} station={station} frame={frame} now={now} tileErrors={tileErrors} />
             {pastFrames && (
@@ -547,15 +549,27 @@ function SingleRadar() {
       </div>
 
       {/* Bottom-left legend; leaves room for zoom buttons and attribution on the right.
-          While the product panel is open it moves beside the panel on wide screens and
+          While the product or overlay panel is open it moves beside the panel on wide screens and
           steps aside on narrower ones, so the two never overlap. */}
       <div
         className={`pointer-events-none absolute left-2 right-16 bottom-6 sm:left-3 sm:right-auto sm:bottom-7 sm:w-96 z-[1000] ${
-          panelOpen ? 'hidden lg:block lg:left-[22rem]' : ''
+          panelOpen || overlaysOpen ? 'hidden lg:block lg:left-[22rem]' : ''
         }`}
       >
         <div className="pointer-events-auto">
           {warningsOn && <WarningsStatus status={warningsStatus} now={now} />}
+          {zonesOn && !past && zones.error && (
+            <div className="mb-1.5 rounded-md bg-slate-900/85 px-2.5 py-1 text-[11px] text-amber-300">Wind and winter alerts couldn't load. Retrying.</div>
+          )}
+          {obsMode && !past && (
+            <div className="mb-1.5 rounded-md bg-slate-900/85 px-2.5 py-1 text-[11px] text-slate-300">
+              {obs.tooFar
+                ? 'Zoom in to see station readings.'
+                : obsMode === 'wind'
+                  ? <>Wind at airport stations, mph: <b className="text-orange-300">bold</b> = gust, smaller = steady wind (no gust reported). Last hour.</>
+                  : 'Temperatures at airport stations, °F. Readings from the last 90 minutes.'}
+            </div>
+          )}
           {lightningOn && !past && <GlmStatus status={lightningStatus} now={now} />}
           <RadarLegend product={product} frame={frame} />
         </div>

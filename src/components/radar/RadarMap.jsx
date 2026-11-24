@@ -9,6 +9,7 @@ import { GLRadarLayer, glRadarSupported } from '../../radar/gl/GLRadarLayer';
 import GlmLayer from './GlmLayer';
 import WarningsLayer from './WarningsLayer';
 import { warningsAt, watchesAtPoint } from '../../radar/providers/warnings';
+import { zoneAlertsAt, alertTime } from '../../broadcast/zoneAlerts';
 import { renderLevel3View } from '../../radar/providers/level3';
 
 // Map layer stacking (bottom to top):
@@ -417,6 +418,16 @@ function watchHtml(w) {
     + '</div>';
 }
 
+// Wind / winter alert (forecast zone based), quoted from the NWS alert.
+function zoneAlertHtml(a) {
+  const line = (label, text) => (text ? `<br><span style="color:#cbd5e1"><b>${label}:</b> ${esc(text)}</span>` : '');
+  return `<div style="border-left:3px solid ${a.type.color};padding-left:6px;margin-bottom:6px">`
+    + `<b>${esc(a.type.event)}</b> ${esc(alertTime(a.onset, a.ends))}`
+    + line('What', a.what) + line('When', a.when) + line('Impacts', a.impacts)
+    + `<br><span style="color:#94a3b8">${esc(a.office)}</span>`
+    + '</div>';
+}
+
 function ValueProbe({ product, details }) {
   const map = useMap();
   useMapEvents({
@@ -424,11 +435,12 @@ function ValueProbe({ product, details }) {
       const ws = map._wsWarnings || {};
       const warns = warningsAt(ws.warnings || [], e.latlng.lat, e.latlng.lng);
       const watches = watchesAtPoint(ws.watches || [], ws.shapes, e.latlng.lat, e.latlng.lng);
+      const zones = zoneAlertsAt(map._wsZoneAlerts || [], e.latlng.lat, e.latlng.lng);
       const r = product.probe && details ? product.probe(details, e.latlng.lat, e.latlng.lng) : null;
-      if (!r && !warns.length && !watches.length) return;
-      const n = warns.length + watches.length;
+      if (!r && !warns.length && !watches.length && !zones.length) return;
+      const n = warns.length + watches.length + zones.length;
       let html = (n > 1 ? `<div style="color:#94a3b8;font-size:11px;margin-bottom:4px">${n} alerts at this spot, most urgent first</div>` : '')
-        + warns.map(warningHtml).join('') + watches.map(watchHtml).join('');
+        + warns.map(warningHtml).join('') + watches.map(watchHtml).join('') + zones.map(zoneAlertHtml).join('');
       if (r) {
         const kft = (km) => (km * 3.28084).toFixed(1);
         const where = `${r.groundKm.toFixed(1)} km at ${r.azimuth.toFixed(0)}° from radar`;
