@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { subscribeWarnings, WARNINGS_ATTRIBUTION } from '../../radar/providers/warnings';
+import { subscribeAlertStyle, alertFill } from '../../radar/alertStyle';
 
 // Draws NWS warning polygons and watch areas. Warnings: outline in the NWS
 // color with a dark casing; tornado / flash flood emergencies and
@@ -36,34 +37,42 @@ export default function WarningsLayer({ frame, onStatus }) {
       map._wsWarnings = s;
       group.clearLayers();
       const base = { renderer, interactive: false, lineJoin: 'round' };
+      // Viewer's fill level (radar tool): f = 1 solid, 0.01 barely visible.
+      // Outlines stay strong until the low end; watches fill less than warnings.
+      const f = alertFill('warn');
+      const line = f == null ? 1 : Math.min(1, 0.04 + f * 10);
       if (s.shapes) {
         for (const w of s.watches || []) {
           for (const ugc of w.ugcs) {
             const rings = s.shapes.get(ugc);
             if (!rings) continue;
-            L.polygon(rings, { ...base, color: w.type.color, weight: 1.5, opacity: 0.9, fillColor: w.type.color, fillOpacity: 0.07 }).addTo(group);
+            L.polygon(rings, { ...base, color: w.type.color, weight: 1.5, opacity: 0.9 * line, fillColor: w.type.color, fillOpacity: f == null ? 0.07 : f ** 1.6 }).addTo(group);
           }
         }
       }
       for (const w of s.warnings || []) {
         const heavy = w.danger === 'emergency' ? 1 : w.danger === 'high' ? 0.5 : 0;
-        L.geoJSON(w.geometry, { style: { ...base, fill: false, color: '#000', weight: 5 + heavy * 3, opacity: 0.75 } }).addTo(group);
+        L.geoJSON(w.geometry, { style: { ...base, fill: false, color: '#000', weight: 5 + heavy * 3, opacity: 0.75 * line } }).addTo(group);
         L.geoJSON(w.geometry, {
           style: {
             ...base,
             color: w.type.color,
             weight: 2.5 + heavy * 2.5,
-            opacity: 1,
-            fill: heavy > 0,
+            opacity: line,
+            fill: f != null || heavy > 0,
             fillColor: w.type.color,
-            fillOpacity: heavy ? 0.12 + heavy * 0.13 : 0,
+            fillOpacity: f != null ? (heavy ? f ** 0.6 : f) : heavy ? 0.12 + heavy * 0.13 : 0,
           },
         }).addTo(group);
       }
       statusCb.current?.(s);
     };
 
+    // The viewer changed alert colors or opacity: redraw what's shown.
+    const offStyle = subscribeAlertStyle(() => map._wsWarnings && draw.current?.(map._wsWarnings));
+
     return () => {
+      offStyle();
       draw.current = null;
       group.remove();
       renderer.remove();

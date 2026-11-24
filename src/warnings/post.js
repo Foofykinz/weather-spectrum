@@ -11,7 +11,7 @@ export const STYLES = [
   { id: 'map', label: 'Map only', note: 'Just the map, no text' },
 ];
 
-const CREDIT = 'Unofficial graphic. Data: NWS warnings via Iowa Environmental Mesonet. Map: OpenFreeMap, © OpenStreetMap';
+const CREDIT = 'Data: NWS warnings via Iowa Environmental Mesonet. Map: OpenFreeMap, © OpenStreetMap';
 
 export function mapArea(size, style) {
   if (style === 'map') return { x: 0, y: 0, w: size.w, h: size.h };

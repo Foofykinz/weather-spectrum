@@ -1,17 +1,19 @@
 import React from 'react';
-import { X, Zap, AlertTriangle, Target, Snowflake, Thermometer } from 'lucide-react';
+import { X, Zap, AlertTriangle, Target, Snowflake, Thermometer, Palette } from 'lucide-react';
+import { STYLE_GROUPS, defaultColor, defaultFill } from '../../radar/alertStyle';
 
 // Everything drawn on top of the radar, in one place: warnings, storm markers,
 // lightning, wind and winter alerts, and airport station readings.
 // items: { warnings, storms, lightning, zones } booleans; obs: null | 'temps' | 'wind'.
 // onChange(changes): URL parameter changes, as RadarPage's updateParams takes them.
-export default function OverlayPanel({ open, onClose, warnings, storms, lightning, zones, obs, onChange, pastMode = false }) {
+// alertStyle / onAlertStyle: the viewer's alert colors and fill level (radar/alertStyle).
+export default function OverlayPanel({ open, onClose, warnings, storms, lightning, zones, obs, onChange, alertStyle, onAlertStyle, pastMode = false }) {
   if (!open) return null;
   const rows = [
-    { key: 'warnings', on: warnings, icon: AlertTriangle, name: 'Warnings', desc: 'Tornado, severe thunderstorm, flash flood and other NWS warning polygons, plus tornado and severe thunderstorm watches.', set: (v) => ({ warn: v ? null : '0' }) },
+    { key: 'warnings', on: warnings, icon: AlertTriangle, name: 'Warnings', desc: 'Tornado, severe thunderstorm, flash flood and other NWS warning polygons, plus tornado and severe thunderstorm watches.', set: (v) => ({ warn: v ? null : '0' }), opacity: 'warnFill' },
     { key: 'storms', on: storms, icon: Target, name: 'Storm markers', desc: 'Rotation, tornado vortex signatures, large hail and storm motion (NWS radar algorithms).', set: (v) => ({ storms: v ? null : '0' }) },
     { key: 'lightning', on: lightning, icon: Zap, name: 'Lightning', desc: 'Lightning flashes seen by the GOES satellites.', set: (v) => ({ ltg: v ? '1' : null }), live: true },
-    { key: 'zones', on: zones, icon: Snowflake, name: 'Wind and winter alerts', desc: 'High wind, winter storm, blizzard, ice storm and lake effect snow warnings, watches and advisories (NWS). Tap an area for details.', set: (v) => ({ zones: v ? null : '0' }), live: true },
+    { key: 'zones', on: zones, icon: Snowflake, name: 'Wind and winter alerts', desc: 'High wind, winter storm, blizzard, ice storm and lake effect snow warnings, watches and advisories (NWS). Tap an area for details.', set: (v) => ({ zones: v ? null : '0' }), live: true, opacity: 'zoneFill' },
   ];
   return (
     <div className="pointer-events-auto w-full sm:w-80 min-h-0 flex flex-col overflow-y-auto rounded-lg border border-slate-700/80 bg-slate-900/95 backdrop-blur shadow-2xl text-sm text-slate-200">
@@ -42,6 +44,33 @@ export default function OverlayPanel({ open, onClose, warnings, storms, lightnin
                 </span>
                 <Switch on={on} />
               </button>
+              {on && r.opacity && alertStyle && (
+                <div className="px-3 pb-2.5 pl-10 text-xs text-slate-400">
+                  <label className="flex items-center gap-3">
+                    <span className="w-14 shrink-0">Opacity</span>
+                    <input
+                      type="range"
+                      min="0.01"
+                      max="1"
+                      step="0.01"
+                      value={alertStyle[r.opacity]}
+                      onChange={(e) => onAlertStyle({ [r.opacity]: Number(e.target.value) })}
+                      className="flex-1 accent-sky-400"
+                      aria-label={`${r.name} opacity`}
+                    />
+                    <span className="w-9 text-right tabular-nums">{Math.round(alertStyle[r.opacity] * 100)}%</span>
+                  </label>
+                  <div className="mt-0.5 flex justify-between pl-[4.25rem] text-[11px] text-slate-500">
+                    <span>Barely visible</span>
+                    {alertStyle[r.opacity] !== defaultFill(r.opacity) ? (
+                      <button type="button" className="text-sky-300 hover:text-sky-200" onClick={() => onAlertStyle({ [r.opacity]: defaultFill(r.opacity) })}>
+                        Reset
+                      </button>
+                    ) : null}
+                    <span>Solid</span>
+                  </div>
+                </div>
+              )}
             </li>
           );
         })}
@@ -76,7 +105,65 @@ export default function OverlayPanel({ open, onClose, warnings, storms, lightnin
           </div>
         </li>
       </ul>
+      {alertStyle && <ColorSettings alertStyle={alertStyle} onAlertStyle={onAlertStyle} />}
     </div>
+  );
+}
+
+// Colors for each alert type (saved in this browser; the NWS colors are the default).
+function ColorSettings({ alertStyle, onAlertStyle }) {
+  const changed = Object.keys(alertStyle.colors).length > 0;
+  const setColor = (event, color) => onAlertStyle({ colors: { ...alertStyle.colors, [event]: color } });
+  return (
+    <details className="border-t border-slate-700/80">
+      <summary className="flex cursor-pointer items-center gap-3 px-3 py-2.5 font-semibold text-slate-300 hover:bg-slate-800/70">
+        <Palette className="h-4 w-4 shrink-0 text-slate-500" />
+        <span className="flex-1">Alert colors</span>
+        {changed && <span className="text-xs font-normal text-sky-300">Custom</span>}
+      </summary>
+      <div className="space-y-3 px-3 pb-3">
+        <p className="text-xs leading-snug text-slate-400">Pick your own color for any alert. It's used on the map, in the tap details and in posts, and saved in this browser.</p>
+        {STYLE_GROUPS.map(([group, types]) => (
+          <div key={group}>
+            <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{group}</div>
+            <ul className="space-y-1">
+              {types.map((t) => {
+                const value = alertStyle.colors[t.event] || defaultColor(t);
+                return (
+                  <li key={t.event} className="flex items-center gap-2 text-xs">
+                    <input
+                      type="color"
+                      value={value.toLowerCase()}
+                      onChange={(e) => setColor(t.event, e.target.value)}
+                      aria-label={`${t.event} color`}
+                      className="h-6 w-8 shrink-0 cursor-pointer rounded border border-slate-700 bg-transparent p-0"
+                    />
+                    <span className="flex-1 text-slate-200">{t.event}</span>
+                    {alertStyle.colors[t.event] && (
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-sky-300"
+                        onClick={() => {
+                          const { [t.event]: _, ...rest } = alertStyle.colors;
+                          onAlertStyle({ colors: rest });
+                        }}
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+        {changed && (
+          <button type="button" className="text-xs text-sky-300 hover:text-sky-200" onClick={() => onAlertStyle({ colors: {} })}>
+            Use the NWS colors for everything
+          </button>
+        )}
+      </div>
+    </details>
   );
 }
 

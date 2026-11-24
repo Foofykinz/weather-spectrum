@@ -19,6 +19,7 @@ import { getStation, nearestStation } from '../radar/stations';
 import { useRadarFrame, useNow } from '../radar/useRadarFrame';
 import { useWarningsHistory } from '../radar/useWarningsHistory';
 import { useZoneAlertsLayer, useStationObsLayer } from '../radar/useZoneOverlays';
+import { activateAlertStyle, getAlertStyle, setAlertStyle, subscribeAlertStyle } from '../radar/alertStyle';
 
 // Per-viewer conveniences only (last map view & opacity). Safe if storage is blocked.
 const VIEW_KEY = 'ws.radar.view';
@@ -71,6 +72,16 @@ function SingleRadar() {
   });
   const [panelOpen, setPanelOpen] = useState(false);
   const [overlaysOpen, setOverlaysOpen] = useState(false);
+  // The viewer's alert colors and opacity (radar tool only).
+  const [alertStyle, setAlertStyleState] = useState(getAlertStyle);
+  useEffect(() => {
+    const off = activateAlertStyle();
+    const unsub = subscribeAlertStyle(setAlertStyleState);
+    return () => {
+      unsub();
+      off();
+    };
+  }, []);
   const [tileErrors, setTileErrors] = useState(0);
   const [basemapError, setBasemapError] = useState(null);
 
@@ -498,6 +509,8 @@ function SingleRadar() {
           zones={zonesOn}
           obs={obsMode}
           onChange={updateParams}
+          alertStyle={alertStyle}
+          onAlertStyle={setAlertStyle}
           pastMode={past}
         />
 

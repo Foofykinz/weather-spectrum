@@ -22,7 +22,8 @@ import {
   warningName,
   mapArea,
 } from '../../radar/post';
-import { makeView, drawMarks } from '../../posts/marks';
+import { makeView, drawMarks, loadLabelFont } from '../../posts/marks';
+import HeaderEditor from './HeaderEditor';
 import { useMarkEditor } from '../MarkEditor';
 import { videoType, recordVideo } from '../../radar/video';
 import BrandPanel from '../BrandPanel';
@@ -49,6 +50,31 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
   const [edits, setEdits] = useState({});
   const [headline, setHeadline] = useState(null);
   const [subline, setSubline] = useState(null);
+  // Header look (radar/postHeader), remembered in this browser for the next post.
+  const [header, setHeaderState] = useState(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('ws-post-header') || '{}');
+      return v && typeof v === 'object' ? v : {};
+    } catch {
+      return {};
+    }
+  });
+  const setHeader = (next) => {
+    setHeaderState(next);
+    try {
+      localStorage.setItem('ws-post-header', JSON.stringify(next));
+    } catch {
+      // not remembered; still used for this post
+    }
+  };
+  const [, setHeaderFontTick] = useState(0);
+  const pickHeaderFont = (id) => loadLabelFont(id).then(() => setHeaderFontTick((t) => t + 1));
+  useEffect(() => {
+    if (header.font) pickHeaderFont(header.font);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Only these header options move the map; the crop follows them.
+  const layoutHd = { position: header.position, height: header.height, bg: header.bg === 'glass' ? 'glass' : undefined };
+  const layoutKey = JSON.stringify(layoutHd);
   const [legendImg, setLegendImg] = useState(null);
   const [message, setMessage] = useState(null);
   const brandState = useBrand();
@@ -60,7 +86,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
   const size = mode === 'video' ? VERTICAL : SIZES.find((s) => s.id === sizeId);
   const style = STYLES.find((s) => s.id === styleId);
   const font = FONTS.find((f) => f.id === fontId);
-  const crop = useMemo(() => cropFor(snap, size, styleId), [snap, size, styleId]);
+  const crop = useMemo(() => cropFor(snap, size, styleId, layoutHd), [snap, size, styleId, layoutKey]); // eslint-disable-line react-hooks/exhaustive-deps
   const inView = useMemo(() => alertsInView(base.alerts, snap, crop), [base.alerts, snap, crop]);
   const [areas, setAreas] = useState({}); // past warning id -> county list
   const [zone, setZone] = useState(() => zoneForStation(base.station));
@@ -115,20 +141,39 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
   };
 
   const stampLogo = brand.enabled ? logoImg : null;
-  const view = useMemo(() => makeView(snap, crop, mapArea(size, styleId)), [snap, crop, size, styleId]);
-  const markEd = useMarkEditor({ canvasRef: preview, view, font: font.body, logoImg: stampLogo });
-  const addMarks = (c, s, sn, cr) => drawMarks(c, markEd.marks, makeView(sn, cr, mapArea(s, styleId)), { font: font.body, logoImg: stampLogo });
+  const view = useMemo(() => makeView(snap, crop, mapArea(size, styleId, layoutHd)), [snap, crop, size, styleId, layoutKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Boxes on the picture (headline box in Clean style, alert list, color
+  // scale) can be dragged and resized; positions are fractions of the picture.
+  const [moves, setMoves] = useState({});
+  const boxRects = useRef({});
+  const [rectsKey, setRectsKey] = useState('');
+  const boxes = useMemo(() => ({ rects: boxRects, set: (id, m) => setMoves((s) => ({ ...s, [id]: m })) }), []);
+  // Option tabs; tapping the picture opens the matching one.
+  const [tab, setTab] = useState('picture');
+  const onTap = (kind, d) => {
+    if (kind === 'mark') return setTab('marks');
+    if (kind === 'box') return setTab(d === 'head' ? 'header' : 'picture');
+    const r = boxRects.current?.regions;
+    const inside = (q) => q && d.x >= q.x && d.x <= q.x + q.w && d.y >= q.y && d.y <= q.y + q.h;
+    if (inside(r?.header)) setTab('header');
+    else if (inside(r?.banner)) setTab('picture');
+    return undefined;
+  };
+  const markEd = useMarkEditor({ canvasRef: preview, view, font: font.body, logoImg: stampLogo, boxes, onTap });
+  const addMarks = (c, s, sn, cr) => drawMarks(c, markEd.marks, makeView(sn, cr, mapArea(s, styleId, layoutHd)), { font: font.body, logoImg: stampLogo });
 
   const fontReady = !font.css || fontState[font.id] === 'ok' || fontState[font.id] === 'failed';
-  const drawOpts = { size, style, font, headline: head, subline: sub, legend: showLegend, list: showList, banner: bannerOn ? bannerValue.trim() : '', bannerRight, brand, logoImg };
+  const drawOpts = { size, style, font, headline: head, subline: sub, legend: showLegend, list: showList, banner: bannerOn ? bannerValue.trim() : '', bannerRight, brand, logoImg, moves, header };
   useEffect(() => {
     if (!preview.current || !fontReady) return;
-    drawPost(preview.current, snap, crop, info, drawOpts, legendImg);
+    boxRects.current = drawPost(preview.current, snap, crop, info, drawOpts, legendImg) || {};
     addMarks(preview.current, size, snap, crop);
+    const key = JSON.stringify(boxRects.current);
+    if (key !== rectsKey) setRectsKey(key); // move the resize handles along
   }); // redraw on every change; drawing takes a few milliseconds
 
   // ---- Video: every loop scan drawn in this layout, then recorded.
-  const videoSig = JSON.stringify([brand.enabled, brand.name, brand.link, brand.primary, brand.accent, brand.logo?.length, markEd.marks, focusKey, styleId, fontId, head, subline,showLegend, showList, drawOpts.banner, bannerRight, zone]);
+  const videoSig = JSON.stringify([brand.enabled, brand.name, brand.link, brand.primary, brand.accent, brand.logo?.length, markEd.marks, focusKey, styleId, fontId, head, subline,showLegend, showList, drawOpts.banner, bannerRight, zone, moves, header]);
   const makeVideo = async () => {
     setMessage(null);
     try {
@@ -140,7 +185,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
       setVid({ status: 'working', msg: 'Drawing frames...' });
       const frames = videoFrames.current.map((f) => {
         const c = document.createElement('canvas');
-        const fc = cropFor(f.snap, size, styleId);
+        const fc = cropFor(f.snap, size, styleId, layoutHd);
         const fv = alertsInView(f.alerts, f.snap, fc);
         const fi = { ...base, ...fv, tz: zone, time: f.time, frame: { details: f.details }, warnings: arrange(fv.warnings) };
         drawPost(c, f.snap, fc, fi, { ...drawOpts, headline: headline ?? defaultHeadline(fi), subline: subline ?? defaultSubline(fi) }, legendImg);
@@ -223,7 +268,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
       const files = [];
       for (const s of [...SIZES, { ...VERTICAL, id: 'story' }]) {
         const c = document.createElement('canvas');
-        const sc = cropFor(snap, s, styleId);
+        const sc = cropFor(snap, s, styleId, layoutHd);
         const sv = alertsInView(base.alerts, snap, sc);
         const si = { ...base, ...sv, tz: zone, warnings: arrange(sv.warnings) };
         drawPost(c, snap, sc, si, { ...drawOpts, size: s, headline: headline ?? defaultHeadline(si), subline: subline ?? defaultSubline(si) }, legendImg);
@@ -265,7 +310,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
   const tag = hashtag(info);
 
   return (
-    <div className="fixed inset-0 z-[2000] flex items-start justify-center overflow-y-auto bg-black/70 p-2 sm:p-6" onClick={onClose}>
+    <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/70 p-1 sm:p-4" onClick={onClose}>
       {saveSheet && (
         <div onClick={(e) => e.stopPropagation()}>
           <SaveImageSheet blob={saveSheet.blob} name={saveSheet.name} onClose={() => setSaveSheet(null)} />
@@ -274,33 +319,100 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
       <div
         role="dialog"
         aria-label="Make a post"
-        className="w-full max-w-5xl rounded-xl border border-slate-700/80 bg-slate-900 text-slate-200 shadow-2xl"
+        className="flex h-[calc(100dvh-0.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-slate-700/80 bg-slate-900 text-slate-200 shadow-2xl sm:h-[calc(100dvh-2rem)]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
+        <div className="flex shrink-0 items-center justify-between border-b border-slate-800 px-4 py-2.5">
           <h2 className="text-sm font-semibold">Make a post</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded p-1 text-slate-400 hover:text-slate-200">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="min-w-0">
+        <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[minmax(0,1fr)_23rem]">
+          <div className="shrink-0 space-y-2 overflow-y-auto p-2 sm:p-3 md:min-h-0 md:p-4">
             <div className={`relative mx-auto w-fit max-w-full ${showVideo ? 'hidden' : ''}`}>
-              <canvas ref={preview} {...markEd.canvasProps} className="block h-auto max-h-[60vh] w-auto max-w-full rounded-md border border-slate-800" />
+              <canvas ref={preview} {...markEd.canvasProps} className="block h-auto max-h-[34dvh] md:max-h-[calc(100dvh-15rem)] w-auto max-w-full rounded-md border border-slate-800" />
               {markEd.overlay}
             </div>
             {showVideo && (
-              <video src={vid.url} controls autoPlay loop muted playsInline className="mx-auto block max-h-[60vh] max-w-full rounded-md border border-slate-800" />
+              <video src={vid.url} controls autoPlay loop muted playsInline className="mx-auto block max-h-[34dvh] md:max-h-[calc(100dvh-15rem)] max-w-full rounded-md border border-slate-800" />
             )}
             {!fontReady && <p className="mt-2 text-xs text-slate-400">Loading font...</p>}
             {fontState[font.id] === 'failed' && <p className="mt-2 text-xs text-amber-300">That font couldn&apos;t load, so a standard font is used.</p>}
-            <p className="mt-2 text-[11px] leading-snug text-slate-400">
+            <p className="mt-2 hidden text-[11px] leading-snug text-slate-400 md:block">
               The picture is the map as it was when you opened this. To change the area, close this, move or zoom the map, and open it again.
             </p>
+            <div className="space-y-2">
+            {mode === 'video' && (
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={makeVideo}
+                  disabled={vid.status === 'working'}
+                  className={`${chip(true)} w-full disabled:opacity-60`}
+                >
+                  {vid.status === 'working' ? vid.msg : vid.status === 'done' ? 'Remake video with these settings' : 'Make video'}
+                </button>
+                {vid.status === 'error' && <p className="text-xs text-amber-300">{vid.msg}</p>}
+                {vid.status === 'working' && <p className="text-[11px] text-slate-400">Keep this tab open while it records (about 15 seconds).</p>}
+                {showVideo && (
+                  <div className="flex flex-wrap gap-2">
+                    <button type="button" onClick={saveVideo} className={`${chip(true)} flex items-center gap-1.5`}>
+                      <Download className="w-4 h-4" /> Save video
+                    </button>
+                    {navigator.canShare?.({ files: [videoFile()] }) && (
+                      <button type="button" onClick={shareVideo} className={`${chip(false)} flex items-center gap-1.5`}>
+                        <Share2 className="w-4 h-4" /> Share
+                      </button>
+                    )}
+                  </div>
+                )}
+                {showVideo && vid.ext === 'webm' && (
+                  <p className="text-[11px] text-amber-300">This browser saves WebM video, which Instagram and Facebook Reels don&apos;t accept. Chrome, Edge or Safari save MP4.</p>
+                )}
+              </div>
+            )}
+            <div className="flex flex-wrap gap-1.5 sm:gap-2">
+              {mode === 'image' && (
+                <button type="button" onClick={download} className={`${chip(true)} flex items-center gap-1.5`}>
+                  <Download className="w-4 h-4" /> {isPhone() ? 'Save to phone' : 'Save image'}
+                </button>
+              )}
+              <button type="button" onClick={() => copyCaption(false)} className={`${chip(false)} flex items-center gap-1.5`}>
+                <Copy className="w-4 h-4" /> Copy caption
+              </button>
+              {canShare && mode === 'image' && (
+                <button type="button" onClick={share} className={`${chip(false)} flex items-center gap-1.5`}>
+                  <Share2 className="w-4 h-4" /> Share
+                </button>
+              )}
+              {mode === 'image' && (
+                <button type="button" onClick={saveAllSizes} disabled={allBusy} title="Square, Wide, Tall and Story, each laid out for its shape" className={`${chip(false)} flex items-center gap-1.5 disabled:opacity-50`}>
+                  <Layers className="w-4 h-4" /> {allBusy ? 'Making...' : 'Save all sizes'}
+                </button>
+              )}
+            </div>
+            {message && <p className="text-xs text-emerald-300">{message}</p>}
+            </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="flex min-h-0 flex-1 flex-col border-t border-slate-800 md:border-l md:border-t-0">
+            <div className="flex shrink-0 gap-1 border-b border-slate-800 p-1.5" role="tablist">
+              {[
+                ['picture', 'Picture'],
+                ['header', 'Header'],
+                ['marks', 'Labels & arrows'],
+                ['caption', 'Caption'],
+              ].map(([id, t]) => (
+                <button key={id} type="button" role="tab" aria-selected={tab === id} className={`${chip(tab === id)} flex-1 whitespace-nowrap px-1.5`} onClick={() => setTab(id)}>
+                  {t}
+                </button>
+              ))}
+            </div>
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+              {tab === 'picture' && (
+                <>
             <div className="flex gap-1.5">
               <button type="button" className={`${chip(mode === 'image')} flex-1`} onClick={() => setMode('image')}>
                 Image
@@ -329,8 +441,6 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
                 ))}
               </div>
             </div>
-            <BrandPanel brandState={brandState} />
-            {markEd.panel}
             <div>
               <span className={label}>Font</span>
               <div className="flex flex-wrap gap-1.5">
@@ -367,15 +477,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
                 <span className="mt-1 block text-[11px] text-slate-400">Leads the headline, banner, colors and caption.</span>
               </label>
             )}
-            <div className="space-y-2">
-              <label className="block">
-                <span className={label}>Headline</span>
-                <input className={input} value={head} maxLength={60} onChange={(e) => setHeadline(e.target.value)} />
-              </label>
-              <label className="block">
-                <span className={label}>Second line</span>
-                <input className={input} value={sub} maxLength={80} onChange={(e) => setSubline(e.target.value)} />
-              </label>
+                  <div className="space-y-2">
               <div>
                 <span className={label}>Bottom banner</span>
                 <div className="flex items-center gap-2">
@@ -409,9 +511,31 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
                   {!info.warnings.length && <span className="text-slate-500">(none in view)</span>}
                 </label>
               </div>
-            </div>
-
-            <div>
+                  </div>
+            {Object.keys(moves).length > 0 && (
+              <button type="button" className="-mt-2 text-xs text-sky-300 hover:text-sky-200" onClick={() => setMoves({})}>
+                Put the boxes back
+              </button>
+            )}
+            <BrandPanel brandState={brandState} />
+                </>
+              )}
+              {tab === 'header' && (
+                <div className="space-y-2">
+              <label className="block">
+                <span className={label}>Headline</span>
+                <input className={input} value={head} maxLength={60} onChange={(e) => setHeadline(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className={label}>Second line</span>
+                <input className={input} value={sub} maxLength={80} onChange={(e) => setSubline(e.target.value)} />
+              </label>
+              <HeaderEditor value={header} onChange={setHeader} onFont={pickHeaderFont} band={styleId !== 'clean'} capsAuto={styleId === 'alert' && !!info.warnings[0]} hasLogo={!!(brand.enabled && logoImg)} />
+                </div>
+              )}
+              {tab === 'marks' && markEd.panel}
+              {tab === 'caption' && (
+            <div className="space-y-2">
               <span className={label}>Caption</span>
               <div className="mb-2 flex flex-wrap gap-1.5">
                 {captions.map((c) => (
@@ -446,62 +570,14 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
                   </button>
                 )}
               </div>
+              <p className="text-[11px] leading-snug text-slate-400">
+                Facebook doesn&apos;t accept caption text from other apps, so add the image to your post and paste the caption. Warnings listed are the ones
+                shown in the picture; check weather.gov before posting.
+              </p>
             </div>
 
-            {mode === 'video' && (
-              <div className="space-y-2">
-                <button
-                  type="button"
-                  onClick={makeVideo}
-                  disabled={vid.status === 'working'}
-                  className={`${chip(true)} w-full disabled:opacity-60`}
-                >
-                  {vid.status === 'working' ? vid.msg : vid.status === 'done' ? 'Remake video with these settings' : 'Make video'}
-                </button>
-                {vid.status === 'error' && <p className="text-xs text-amber-300">{vid.msg}</p>}
-                {vid.status === 'working' && <p className="text-[11px] text-slate-400">Keep this tab open while it records (about 15 seconds).</p>}
-                {showVideo && (
-                  <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={saveVideo} className={`${chip(true)} flex items-center gap-1.5`}>
-                      <Download className="w-4 h-4" /> Save video
-                    </button>
-                    {navigator.canShare?.({ files: [videoFile()] }) && (
-                      <button type="button" onClick={shareVideo} className={`${chip(false)} flex items-center gap-1.5`}>
-                        <Share2 className="w-4 h-4" /> Share
-                      </button>
-                    )}
-                  </div>
-                )}
-                {showVideo && vid.ext === 'webm' && (
-                  <p className="text-[11px] text-amber-300">This browser saves WebM video, which Instagram and Facebook Reels don&apos;t accept. Chrome, Edge or Safari save MP4.</p>
-                )}
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {mode === 'image' && (
-                <button type="button" onClick={download} className={`${chip(true)} flex items-center gap-1.5`}>
-                  <Download className="w-4 h-4" /> {isPhone() ? 'Save to phone' : 'Save image'}
-                </button>
-              )}
-              <button type="button" onClick={() => copyCaption(false)} className={`${chip(false)} flex items-center gap-1.5`}>
-                <Copy className="w-4 h-4" /> Copy caption
-              </button>
-              {canShare && mode === 'image' && (
-                <button type="button" onClick={share} className={`${chip(false)} flex items-center gap-1.5`}>
-                  <Share2 className="w-4 h-4" /> Share
-                </button>
-              )}
-              {mode === 'image' && (
-                <button type="button" onClick={saveAllSizes} disabled={allBusy} title="Square, Wide, Tall and Story, each laid out for its shape" className={`${chip(false)} flex items-center gap-1.5 disabled:opacity-50`}>
-                  <Layers className="w-4 h-4" /> {allBusy ? 'Making...' : 'Save all sizes'}
-                </button>
               )}
             </div>
-            {message && <p className="text-xs text-emerald-300">{message}</p>}
-            <p className="text-[11px] leading-snug text-slate-400">
-              Facebook doesn&apos;t accept caption text from other apps, so add the image to your post and paste the caption. Warnings listed are the ones
-              shown in the picture; check weather.gov before posting.
-            </p>
           </div>
         </div>
       </div>

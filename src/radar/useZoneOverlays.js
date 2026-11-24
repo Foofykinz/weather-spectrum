@@ -7,6 +7,7 @@
 import { useEffect, useState } from 'react';
 import { subscribeZoneAlerts, zoneLayer } from '../broadcast/zoneAlerts';
 import { obsInBounds, tempLayer, windLayer } from '../broadcast/temps';
+import { subscribeAlertStyle, alertFill } from './alertStyle';
 
 // Calls fn(map) once the map exists (it can mount a moment after the page).
 function whenMap(mapRef, fn) {
@@ -35,6 +36,8 @@ export function useZoneAlertsLayer(mapRef, on) {
   useEffect(() => (on ? subscribeZoneAlerts(setState) : setState(null)), [on]);
   const alerts = on ? state?.alerts || [] : [];
   const key = alerts.map((a) => `${a.id}:${a.shapes.length}`).join(',');
+  const [styleV, setStyleV] = useState(0); // redraw when the viewer changes colors
+  useEffect(() => subscribeAlertStyle(() => setStyleV((v) => v + 1)), []);
   useEffect(() => {
     let layer = null;
     let map = null;
@@ -43,7 +46,7 @@ export function useZoneAlertsLayer(mapRef, on) {
       map._wsZoneAlerts = alerts; // read by the tap popup
       if (!alerts.length) return;
       pane(map, 'zonealerts', 340, false); // under the radar
-      layer = zoneLayer(alerts, 'zonealerts').addTo(map);
+      layer = zoneLayer(alerts, 'zonealerts', alertFill('zone')).addTo(map);
       map.attributionControl?.addAttribution('Wind and winter alerts: NWS; zone outlines via IEM');
     });
     return () => {
@@ -51,7 +54,7 @@ export function useZoneAlertsLayer(mapRef, on) {
       if (layer) layer.remove();
       if (map) map._wsZoneAlerts = [];
     };
-  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [key, styleV]); // eslint-disable-line react-hooks/exhaustive-deps
   return { count: alerts.length, error: on ? state?.error || null : null };
 }
 

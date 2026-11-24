@@ -193,7 +193,9 @@ export function windInView(alerts, view) {
 }
 
 // Shaded zones, least serious drawn first, in the given map pane.
-export function zoneLayer(alerts, pane = 'windzones') {
+// fill: the viewer's fill level (1 solid .. 0.01 barely visible), or null for
+// the standard look. Watches and advisories fill less than warnings.
+export function zoneLayer(alerts, pane = 'windzones', fill = null) {
   const group = L.layerGroup();
   const renderer = L.svg({ pane });
   for (const a of [...alerts].sort((x, y) => y.type.rank - x.type.rank)) {
@@ -203,7 +205,13 @@ export function zoneLayer(alerts, pane = 'windzones') {
         renderer,
         interactive: false,
         // Warnings strongest, watches lighter, advisories lightest.
-        style: { color: a.type.color, weight: [2.5, 1.5, 1][a.type.tier], opacity: 0.9, fillColor: a.type.color, fillOpacity: [0.4, 0.2, 0.14][a.type.tier] },
+        style: {
+          color: a.type.color,
+          weight: [2.5, 1.5, 1][a.type.tier],
+          opacity: fill == null ? 0.9 : Math.min(0.9, 0.04 + fill * 3),
+          fillColor: a.type.color,
+          fillOpacity: fill == null ? [0.4, 0.2, 0.14][a.type.tier] : fill ** [1, 1.4, 1.8][a.type.tier],
+        },
       }).addTo(group);
     }
   }
