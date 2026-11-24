@@ -150,7 +150,7 @@ export function drawAccent(ctx, hd, x, y, w, h, autoFill) {
 }
 
 // Lays out icon + tag + headline over the second line, fitted to maxW.
-// fonts: { head, body, headWeight, caps } (the post's own); maxima in px.
+// fonts: { head, body, headWeight, caps, subWeight? } (the post's own); maxima in px.
 // Returns { w, h, draw(x, y, colors: { head, sub, icon }) } with x, y the
 // block's top-left.
 export function headerText(ctx, hd, fonts, headline, subline, maxW, hsMax, ssMax, alert) {
@@ -184,7 +184,7 @@ export function headerText(ctx, hd, fonts, headline, subline, maxW, hsMax, ssMax
   let subW = 0;
   if (subOn) {
     for (; ss > 11; ss -= 1) {
-      ctx.font = `400 ${ss}px ${fonts.body}`;
+      ctx.font = `${fonts.subWeight || 400} ${ss}px ${fonts.body}`;
       subW = ctx.measureText(subline).width;
       if (subW <= maxW - m.iconW) break;
     }
@@ -248,7 +248,7 @@ export function headerText(ctx, hd, fonts, headline, subline, maxW, hsMax, ssMax
       if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
       ctx.shadowColor = 'transparent';
       if (subOn) {
-        ctx.font = `400 ${ss}px ${fonts.body}`;
+        ctx.font = `${fonts.subWeight || 400} ${ss}px ${fonts.body}`;
         ctx.fillStyle = colors.sub;
         ctx.fillText(subline, x + m.iconW, y + hs + gap);
       }

@@ -4,6 +4,10 @@
 
 import { STATES, periodLabel, periodPhrase, rangeText } from './history';
 import { postTheme, logoSize, withAlpha } from '../brand/brand';
+import { headerStyle, headerText, headerFill, headerBgLight, drawAccent } from '../radar/postHeader';
+
+// The header icon on these posts is always the tornado one.
+const TORNADO = { type: { phen: 'TO' } };
 
 export const STYLES = [
   { id: 'spectrum', label: 'Spectrum', note: 'Navy bars, orange accent' },
@@ -13,12 +17,19 @@ export const STYLES = [
 
 const CREDIT = 'Data: NWS warnings via Iowa Environmental Mesonet. Map: OpenFreeMap, © OpenStreetMap';
 
-export function mapArea(size, style) {
+// Where the map goes. header (optional): header options (radar/postHeader);
+// its height and position move the map, and a glass header lets the map run
+// underneath. headY: top of the header band; overlay: header over the map.
+export function mapArea(size, style, header) {
   if (style === 'map') return { x: 0, y: 0, w: size.w, h: size.h };
   if (style === 'clean') return { x: 0, y: 0, w: size.w, h: size.h - 34, foot: 34 };
-  const head = Math.round(Math.max(110, size.h * 0.13));
+  const hd = header || {};
+  const head = Math.round(Math.max(110, size.h * 0.13) * (hd.height || 1));
   const foot = Math.round(Math.max(48, size.h * 0.05));
-  return { x: 0, y: head, w: size.w, h: size.h - head - foot, head, foot };
+  const bottom = hd.position === 'bottom';
+  if (hd.bg === 'glass') return { x: 0, y: 0, w: size.w, h: size.h - foot, head, foot, headY: bottom ? size.h - foot - head : 0, overlay: true, bottom };
+  if (bottom) return { x: 0, y: 0, w: size.w, h: size.h - head - foot, head, foot, headY: size.h - foot - head, bottom };
+  return { x: 0, y: head, w: size.w, h: size.h - head - foot, head, foot, headY: 0 };
 }
 
 function fitText(ctx, text, font, weight, maxSize, maxWidth, minSize = 12) {
@@ -79,7 +90,7 @@ const chartSideBySide = (opts, size, u) => !opts.stats || size.w - Math.round(Ma
 
 // How much of the map area (post pixels) the text boxes cover at the top and
 // bottom, so the map can be framed to keep every warning clear of them.
-export function coveredEdges(info, size, styleId, opts) {
+export function coveredEdges(info, size, styleId, opts, header) {
   if (styleId === 'map') return { top: 0, bottom: 0 };
   const u = scaleOf(size);
   const M = marginOf(size);
@@ -91,9 +102,12 @@ export function coveredEdges(info, size, styleId, opts) {
   const top = styleId === 'clean' ? M + Math.round(58 * u) + Math.round(30 * u) + 46 + 10 * u : 0;
   // Never more than about a third of the map (a fifth on wide pictures, where
   // the boxes sit in the corners and warnings can run between them).
-  const area = mapArea(size, styleId);
+  const area = mapArea(size, styleId, header);
   const cap = area.h * (area.w / area.h > 1.3 ? 0.2 : 0.36);
-  return { top: Math.round(top), bottom: Math.round(Math.min(bottom, cap)) };
+  // A glass header sits over the map: keep warnings out from under it too.
+  const underTop = area.overlay && !area.bottom ? area.head : 0;
+  const underBottom = area.overlay && area.bottom ? area.head : 0;
+  return { top: Math.round(top + underTop), bottom: Math.round(Math.min(bottom, cap) + underBottom) };
 }
 
 // The stats card: big count, then a few lines.
@@ -190,7 +204,12 @@ export function drawPost(canvas, mapImg, info, opts) {
   canvas.width = size.w;
   canvas.height = size.h;
   const ctx = canvas.getContext('2d');
-  const area = mapArea(size, style.id);
+  const hd = headerStyle(opts.header);
+  const area = mapArea(size, style.id, hd);
+  // The part of the map not under the header (the boxes stay in it).
+  const freeTop = area.overlay && !area.bottom ? area.head : area.y;
+  const freeBottom = area.overlay && area.bottom ? area.headY : area.y + area.h;
+  const room = { x: 0, y: freeTop, w: size.w, h: freeBottom - freeTop };
   const u = Math.min(size.w, size.h * 1.15) / 1080;
   const M = Math.round(size.w * 0.035);
   const headWeight = font.headWeight || 700;
@@ -202,12 +221,12 @@ export function drawPost(canvas, mapImg, info, opts) {
   // ctx.restore() when the box is drawn. Returns its drawn height.
   const place = (id, w, h, anchor) => {
     const m = opts.moves?.[id] || {};
-    const k = Math.max(0.5, Math.min(m.s || 1, 2.2, area.w / w, area.h / h));
+    const k = Math.max(0.5, Math.min(m.s || 1, 2.2, room.w / w, room.h / h));
     const sw = w * k;
     const sh = h * k;
     const [x, y] = m.px != null ? [m.px * size.w, m.py * size.h] : anchor(sw, sh);
-    const nx = Math.max(area.x, Math.min(x, area.x + area.w - sw));
-    const ny = Math.max(area.y, Math.min(y, area.y + area.h - sh));
+    const nx = Math.max(room.x, Math.min(x, room.x + room.w - sw));
+    const ny = Math.max(room.y, Math.min(y, room.y + room.h - sh));
     boxes[id] = { x: nx, y: ny, w: sw, h: sh, s: k };
     ctx.save();
     ctx.translate(nx, ny);
@@ -259,60 +278,61 @@ export function drawPost(canvas, mapImg, info, opts) {
   if (style.id === 'clean') {
     // Headline box, with the logo if any (sized so the box keeps its height).
     const boxH = Math.round(58 * u) + Math.round(30 * u) + 46;
-    const logo = logoSize(T.logo, 240 * u, boxH - 24);
+    const logo = logoSize(T.logo, 240 * u * hd.logoSize, (boxH - 24) * hd.logoSize);
     const lw = logo.w ? logo.w + 18 : 0;
-    const ss = fitText(ctx, opts.subline, font.body, 600, Math.round(30 * u), size.w - M * 2 - 44 - lw, 12);
-    const hs = fitText(ctx, opts.headline, font.head, headWeight, Math.round(58 * u), size.w - M * 2 - 44 - lw, 16);
-    ctx.font = `600 ${ss}px ${font.body}`;
-    const sw = ctx.measureText(opts.subline).width;
-    ctx.font = `${headWeight} ${hs}px ${font.head}`;
-    const hw = ctx.measureText(opts.headline).width;
-    const bw = Math.max(hw, sw) + 44 + lw;
-    const bh = Math.max(hs + ss + 46, logo.h + 24);
+    const tb = headerText(ctx, hd, { head: font.head, body: font.body, headWeight, caps: false, subWeight: 600 }, opts.headline, opts.subline, size.w - M * 2 - 44 - lw, Math.round(58 * u), Math.round(30 * u), TORNADO);
+    const bw = tb.w + 44 + lw;
+    const bh = Math.max(tb.h + 46, logo.h + 24);
     place('head', bw, bh, () => [M, M]);
-    const hx = 0;
-    const hy = 0;
-    ctx.fillStyle = withAlpha(T.primary, 0.88);
-    roundRect(ctx, hx, hy, bw, bh, 12);
+    ctx.fillStyle = hd.bg === 'auto' ? withAlpha(T.primary, 0.88) : headerFill(ctx, hd, 0, 0, bw, bh, '#FF0000');
+    roundRect(ctx, 0, 0, bw, bh, 12);
     ctx.fill();
-    ctx.fillStyle = T.accentSolid;
-    ctx.fillRect(hx, hy + 14, 5, bh - 28);
-    if (logo.w) ctx.drawImage(T.logo, hx + 20, hy + (bh - logo.h) / 2, logo.w, logo.h);
-    const tx = hx + 24 + lw;
-    const ty = hy + (bh - (hs + ss + 8)) / 2;
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = T.text;
-    ctx.fillText(opts.headline, tx, ty);
-    ctx.font = `600 ${ss}px ${font.body}`;
-    ctx.fillStyle = T.sub;
-    ctx.fillText(opts.subline, tx, ty + hs + 8);
+    const aw = hd.accent === 'stripes' ? Math.max(8, hd.accentWidth) : hd.accent === 'color' ? Math.max(3, hd.accentWidth * 0.8) : 5;
+    drawAccent(ctx, hd, 0, 14, aw, bh - 28, T.accentSolid);
+    if (logo.w) ctx.drawImage(T.logo, 20, (bh - logo.h) / 2, logo.w, logo.h);
+    const light = hd.bg === 'auto' ? T.text === '#0b1220' : headerBgLight(hd, '#FF0000');
+    tb.draw(24 + lw, (bh - tb.h) / 2, {
+      head: hd.color || (hd.bg === 'auto' ? T.text : light ? '#0b1220' : '#ffffff'),
+      sub: hd.subColor || (hd.bg === 'auto' ? T.sub : light ? '#1e293b' : 'rgba(255,255,255,0.85)'),
+    });
     ctx.restore();
   } else {
-    const g = ctx.createLinearGradient(0, 0, 0, area.head);
-    g.addColorStop(0, T.headTop);
-    g.addColorStop(1, T.headBottom);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, size.w, area.head);
-    ctx.fillStyle = T.accentFill(ctx, 0, size.w);
-    ctx.fillRect(0, area.head - 6, size.w, 6);
-    const logo = logoSize(T.logo, size.w * 0.26, (area.head - 6) * 0.72);
-    if (logo.w) ctx.drawImage(T.logo, size.w - M - logo.w, (area.head - 6 - logo.h) / 2, logo.w, logo.h);
+    // Header band (top or bottom; over the map when it's glass).
+    const HY = area.headY;
+    const HH = area.head;
+    if (hd.bg === 'auto') {
+      const g = ctx.createLinearGradient(0, HY, 0, HY + HH);
+      g.addColorStop(0, T.headTop);
+      g.addColorStop(1, T.headBottom);
+      ctx.fillStyle = g;
+    } else {
+      ctx.fillStyle = headerFill(ctx, hd, 0, HY, size.w, HH, '#FF0000');
+    }
+    ctx.fillRect(0, HY, size.w, HH);
+    const aw = hd.accent === 'auto' ? 6 : Math.round(hd.accentWidth * (size.w / 1080));
+    const accentOn = hd.accent !== 'off';
+    drawAccent(ctx, hd, 0, area.bottom ? HY : HY + HH - aw, size.w, aw, T.accentFill(ctx, 0, size.w));
+    const innerY = area.bottom && accentOn ? HY + aw : HY;
+    const innerH = HH - (accentOn ? aw : 0);
+    const logo = logoSize(T.logo, size.w * 0.26 * hd.logoSize, Math.min(innerH - 8, innerH * 0.72 * hd.logoSize));
+    const logoLeft = hd.logoSide === 'left';
+    if (logo.w) ctx.drawImage(T.logo, logoLeft ? M : size.w - M - logo.w, innerY + (innerH - logo.h) / 2, logo.w, logo.h);
+    const textX0 = M + (logo.w && logoLeft ? logo.w + M * 0.6 : 0);
     const textW = size.w - M * 2 - (logo.w ? logo.w + M * 0.6 : 0);
-    const hs = fitText(ctx, opts.headline, font.head, headWeight, Math.round(area.head * 0.42), textW, 16);
-    const ss = fitText(ctx, opts.subline, font.body, 600, Math.round(area.head * 0.22), textW, 12);
-    const y0 = Math.round((area.head - 6 - (hs + 8 + ss)) / 2);
-    ctx.textBaseline = 'top';
-    ctx.font = `${headWeight} ${hs}px ${font.head}`;
-    ctx.fillStyle = T.text;
-    ctx.fillText(opts.headline, M, y0);
-    ctx.font = `600 ${ss}px ${font.body}`;
-    ctx.fillStyle = T.sub;
-    ctx.fillText(opts.subline, M, y0 + hs + 8);
+    const light = hd.bg === 'auto' ? T.text === '#0b1220' : headerBgLight(hd, '#FF0000');
+    const tb = headerText(ctx, hd, { head: font.head, body: font.body, headWeight, caps: false, subWeight: 600 }, opts.headline, opts.subline, textW, Math.round(HH * 0.42), Math.round(HH * 0.22), TORNADO);
+    const tx = hd.align === 'center' ? textX0 + (textW - tb.w) / 2 : hd.align === 'right' ? textX0 + textW - tb.w : textX0;
+    tb.draw(tx, innerY + Math.round((innerH - tb.h) / 2), {
+      head: hd.color || (hd.bg === 'auto' ? T.text : light ? '#0b1220' : '#ffffff'),
+      sub: hd.subColor || (hd.bg === 'auto' ? T.sub : light ? '#1e293b' : 'rgba(255,255,255,0.85)'),
+    });
+    // Where the header is, for tap-to-edit.
+    Object.defineProperty(boxes, 'regions', { value: { header: { x: 0, y: HY, w: size.w, h: HH } } });
   }
 
   // Cards along the bottom of the map: stats on the left, chart on the right
   // (stacked when the picture is too narrow for both).
-  const bottom = area.y + area.h - M * 0.7;
+  const bottom = freeBottom - M * 0.7;
   const statsW = Math.round(Math.min(470 * u, size.w * 0.48));
   let statsH = 0;
   if (opts.stats) {
@@ -332,7 +352,7 @@ export function drawPost(canvas, mapImg, info, opts) {
   }
 
   // Footer.
-  const fy = area.y + area.h;
+  const fy = style.id === 'clean' ? area.y + area.h : size.h - area.foot;
   const fh = size.h - fy;
   ctx.fillStyle = style.id === 'clean' ? withAlpha(T.primary, 0.92) : T.foot;
   ctx.fillRect(0, fy, size.w, fh);
