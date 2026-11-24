@@ -224,6 +224,14 @@ function SingleRadar() {
     updateParams({ time: d ? timeToParam(d) : null });
   };
 
+  // Alerts a post can mention: the warnings / watches on the map (when shown)
+  // and the wind and winter alerts (when shown).
+  const postAlerts = (map) => {
+    const zoneList = zonesOn && !past ? map._wsZoneAlerts || [] : [];
+    if (!warningsOn && !zoneList.length) return null;
+    return { ...(warningsOn ? map._wsWarnings : {}), zones: zoneList };
+  };
+
   // Post maker: pause any loop, then copy the map as it is on screen.
   const scanTime = anim ? anim.times[anim.index] : frame.status === 'ok' ? frame.validTime : null;
   const openPost = async () => {
@@ -237,7 +245,7 @@ function SingleRadar() {
       const snap = await snapshotMap(map);
       setPost({
         snap,
-        base: { product, station: product.scope === 'site' ? station : null, time: scanTime, past, frame, alerts: warningsOn ? map._wsWarnings : null },
+        base: { product, station: product.scope === 'site' ? station : null, time: scanTime, past, frame, alerts: postAlerts(map) },
       });
     } catch (err) {
       setPost({ error: err.message || 'The map picture could not be made.' });
@@ -277,7 +285,7 @@ function SingleRadar() {
         }, 20000);
         await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
         const snap = await snapshotMap(map, scale);
-        out.push({ snap, time: times[i], alerts: warningsOn ? map._wsWarnings : null, details: src[i].details });
+        out.push({ snap, time: times[i], alerts: postAlerts(map), details: src[i].details });
       }
     } finally {
       setVideo(null);

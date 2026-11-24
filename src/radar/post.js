@@ -68,6 +68,9 @@ export function cropFor(snap, size, styleId) {
 }
 
 function rank(w) {
+  // Wind / winter alerts (forecast zones) come after the storm warnings:
+  // warnings, then watches, then advisories.
+  if (w.zone) return 100 + w.type.tier * 20 + w.type.rank;
   return (w.danger === 'emergency' ? -20 : w.danger === 'high' ? -10 : 0) + (w.type?.rank ?? 99);
 }
 
@@ -78,7 +81,8 @@ function pointsOf(coords, out = []) {
 }
 
 // Warnings / watches that are inside the cropped picture: a vertex inside it,
-// or a sample point of the picture inside the shape.
+// or a sample point of the picture inside the shape. Wind and winter alerts
+// (state.zones) are listed with the warnings, after them.
 export function alertsInView(state, snap, crop) {
   const nw = snap.toLatLng(crop.x, crop.y);
   const se = snap.toLatLng(crop.x + crop.w, crop.y + crop.h);
@@ -96,7 +100,15 @@ export function alertsInView(state, snap, crop) {
           samples.some((p) => watchesAtPoint([w], shapes, p.lat, p.lng).length)
       )
     : [];
-  return { warnings: warnings.sort((a, b) => rank(a) - rank(b)), watches };
+  const zones = (state?.zones || [])
+    .filter((a) => a.shapes.some((g) => pointsOf(g.coordinates).some(([lon, lat]) => inBox(lat, lon))) || samples.some((p) => warningsAt(a.shapes.map((geometry) => ({ geometry })), p.lat, p.lng).length))
+    .map((a) => ({ ...a, key: a.id, zone: true }));
+  // Same kind of alert: the one at the middle of the picture first, then the
+  // one with the biggest numbers (gusts or snow).
+  const mid = snap.toLatLng(crop.x + crop.w / 2, crop.y + crop.h / 2);
+  const atMid = (w) => (w.zone && warningsAt(w.shapes.map((geometry) => ({ geometry })), mid.lat, mid.lng).length ? 0 : 1);
+  const order = (a, b) => rank(a) - rank(b) || (a.zone && b.zone ? atMid(a) - atMid(b) || b.amount - a.amount : 0);
+  return { warnings: [...warnings, ...zones].sort(order), watches };
 }
 
 // Past warnings: the polygon archive has no county names, so look them up in
@@ -144,6 +156,10 @@ const setTz = (z) => {
 };
 const time = (d) => new Date(d).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', timeZoneName: 'short', timeZone: tz });
 const dateLong = (d) => new Date(d).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: tz });
+const dayTime = (d) => new Date(d).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZoneName: 'short', timeZone: tz });
+// End time of an alert: wind / winter alerts run for a day or more, so their
+// times carry the weekday.
+const endOf = (w) => (w.zone ? dayTime(w.ends) : time(w.ends));
 const dateShort = (d) => new Date(d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric', timeZone: tz });
 
 // Best guess of a radar's time zone from its state (split states use the
@@ -166,6 +182,8 @@ export function zoneForStation(station) {
 
 // "Osage, OK; Washington, OK" -> "Osage and Washington, OK"
 export function bannerText(w) {
+  // Wind / winter alerts: the NWS's own WHERE line when it's short enough.
+  if (w?.zone && w.where && w.where.length <= 120) return w.where.replace(/\.$/, '');
   if (!w?.area) return '';
   const byState = new Map();
   for (const part of w.area.split(';').map((s) => s.trim()).filter(Boolean)) {
@@ -179,14 +197,22 @@ export function bannerText(w) {
 }
 export const bannerTime = (w, zone) => {
   setTz(zone);
-  return w?.ends ? `until ${time(w.ends)}` : '';
+  if (w?.zone && Date.parse(w.onset) > Date.now()) return `${dayTime(w.onset)} to ${dayTime(w.ends)}`;
+  return w?.ends ? `until ${endOf(w)}` : '';
 };
-const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : /(ch|sh|s|x)$/.test(word) ? 'es' : 's'}`;
 
 export function warningName(w) {
   if (w.danger === 'emergency') return w.type.phen === 'FF' ? 'Flash Flood Emergency' : w.type.phen === 'TO' ? 'Tornado Emergency' : w.type.event;
   if (w.danger === 'high' && w.type.phen === 'TO') return 'PDS Tornado Warning';
   return w.type.event;
+}
+
+// Where an alert is, for captions: the NWS's own WHERE line for wind / winter
+// alerts (first letter lowercased to follow "for"), else the county list.
+function placeOf(w, max = 140) {
+  if (w.zone && w.where) return w.where.replace(/\.$/, '').replace(/^[A-Z](?=[a-z])/, (c) => c.toLowerCase());
+  return shortArea(w.area, max);
 }
 
 function shortArea(area, max = 140) {
@@ -195,6 +221,7 @@ function shortArea(area, max = 140) {
 }
 
 function tagLine(w) {
+  if (w.zone) return w.what || ''; // quoted from the NWS alert
   const t = [];
   if (w.tornado === 'OBSERVED') t.push('Tornado observed.');
   else if (w.tornado === 'RADAR INDICATED') t.push('Radar indicated rotation.');
@@ -253,11 +280,13 @@ export function buildCaptions(info, { link, tags }) {
 
   const alert = top
     ? join([
-        `${warningName(top).toUpperCase()}${top.area ? ` for ${shortArea(top.area)}` : ''}${
-          top.ends ? (was ? `, in effect until ${time(top.ends)}` : ` until ${time(top.ends)}`) : ''
+        `${warningName(top).toUpperCase()}${top.area ? ` for ${placeOf(top)}` : ''}${
+          top.zone && !was && Date.parse(top.onset) > Date.now()
+            ? `, ${dayTime(top.onset)} to ${dayTime(top.ends)}`
+            : top.ends ? (was ? `, in effect until ${endOf(top)}` : ` until ${endOf(top)}`) : ''
         }.`,
         tagLine(top),
-        was ? '' : ACTION[top.type.phen] || 'Follow the instructions from the National Weather Service.',
+        was ? '' : top.zone ? top.impacts || 'Follow the instructions from the National Weather Service.' : ACTION[top.type.phen] || 'Follow the instructions from the National Weather Service.',
         ws.length > 1 ? `Also ${was ? 'in effect then' : 'in effect'}: ${countList(ws.slice(1), warningName)}.` : '',
         radar,
       ])
@@ -272,16 +301,16 @@ export function buildCaptions(info, { link, tags }) {
 
   const short = join([
     top && was
-      ? `${warningName(top)}${top.area ? ` for ${shortArea(top.area, 80)}` : ''}, ${time(t)} on ${dateShort(t)}.`
+      ? `${warningName(top)}${top.area ? ` for ${placeOf(top, 80)}` : ''}, ${time(t)} on ${dateShort(t)}.`
       : top
-      ? `${warningName(top)}${top.area ? ` for ${shortArea(top.area, 80)}` : ''}${top.ends ? ` until ${time(top.ends)}` : ''}.`
+      ? `${warningName(top)}${top.area ? ` for ${placeOf(top, 80)}` : ''}${top.ends ? ` until ${endOf(top)}` : ''}.`
       : `${was ? 'Radar' : 'Latest radar'}, ${time(t)}${was ? ` ${dateShort(t)}` : ''}.`,
   ]);
 
   const recap = join([
     `Looking back: ${radarLine(info)} at ${time(t)} on ${dateLong(t)}.`,
     inEffect() ? `At that time: ${inEffect()}.` : '',
-    top && top.area ? `${warningName(top)} for ${shortArea(top.area)}.` : '',
+    top && top.area ? `${warningName(top)} for ${placeOf(top)}.` : '',
     top ? tagLine(top) : '',
   ]);
 
@@ -440,7 +469,7 @@ function drawWarningList(ctx, warnings, x, y, w, font, past) {
     roundRect(ctx, x + pad, cy - 9, 18, 18, 4);
     ctx.fill();
     ctx.fillStyle = '#f1f5f9';
-    const until = wn.ends && !past ? `until ${time(wn.ends)}` : '';
+    const until = wn.ends && !past ? `until ${endOf(wn)}` : '';
     ctx.font = `400 15px ${font}`;
     const uw = until ? ctx.measureText(until).width + 10 : 0;
     fitText(ctx, warningName(wn), font, 600, 19, w - pad * 2 - 28 - uw, 12);
@@ -456,7 +485,7 @@ function drawWarningList(ctx, warnings, x, y, w, font, past) {
   if (more > 0) {
     ctx.fillStyle = '#94a3b8';
     ctx.font = `400 15px ${font}`;
-    ctx.fillText(`+ ${plural(more, 'more warning')}`, x + pad, y + pad + rows.length * rowH + 4);
+    ctx.fillText(`+ ${plural(more, warnings.some((w) => w.zone) ? 'more alert' : 'more warning')}`, x + pad, y + pad + rows.length * rowH + 4);
   }
   ctx.textBaseline = 'alphabetic';
 }

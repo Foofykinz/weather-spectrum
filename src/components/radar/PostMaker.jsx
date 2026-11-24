@@ -359,7 +359,7 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
                       <option key={w.key} value={w.key}>
                         {warningName(w)}
                         {where ? `: ${where.length > 40 ? `${where.slice(0, 40)}...` : where}` : ''}
-                        {w.ends ? ` (until ${bannerTime(w, zone).replace(/^until /, '')})` : ''}
+                        {w.ends ? ` (${bannerTime(w, zone)})` : ''}
                       </option>
                     );
                   })}

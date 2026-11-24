@@ -66,6 +66,34 @@ async function svgImage(svg) {
   }
 }
 
+// Station readings (temperature / wind numbers) are HTML labels, not images:
+// draw each one as text at its on-screen spot, in its own color and size.
+const TEXT_PANES = ['stationobs'];
+function drawTextLabels(ctx, root, box, scale) {
+  for (const name of TEXT_PANES) {
+    for (const el of root.querySelectorAll(`.leaflet-${name}-pane .leaflet-marker-icon > div`)) {
+      const r = el.getBoundingClientRect();
+      if (r.right < box.left || r.left > box.right || r.bottom < box.top || r.top > box.bottom) continue;
+      const s = getComputedStyle(el);
+      ctx.save();
+      ctx.globalAlpha = parseFloat(s.opacity) || 1;
+      ctx.font = `${s.fontWeight} ${parseFloat(s.fontSize) * scale}px ${s.fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const x = (r.left + r.width / 2 - box.left) * scale;
+      const y = (r.top + r.height / 2 - box.top) * scale;
+      ctx.shadowColor = '#000';
+      ctx.shadowBlur = 3 * scale;
+      ctx.lineWidth = 3 * scale;
+      ctx.strokeStyle = 'rgba(0,0,0,0.85)';
+      ctx.strokeText(el.textContent, x, y);
+      ctx.fillStyle = s.color;
+      ctx.fillText(el.textContent, x, y);
+      ctx.restore();
+    }
+  }
+}
+
 // Returns { canvas, scale, toLatLng(x, y), toPoint(lat, lng) } where x, y are canvas pixels.
 // toLatLng uses the view at capture time, so later map moves don't matter.
 export async function snapshotMap(map, scale = 2) {
@@ -123,5 +151,6 @@ export async function snapshotMap(map, scale = 2) {
     }
   }
   ctx.globalAlpha = 1;
+  drawTextLabels(ctx, root, box, scale);
   return { canvas, scale, toLatLng, toPoint };
 }
