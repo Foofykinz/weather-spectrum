@@ -1,7 +1,8 @@
-// Wind alerts for the broadcast: NWS High Wind Warnings, High Wind Watches and
-// Wind Advisories, exactly as issued. These cover whole forecast zones (no
-// polygon), so the zone outlines come from the Iowa Environmental Mesonet's
-// copy of the same alerts. Text on screen is quoted from the NWS alert.
+// Wind and winter alerts for the broadcast (High Wind, Winter Storm, Blizzard,
+// Ice Storm and Lake Effect Snow warnings, their watches and advisories),
+// exactly as issued. These cover whole forecast zones (no polygon), so the zone
+// outlines come from the Iowa Environmental Mesonet's copy of the same alerts.
+// Text on screen is quoted from the NWS alert.
 
 import L from 'leaflet';
 
@@ -10,13 +11,20 @@ const IEM_ZONES = 'https://mesonet.agron.iastate.edu/api/1/vtec/county_zone.geoj
 const POLL_MS = 2 * 60e3;
 const SHAPES_MIN_MS = 15 * 60e3; // re-download outlines at most this often
 
-// NWS hazard map colors, most serious first.
-export const WIND_TYPES = [
-  { event: 'High Wind Warning', code: 'HW.W', short: 'High wind warning', color: '#DAA520', rank: 0 },
-  { event: 'High Wind Watch', code: 'HW.A', short: 'High wind watch', color: '#B8860B', rank: 1 },
-  { event: 'Wind Advisory', code: 'WI.Y', short: 'Wind advisory', color: '#D2B48C', rank: 2 },
-];
-const BY_EVENT = new Map(WIND_TYPES.map((t) => [t.event, t]));
+// NWS hazard map colors, most serious first. tier: 0 warning, 1 watch, 2 advisory.
+export const ZONE_TYPES = [
+  { event: 'Blizzard Warning', phen: 'BZ', kind: 'winter', tier: 0, color: '#FF4500' },
+  { event: 'Ice Storm Warning', phen: 'IS', kind: 'winter', tier: 0, color: '#8B008B' },
+  { event: 'Winter Storm Warning', phen: 'WS', kind: 'winter', tier: 0, color: '#FF69B4' },
+  { event: 'Lake Effect Snow Warning', phen: 'LE', kind: 'winter', tier: 0, color: '#008B8B' },
+  { event: 'High Wind Warning', phen: 'HW', kind: 'wind', tier: 0, color: '#DAA520' },
+  { event: 'Winter Storm Watch', phen: 'WS', kind: 'winter', tier: 1, color: '#4682B4' },
+  { event: 'High Wind Watch', phen: 'HW', kind: 'wind', tier: 1, color: '#B8860B' },
+  { event: 'Winter Weather Advisory', phen: 'WW', kind: 'winter', tier: 2, color: '#7B68EE' },
+  { event: 'Wind Advisory', phen: 'WI', kind: 'wind', tier: 2, color: '#D2B48C' },
+].map((t, rank) => ({ ...t, rank }));
+const BY_EVENT = new Map(ZONE_TYPES.map((t) => [t.event, t]));
+const PHENS = new Set(ZONE_TYPES.map((t) => t.phen));
 // The broadcast radar covers the lower 48 only.
 const OUTSIDE = /^(AK|HI|PR|VI|GU|AS|MP)/;
 
@@ -33,10 +41,14 @@ function sections(text) {
 function toAlert(f) {
   const p = f.properties;
   const s = sections(p.description);
-  const gust = Math.max(0, ...[...(s.WHAT || '').matchAll(/gusts? (?:up )?to (\d+) mph/gi)].map((m) => +m[1]));
+  const type = BY_EVENT.get(p.event);
+  // Biggest number in the alert's own WHAT line, to pick which alert a screen
+  // quotes: the gust (mph) for wind, the snow total (inches) for winter.
+  const re = type.kind === 'wind' ? /gusts? (?:as high as |up )?to (\d+) mph|gusting as high as (\d+) mph/gi : /(\d+)(?: (?:to|and) (\d+))? inch/gi;
+  const amount = Math.max(0, ...[...(s.WHAT || '').matchAll(re)].map((m) => Math.max(...m.slice(1).filter(Boolean).map(Number))));
   return {
     id: p.id,
-    type: BY_EVENT.get(p.event),
+    type,
     office: p.senderName,
     ugcs: (p.geocode?.UGC || []).filter((u) => !OUTSIDE.test(u)),
     area: p.areaDesc,
@@ -47,13 +59,13 @@ function toAlert(f) {
     where: s.WHERE || null,
     when: s.WHEN || null,
     impacts: s.IMPACTS || null,
-    gust,
+    amount,
     states: [...new Set((p.geocode?.UGC || []).map((u) => u.slice(0, 2)))].filter((st) => !OUTSIDE.test(st)),
   };
 }
 
 async function fetchAlerts(signal) {
-  const events = encodeURIComponent(WIND_TYPES.map((t) => t.event).join(','));
+  const events = encodeURIComponent(ZONE_TYPES.map((t) => t.event).join(','));
   const r = await fetch(`${NWS}?status=actual&event=${events}`, { signal, headers: { Accept: 'application/geo+json' } });
   if (!r.ok) throw new Error(`NWS alerts failed (${r.status})`);
   const feats = ((await r.json()).features || []).filter((f) => f.properties.status === 'Actual' && BY_EVENT.has(f.properties.event));
@@ -76,7 +88,7 @@ async function loadShapes(ugcs, signal) {
   if (!r.ok) throw new Error(`Zone outlines failed (${r.status})`);
   for (const f of (await r.json()).features || []) {
     const ph = f.properties?.phenomena;
-    if ((ph === 'HW' || ph === 'WI') && f.geometry) shapes.set(f.properties.ugc, f.geometry);
+    if (PHENS.has(ph) && f.geometry) shapes.set(f.properties.ugc, f.geometry);
   }
 }
 
@@ -100,7 +112,7 @@ async function poll() {
   listeners.forEach((fn) => fn(state));
   if (listeners.size) timer = setTimeout(poll, POLL_MS);
 }
-export function subscribeWind(fn) {
+export function subscribeZoneAlerts(fn) {
   listeners.add(fn);
   if (state) fn(state);
   if (listeners.size === 1) poll();
@@ -125,11 +137,16 @@ function boxOf(geoms) {
   return n >= s ? [[s, w], [n, e]] : null;
 }
 
-// Alerts that touch or sit next to each other, as one screen each: the most
-// serious type first, then the biggest area (most zones). Each group quotes
-// its most serious alert with the strongest gusts.
+// Alerts of one kind (wind or winter) that touch or sit next to each other, as
+// one screen each: warnings first, then watches, then advisories, then the
+// biggest area (most zones). Each group quotes its most serious alert with the
+// strongest gusts or the most snow.
 const zones = (g) => new Set(g.alerts.flatMap((a) => a.ugcs)).size;
-export function windGroups(alerts) {
+export function alertGroups(alerts) {
+  return ['wind', 'winter'].flatMap((kind) => groupsOf(alerts.filter((a) => a.type.kind === kind)))
+    .sort((a, b) => a.top.type.tier - b.top.type.tier || zones(b) - zones(a));
+}
+function groupsOf(alerts) {
   const items = alerts.map((a) => ({ a, box: boxOf(a.shapes) })).filter((x) => x.box);
   const near = (p, q) => p.box[0][0] - 0.3 < q.box[1][0] && q.box[0][0] - 0.3 < p.box[1][0] && p.box[0][1] - 0.3 < q.box[1][1] && q.box[0][1] - 0.3 < p.box[1][1];
   const groups = [];
@@ -142,7 +159,7 @@ export function windGroups(alerts) {
   return groups
     .map((g) => {
       const list = g.map((x) => x.a);
-      const top = [...list].sort((a, b) => a.type.rank - b.type.rank || b.gust - a.gust)[0];
+      const top = [...list].sort((a, b) => a.type.rank - b.type.rank || b.amount - a.amount)[0];
       const main = list.filter((a) => a.type === top.type);
       return {
         id: list.map((a) => a.id).sort().join('|'),
@@ -151,26 +168,31 @@ export function windGroups(alerts) {
         box: boxOf(list.flatMap((a) => a.shapes)),
         // What the screen frames: the alerts of the group's most serious type.
         focus: boxOf(main.flatMap((a) => a.shapes)),
-        states: [...new Set(list.flatMap((a) => a.states))],
-        offices: [...new Set(list.map((a) => a.office))],
+        // States under the alert type the screen is named after; the other
+        // alerts in the area are listed separately by type.
+        states: [...new Set(main.flatMap((a) => a.states))],
+        also: [...new Set(list.filter((a) => a.type !== top.type).map((a) => a.type))]
+          .sort((x, y) => x.rank - y.rank)
+          .map((t) => ({ type: t, states: [...new Set(list.filter((a) => a.type === t).flatMap((a) => a.states))] })),
+        offices: [...new Set(main.map((a) => a.office))],
         // Times of the alerts the screen is named after.
         onset: main.map((a) => a.onset).sort()[0],
         ends: main.map((a) => a.ends).sort().at(-1),
       };
-    })
-    .sort((a, b) => a.top.type.rank - b.top.type.rank || zones(b) - zones(a) || b.top.gust - a.top.gust);
+    });
 }
 
 // Is any part of [[s,w],[n,e]] under a wind alert zone's outline box?
 export function windInView(alerts, view) {
   return alerts.some((a) => {
+    if (a.type.kind !== 'wind') return false;
     const b = boxOf(a.shapes);
     return b && b[0][0] < view[1][0] && view[0][0] < b[1][0] && b[0][1] < view[1][1] && view[0][1] < b[1][1];
   });
 }
 
 // Shaded zones, least serious drawn first.
-export function windZoneLayer(alerts) {
+export function zoneLayer(alerts) {
   const group = L.layerGroup();
   const renderer = L.svg({ pane: 'windzones' });
   for (const a of [...alerts].sort((x, y) => y.type.rank - x.type.rank)) {
@@ -179,7 +201,8 @@ export function windZoneLayer(alerts) {
         pane: 'windzones',
         renderer,
         interactive: false,
-        style: { color: a.type.color, weight: 2, opacity: 0.9, fillColor: a.type.color, fillOpacity: 0.28 },
+        // Warnings strongest, watches lighter, advisories lightest.
+        style: { color: a.type.color, weight: [2.5, 1.5, 1][a.type.tier], opacity: 0.9, fillColor: a.type.color, fillOpacity: [0.4, 0.2, 0.14][a.type.tier] },
       }).addTo(group);
     }
   }
@@ -187,7 +210,7 @@ export function windZoneLayer(alerts) {
 }
 
 // "Wed 10 PM to Thu 10 PM EST" in the given time zone.
-export function windTime(onset, ends, tz) {
+export function alertTime(onset, ends, tz) {
   const f = (d, o) => new Date(d).toLocaleString('en-US', { timeZone: tz || undefined, ...o });
   const day = { weekday: 'short', hour: 'numeric', minute: '2-digit' };
   const tzName = f(ends, { timeZoneName: 'short' }).split(' ').pop();

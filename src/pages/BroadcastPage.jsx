@@ -14,7 +14,7 @@ import { TOUR } from '../broadcast/cities';
 import { cityWeather } from '../broadcast/nws';
 import L from 'leaflet';
 import { tempsNear, tempLayer, windNear, windLayer } from '../broadcast/temps';
-import { subscribeWind, windGroups, windInView, windZoneLayer, windTime } from '../broadcast/wind';
+import { subscribeZoneAlerts, alertGroups, windInView, zoneLayer, alertTime } from '../broadcast/zoneAlerts';
 
 // 24/7 broadcast page, made to be captured by OBS as a 1920x1080 browser
 // source. Runs itself: flies from city to city showing radar, current
@@ -39,13 +39,14 @@ const CHECKIN_EVERY = 5;
 const CHECKIN_MAX = 3;
 const CHECKIN_MS = 20000;
 const CHECKIN_PHEN = new Set(['SV', 'FF', 'SQ']);
-// Wind check-in: right after the warning check-in (or in its place), the top
-// areas under High Wind Warnings / Watches or Wind Advisories, one screen each.
-const WIND_MAX = 2;
-const WIND_MS = 20000;
-// Wind screen framing: room for the banner on top and the NWS quote below.
-const WIND_PAD_TL = [140, 170];
-const WIND_PAD_BR = [140, 280];
+// Wind and winter check-in: right after the warning check-in (or in its
+// place), the top areas under wind or winter weather warnings, watches or
+// advisories, one screen each.
+const ZONE_MAX = 3;
+const ZONE_MS = 20000;
+// Check-in screen framing: room for the banner on top and the NWS quote below.
+const ZONE_PAD_TL = [140, 170];
+const ZONE_PAD_BR = [140, 280];
 // SPC outlook stop: every 10 cities, Days 1-3, 12 seconds each, over a
 // whole-country view (shifted east so the panel on the left doesn't cover it).
 const OUTLOOK_EVERY = 10;
@@ -307,15 +308,16 @@ function crawlText(state, groups = []) {
       const where = bannerText(w);
       return `${warningName(w)}${where ? `: ${where}` : ''} ${bannerTime(w, zoneForStation({ state: st }))}`.trim();
     });
-  const wind = groups.map((g) => `${g.top.type.event}: ${g.states.join(', ')} ${windTime(g.onset, g.ends, zoneForStation({ state: g.top.states[0] }))}`);
+  const wind = groups.map((g) => `${g.top.type.event}: ${g.states.join(', ')} ${alertTime(g.onset, g.ends, zoneForStation({ state: g.top.states[0] }))}`);
   return [head, ...listed, ...wind, 'Unofficial broadcast. Always follow official warnings: weather.gov'].join('      •      ');
 }
 
-// Wind check-in screen, drawn over the main map (which flies to the area):
-// a banner, and lines quoted from the NWS alert with the strongest gusts.
-function WindScreen({ group, index, count, tz, radarTime }) {
+// Wind / winter check-in screen, drawn over the main map (which flies to the
+// area): a banner, and lines quoted from the NWS alert with the strongest
+// gusts or the most snow.
+function AlertScreen({ group, index, count, tz, radarTime }) {
   const a = group.top;
-  const dark = a.type.color.toUpperCase() !== '#B8860B';
+  const dark = ['#DAA520', '#D2B48C', '#FF69B4'].includes(a.type.color.toUpperCase());
   const others = group.offices.filter((o) => o !== a.office);
   const lines = [
     a.what && ['What', a.what],
@@ -331,15 +333,27 @@ function WindScreen({ group, index, count, tz, radarTime }) {
         </div>
         <div className="flex flex-1 items-center justify-between bg-[#0c1638]/90 px-8">
           <span className="truncate text-[38px] font-semibold text-white">{group.states.join(' · ')}</span>
-          <span className="ml-6 whitespace-nowrap text-[34px] font-semibold text-sky-300">{windTime(group.onset, group.ends, tz)}</span>
+          <span className="ml-6 whitespace-nowrap text-[34px] font-semibold text-sky-300">{alertTime(group.onset, group.ends, tz)}</span>
         </div>
       </div>
+      {group.also.length > 0 && (
+        <div className="absolute left-0 top-[80px] max-w-[1300px] bg-[#0c1638]/85 px-8 py-1.5 text-[24px] font-semibold text-slate-200" style={shadow}>
+          <span className="text-sky-300">Also nearby: </span>
+          {group.also.map((x, i) => (
+            <span key={x.type.event}>
+              {i > 0 && <span className="mx-2 text-slate-500">|</span>}
+              <span className="mr-1.5 inline-block h-3.5 w-3.5 align-middle" style={{ background: x.type.color }} />
+              {x.type.event} ({x.states.join(', ')})
+            </span>
+          ))}
+        </div>
+      )}
       <div className="absolute right-6 top-[96px] text-right text-[24px] font-semibold" style={shadow}>
         <div className="inline-block bg-[#0c1638]/85 px-3 py-1 text-slate-200">
-          {count > 1 ? `Wind alert ${index + 1} of ${count} · ` : ''}Radar {radarTime ? timeIn(radarTime, tz) : 'loading'}
+          {count > 1 ? `Alert ${index + 1} of ${count} · ` : ''}Radar {radarTime ? timeIn(radarTime, tz) : 'loading'}
         </div>
       </div>
-      <WindKey />
+      {a.type.kind === 'wind' && <WindKey />}
       <div key={group.id} className="absolute bottom-[128px] left-6 right-6 bg-[#0c1638]/90 px-5 py-3" style={{ borderLeft: `8px solid ${a.type.color}`, ...shadow }}>
         <div className="mb-1 text-[18px] font-bold uppercase tracking-wide text-sky-300">
           From the National Weather Service ({a.office}){others.length ? ` · also issued by ${others.join(', ')}` : ''}
@@ -576,16 +590,16 @@ function BroadcastPage() {
         .slice(0, CHECKIN_MAX),
     [checkIds] // eslint-disable-line react-hooks/exhaustive-deps
   );
-  // ---- Wind alerts (live only; ?wind=0 turns them off, ?wind=1 starts with the wind check-in).
-  const windParam = new URLSearchParams(window.location.search).get('wind');
-  const [windState, setWindState] = useState(null);
-  useEffect(() => (replay || windParam === '0' ? undefined : subscribeWind(setWindState)), [replay]); // eslint-disable-line react-hooks/exhaustive-deps
-  const windAlerts = windState?.alerts || [];
-  const windKey = windAlerts.map((a) => `${a.id}:${a.shapes.length}`).join(',');
-  const windAll = useMemo(() => windGroups(windAlerts), [windKey]); // eslint-disable-line react-hooks/exhaustive-deps
-  const windList = windAll.slice(0, WIND_MAX);
-  const [windCheck, setWindCheck] = useState(() => (windParam === '1' ? 0 : null)); // index while on, else null
-  const windGroup = !eventMode && windCheck != null && windList.length ? windList[Math.min(windCheck, windList.length - 1)] : null;
+  // ---- Wind and winter alerts (live only; ?alerts=0 turns them off, ?alerts=1 starts with their check-in).
+  const alertsParam = new URLSearchParams(window.location.search).get('alerts');
+  const [zoneState, setZoneState] = useState(null);
+  useEffect(() => (replay || alertsParam === '0' ? undefined : subscribeZoneAlerts(setZoneState)), [replay]); // eslint-disable-line react-hooks/exhaustive-deps
+  const zoneAlerts = zoneState?.alerts || [];
+  const zoneKey = zoneAlerts.map((a) => `${a.id}:${a.shapes.length}`).join(',');
+  const zoneAll = useMemo(() => alertGroups(zoneAlerts), [zoneKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  const zoneList = zoneAll.slice(0, ZONE_MAX);
+  const [zoneCheck, setZoneCheck] = useState(() => (alertsParam === '1' ? 0 : null)); // index while on, else null
+  const zoneGroup = !eventMode && zoneCheck != null && zoneList.length ? zoneList[Math.min(zoneCheck, zoneList.length - 1)] : null;
   const [checkin, setCheckin] = useState(() => (new URLSearchParams(window.location.search).get('checkin') === '1' ? 0 : null)); // index while on, else null
   const checkWarn = !eventMode && checkin != null && checkins.length ? checkins[Math.min(checkin, checkins.length - 1)] : null;
   const current = eventMode ? events[eventIdx] : checkWarn;
@@ -598,14 +612,14 @@ function BroadcastPage() {
   // stop comes next when it's due).
   const endCheckin = () => {
     setCheckin(null);
-    if (windList.length) {
-      setWindCheck(0); // the city advances when the wind check-in ends
+    if (zoneList.length) {
+      setZoneCheck(0); // the city advances when the alert check-in ends
       return;
     }
-    endWind();
+    endZone();
   };
-  const endWind = () => {
-    setWindCheck(null);
+  const endZone = () => {
+    setZoneCheck(null);
     if ((cityIdx + 1) % OUTLOOK_EVERY === 0) {
       setOutlook(1);
       return;
@@ -623,29 +637,29 @@ function BroadcastPage() {
     return () => clearTimeout(id);
   }, [checkin, eventMode, checkins.length, !!warnState]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (windCheck == null || eventMode) return undefined;
-    if (!windList.length && (windState || windParam === '0' || replay)) {
-      endWind();
+    if (zoneCheck == null || eventMode) return undefined;
+    if (!zoneList.length && (zoneState || alertsParam === '0' || replay)) {
+      endZone();
       return undefined;
     }
-    const id = setTimeout(() => (windCheck + 1 < windList.length ? setWindCheck(windCheck + 1) : endWind()), WIND_MS);
+    const id = setTimeout(() => (zoneCheck + 1 < zoneList.length ? setZoneCheck(zoneCheck + 1) : endZone()), ZONE_MS);
     return () => clearTimeout(id);
-  }, [windCheck, eventMode, windList.length, !!windState]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Fly to the wind area (retry briefly if the map isn't up yet).
-  const windId = windGroup?.id;
+  }, [zoneCheck, eventMode, zoneList.length, !!zoneState]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Fly to the alert area (retry briefly if the map isn't up yet).
+  const zoneId = zoneGroup?.id;
   useEffect(() => {
-    if (!windGroup) return undefined;
+    if (!zoneGroup) return undefined;
     let tries = 0;
     let t = 0;
     const fly = () => {
       const map = mapRef.current;
       if (map) map.options.zoomSnap = 0.25; // frame the area closely, not just in whole zoom steps
-      if (map) map.flyToBounds(windGroup.focus, { paddingTopLeft: WIND_PAD_TL, paddingBottomRight: WIND_PAD_BR, maxZoom: 8, duration: 4, easeLinearity: 0.2 });
+      if (map) map.flyToBounds(zoneGroup.focus, { paddingTopLeft: ZONE_PAD_TL, paddingBottomRight: ZONE_PAD_BR, maxZoom: 8, duration: 4, easeLinearity: 0.2 });
       else if (tries++ < 20) t = setTimeout(fly, 250);
     };
     fly();
     return () => clearTimeout(t);
-  }, [windId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [zoneId]); // eslint-disable-line react-hooks/exhaustive-deps
   // Event time zone: the warning's state (from its counties), else the nearest radar's.
   const eventTz = current ? zoneForStation({ state: (current.area || '').match(/,\s*([A-Z]{2})\b/)?.[1] || nearestStation(...boundsOf(current.geometry).center)?.state }) || undefined : undefined;
   // ---- SPC outlook stop (every OUTLOOK_EVERY cities; ?outlook=1 starts with it).
@@ -702,7 +716,7 @@ function BroadcastPage() {
 
   // Station numbers on the map (?temps=0 hides them): current temperatures at
   // the airport stations around the city, or the wind there when the view
-  // reaches a wind alert area. On the wind check-in, the wind across the area.
+  // reaches a wind alert area. On a check-in screen: wind for wind alerts, else temperatures.
   const showTemps = !current && !outlook && new URLSearchParams(window.location.search).get('temps') !== '0';
   const [labelKind, setLabelKind] = useState(null); // 'temps' | 'wind' | null
   useEffect(() => {
@@ -712,7 +726,7 @@ function BroadcastPage() {
     let layer = null;
     let t = 0;
     // The area and zoom to label: the city's view at the tour zoom (the
-    // panel is 1920 x 968), or the wind screen's framing.
+    // panel is 1920 x 968), or the check-in screen's framing.
     let center = city;
     let zoom = ZOOM;
     let halfLon = ((W / 2 / (256 * 2 ** ZOOM)) * 360) * 1.05;
@@ -724,26 +738,26 @@ function BroadcastPage() {
         return;
       }
       let wind = false;
-      if (windGroup) {
-        const b = windGroup.focus;
+      if (zoneGroup) {
+        const b = zoneGroup.focus;
         map.options.zoomSnap = 0.25;
-        zoom = Math.min(8, map.getBoundsZoom(b, false, L.point(WIND_PAD_TL[0] + WIND_PAD_BR[0], WIND_PAD_TL[1] + WIND_PAD_BR[1])));
-        center = { lat: (b[0][0] + b[1][0]) / 2, lon: (b[0][1] + b[1][1]) / 2, state: windGroup.top.states[0] };
+        zoom = Math.min(8, map.getBoundsZoom(b, false, L.point(ZONE_PAD_TL[0] + ZONE_PAD_BR[0], ZONE_PAD_TL[1] + ZONE_PAD_BR[1])));
+        center = { lat: (b[0][0] + b[1][0]) / 2, lon: (b[0][1] + b[1][1]) / 2, state: zoneGroup.top.states[0] };
+        wind = zoneGroup.top.type.kind === 'wind';
         halfLon = ((W / 2 / (256 * 2 ** zoom)) * 360) * 1.05;
         halfLat = halfLon * ((H - BAR) / W) * Math.cos((center.lat * Math.PI) / 180) * 1.1;
-        wind = true;
       } else {
-        wind = windInView(windAlerts, [[city.lat - halfLat, city.lon - halfLon], [city.lat + halfLat, city.lon + halfLon]]);
+        wind = windInView(zoneAlerts, [[city.lat - halfLat, city.lon - halfLon], [city.lat + halfLat, city.lon + halfLon]]);
       }
       let obs = wind ? await windNear(center, halfLat, halfLon) : await tempsNear(center, halfLat, halfLon);
-      // Wind screen: just the stations in and around the alert area.
-      if (windGroup) {
-        const [[s, w], [n, e]] = windGroup.focus;
+      // Check-in screen: just the stations in and around the alert area.
+      if (zoneGroup) {
+        const [[s, w], [n, e]] = zoneGroup.focus;
         obs = obs.filter((o) => o.lat > s - 0.75 && o.lat < n + 0.75 && o.lon > w - 0.75 && o.lon < e + 0.75);
       }
       if (!alive || !obs.length) return;
       if (!map.getPane('temps')) Object.assign(map.createPane('temps').style, { zIndex: 460, pointerEvents: 'none' });
-      layer = (wind ? windLayer : tempLayer)(map, obs, zoom, wind && windGroup ? 75 : 70).addTo(map);
+      layer = (wind ? windLayer : tempLayer)(map, obs, zoom, zoneGroup ? 75 : 70).addTo(map);
       map.attributionControl?.addAttribution(wind ? 'Wind: ASOS via IEM' : 'Temperatures: ASOS via IEM');
       setLabelKind(wind ? 'wind' : 'temps');
     };
@@ -753,10 +767,10 @@ function BroadcastPage() {
       clearTimeout(t);
       if (layer) layer.remove();
     };
-  }, [cityIdx, showTemps, windId, windKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cityIdx, showTemps, zoneId, zoneKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Wind alert zones, shaded under the radar (tour and wind screens).
-  const showZones = !current && !outlook && windAlerts.length > 0;
+  // Wind and winter alert zones, shaded under the radar (tour and check-in screens).
+  const showZones = !current && !outlook && zoneAlerts.length > 0;
   useEffect(() => {
     if (!showZones) return undefined;
     let alive = true;
@@ -769,8 +783,8 @@ function BroadcastPage() {
         return;
       }
       if (!map.getPane('windzones')) Object.assign(map.createPane('windzones').style, { zIndex: 340, pointerEvents: 'none' });
-      layer = windZoneLayer(windAlerts).addTo(map);
-      map.attributionControl?.addAttribution('Wind alerts: NWS; zone outlines via IEM');
+      layer = zoneLayer(zoneAlerts).addTo(map);
+      map.attributionControl?.addAttribution('Wind and winter alerts: NWS; zone outlines via IEM');
     };
     draw();
     return () => {
@@ -778,12 +792,12 @@ function BroadcastPage() {
       clearTimeout(t);
       if (layer) layer.remove();
     };
-  }, [showZones, windKey]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [showZones, zoneKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // During a warning screen or the outlook, keep the radar for the city that
   // comes back next downloaded (refreshed every 2 minutes, as the browser keeps
   // radar images for 5): the same city after event mode, else the next one.
-  const away = !!current || !!outlook || !!windGroup;
+  const away = !!current || !!outlook || !!zoneGroup;
   useEffect(() => {
     if (!away || !loop) return undefined;
     const target = TOUR[eventMode ? cityIdx : nextIdx];
@@ -801,7 +815,7 @@ function BroadcastPage() {
   // Segment timer (paused during event mode and the outlook stop). Panels with
   // no data are skipped; every OUTLOOK_EVERY cities the outlook stop comes next.
   useEffect(() => {
-    if (eventMode || outlook || checkin != null || windCheck != null) return undefined;
+    if (eventMode || outlook || checkin != null || zoneCheck != null) return undefined;
     const id = setTimeout(() => {
       let s = segIdx + 1;
       const d = weather[cityIdx];
@@ -815,8 +829,8 @@ function BroadcastPage() {
         setCheckin(0); // the city advances when the check-in ends
         return;
       }
-      if ((cityIdx + 1) % CHECKIN_EVERY === 0 && windList.length) {
-        setWindCheck(0); // the city advances when the wind check-in ends
+      if ((cityIdx + 1) % CHECKIN_EVERY === 0 && zoneList.length) {
+        setZoneCheck(0); // the city advances when the alert check-in ends
         return;
       }
       if (Date.now() - START > RELOAD_MS) {
@@ -836,16 +850,16 @@ function BroadcastPage() {
       setCityIdx(nextIdx);
     }, seg.ms);
     return () => clearTimeout(id);
-  }, [segIdx, cityIdx, eventMode, outlook, checkin, windCheck]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [segIdx, cityIdx, eventMode, outlook, checkin, zoneCheck]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // The map is rebuilt after a warning screen: no frame is up until it loads.
   useEffect(() => setShownTime(null), [!!current]); // eslint-disable-line react-hooks/exhaustive-deps
-  const windTz = windGroup ? zoneForStation({ state: windGroup.top.states[0] }) || undefined : undefined;
-  const tz = current ? eventTz : windGroup ? windTz : data && data !== 'error' ? data.tz : undefined;
+  const zoneTz = zoneGroup ? zoneForStation({ state: zoneGroup.top.states[0] }) || undefined : undefined;
+  const tz = current ? eventTz : zoneGroup ? zoneTz : data && data !== 'error' ? data.tz : undefined;
   const latest = loop ? loop.times[loop.times.length - 1] : frame.status === 'ok' ? frame.validTime : null;
   const radarTime = loop ? shownTime : latest;
   const radarOld = latest && now - latest > 20 * 60e3;
-  const dim = !outlook && !windGroup && (seg.id === 'now' || seg.id === 'forecast');
+  const dim = !outlook && !zoneGroup && (seg.id === 'now' || seg.id === 'forecast');
 
   return (
     <div className="fixed inset-0 z-[3000] overflow-hidden bg-black" style={{ fontFamily: FONT }}>
@@ -898,8 +912,8 @@ function BroadcastPage() {
         </div>
 
         <div className="pointer-events-none absolute inset-0 z-[700]">
-          {windGroup && <WindScreen group={windGroup} index={Math.min(windCheck, windList.length - 1)} count={windList.length} tz={windTz} radarTime={radarTime} />}
-          {!current && !windGroup && (
+          {zoneGroup && <AlertScreen group={zoneGroup} index={Math.min(zoneCheck, zoneList.length - 1)} count={zoneList.length} tz={zoneTz} radarTime={radarTime} />}
+          {!current && !zoneGroup && (
           <>
           {labelKind === 'wind' && !outlook && seg.id === 'radar' && <WindKey />}
           <TitlePlate
@@ -944,7 +958,7 @@ function BroadcastPage() {
                 <div className="text-[30px] font-bold uppercase leading-none text-sky-300">Spectrum</div>
               </div>
             </div>
-            <Crawl text={crawlText(warnState, windAll)} />
+            <Crawl text={crawlText(warnState, zoneAll)} />
             <div className="flex w-[300px] flex-col items-end justify-center px-6" style={{ background: '#12204f', ...shadow }}>
               <div className="text-[52px] font-bold leading-none">{fmt(now, tz, { hour: 'numeric', minute: '2-digit' })}</div>
               <div className="text-[24px] font-semibold text-sky-200">
