@@ -32,6 +32,7 @@ export const TOUR = [
   ['New Orleans', 'LA', 29.95, -90.07],
   ['Jackson', 'MS', 32.3, -90.18],
   ['Memphis', 'TN', 35.15, -90.05],
+  ['Byhalia', 'MS', 34.87, -89.69],
   ['Nashville', 'TN', 36.16, -86.78],
   ['Birmingham', 'AL', 33.52, -86.8],
   ['Atlanta', 'GA', 33.75, -84.39],
