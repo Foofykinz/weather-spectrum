@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Sun, Moon, Cloud, CloudSun, CloudMoon, CloudRain, CloudDrizzle, CloudLightning, CloudSnow, CloudFog, Wind, Snowflake } from 'lucide-react';
+import { Sun, Moon, Cloud, CloudSun, CloudMoon, CloudRain, CloudDrizzle, CloudLightning, CloudSnow, CloudFog, Wind, Snowflake, MapPin } from 'lucide-react';
 import RadarMap from '../components/radar/RadarMap';
 import { getProduct } from '../radar/products';
 import N0Q_PALETTE from '../radar/data/iem-n0q-palette.json';
@@ -183,6 +183,19 @@ function TitlePlate({ label, city, sub }) {
       <div className="mt-1 px-5 py-2 text-[64px] font-bold uppercase leading-none text-white" style={{ background: 'rgba(12,22,56,0.88)', borderLeft: '6px solid #38bdf8' }}>
         {city}
         {sub && <span className="ml-4 text-[34px] font-semibold normal-case text-sky-300">{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+// Invitation to viewers: shown on the radar segment of every other city.
+function CityInvite() {
+  return (
+    <div className="ws-bc-in absolute bottom-[136px] left-10 flex items-center gap-4 px-5 py-3" style={{ background: 'rgba(12,22,56,0.88)', borderLeft: '6px solid #38bdf8', ...shadow }}>
+      <MapPin className="h-9 w-9 shrink-0 text-sky-300" strokeWidth={2.25} />
+      <div>
+        <div className="text-[30px] font-bold leading-tight text-white">Want your city on the tour?</div>
+        <div className="text-[24px] font-semibold leading-tight text-sky-200">Comment where you're watching from and we'll add it.</div>
       </div>
     </div>
   );
@@ -910,6 +923,7 @@ function BroadcastPage() {
           </div>
           )}
 
+          {!outlook && seg.id === 'radar' && cityIdx % 2 === 0 && new URLSearchParams(window.location.search).get('invite') !== '0' && <CityInvite key={cityIdx} />}
           {!outlook && seg.id === 'now' && data?.obs && <Conditions key={cityIdx} obs={data.obs} tz={tz} />}
           {!outlook && seg.id === 'forecast' && data?.days?.length > 0 && <Forecast key={cityIdx} days={data.days} />}
           </>
