@@ -6,6 +6,7 @@ import { getProduct } from '../../radar/products';
 import { getStation } from '../../radar/stations';
 import { useArchive } from '../../radar/archive';
 import { useWarningsHistory } from '../../radar/useWarningsHistory';
+import { addSaved, startRecording } from '../../radar/savedData';
 
 // Playable replay of a historic event: the real archived NEXRAD scans
 // (Level II) from one radar, with the warnings and storm markers in effect at
@@ -22,7 +23,34 @@ const PRODUCTS = {
 };
 const noop = () => {};
 
+// The event's saved archive data (public/replays/<slug>.json, made by
+// scripts/record-replays.mjs) is loaded first; anything missing from it is
+// fetched as usual. ?record=1 skips it and records instead.
 export default function EventReplay({ event }) {
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    if (new URLSearchParams(window.location.search).get('record') === '1') {
+      startRecording();
+      setReady(true);
+      return undefined;
+    }
+    fetch(`/replays/${event.slug}.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((saved) => saved && addSaved(saved.responses))
+      .catch(() => {})
+      .finally(() => alive && setReady(true));
+    return () => {
+      alive = false;
+    };
+  }, [event.slug]);
+  if (!ready) {
+    return <div className="flex h-full items-center justify-center text-sm text-slate-400">Loading the radar replay…</div>;
+  }
+  return <Replay event={event} />;
+}
+
+function Replay({ event }) {
   const level3 = event.date >= LEVEL3_FROM;
   // Events before dual-polarization (event.dualPol === false) have no CC.
   const options = (level3 ? PRODUCTS.level3 : PRODUCTS.level2).filter((o) => event.dualPol !== false || !o[0].endsWith('cc'));
@@ -80,6 +108,7 @@ export default function EventReplay({ event }) {
         stormsTime={t || end}
         stormsTimes={times}
         stormsRadar={station.id}
+        liveOverlays={false}
         embed
       />
       <div className="absolute left-2 top-2 z-[1000] flex flex-wrap gap-1">

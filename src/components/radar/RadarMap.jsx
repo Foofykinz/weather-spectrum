@@ -578,6 +578,7 @@ export default function RadarMap({
   mapRef, // gets the Leaflet map (used by the post maker)
   storms = false,
   stormsTime, // undefined = live; a Date = the storms at that frame
+  liveOverlays = true, // false: past only (event replays), never fetch live warnings / storms
   stormsRadar = null, // only this radar's detections (single-radar view)
   stormsTimes, // all loop frame times, preloaded
   overlay, // GeoJSON features with their own fill/stroke colors (e.g. SPC outlooks)
@@ -623,8 +624,8 @@ export default function RadarMap({
       {showStations && primary && <FlyToStation station={station} keepInitialView={keepInitialView} />}
       <ValueProbe product={product} details={layer ? details : null} />
       {lightning && <GlmLayer onStatus={onLightningStatus} />}
-      {warnings && <WarningsLayer frame={warningsFrame} onStatus={onWarningsStatus} />}
-      {storms && <StormsLayer time={stormsTime} times={stormsTimes} radar={stormsRadar} />}
+      {warnings && <WarningsLayer frame={warningsFrame} onStatus={onWarningsStatus} live={liveOverlays} />}
+      {storms && <StormsLayer time={stormsTime} times={stormsTimes} radar={stormsRadar} live={liveOverlays} />}
       {overlay?.length > 0 && <GeoOverlay features={overlay} />}
       <MapSync group={syncGroup} />
       <AutoResize />

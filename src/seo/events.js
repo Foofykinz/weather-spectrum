@@ -5,6 +5,12 @@
 // NWS products themselves (scripts/build-events.mjs -> event-data.json).
 // The replay uses the real archived NEXRAD scans (Level II) from the radar
 // named here, ending at `end` (UTC).
+//
+// After adding an event: node scripts/build-events.mjs <slug> (warning
+// timeline), then build, preview and node scripts/record-replays.mjs <slug>
+// (saves the replay's archive data in public/replays/ so visitors don't
+// fetch it from IEM and the NWS). dualPol: false for storms scanned before the
+// radar had dual-polarization (no correlation coefficient).
 
 import EVENT_DATA from './event-data.json';
 
@@ -45,6 +51,7 @@ export const EVENTS = [
     end: '2011-05-22T23:00Z',
     view: { lat: 37.07, lon: -94.5, zoom: 10 },
     tz: 'America/Chicago',
+    dualPol: false, // its archived 2011 volumes (V03) have no dual-pol moments
     summary:
       'On Sunday, May 22, 2011, a multiple-vortex tornado touched down at 5:34 PM CDT just southwest of Joplin, Missouri, and moved east through the city, strengthening to EF5 with estimated winds over 200 mph before weakening southeast of Joplin. The National Weather Service in Springfield had issued a tornado warning at 5:17 PM, 17 minutes before touchdown. The NWS reports 158 people killed and more than 1,000 injured.',
     facts: [
@@ -100,6 +107,7 @@ export const EVENTS = [
     end: '2011-04-27T22:30Z',
     view: { lat: 33.25, lon: -87.45, zoom: 9 },
     tz: 'America/Chicago',
+    dualPol: false, // its archived 2011 volumes (V03) have no dual-pol moments
     summary:
       'On April 27, 2011, a tornado touched down in rural northern Greene County, Alabama, at 4:43 PM CDT and traveled about 81 miles through Tuscaloosa before lifting northeast of downtown Birmingham at 6:14 PM. The National Weather Service in Birmingham rated it EF4 with estimated peak winds of 190 mph. It was up to 1.5 miles wide where it crossed I-65. It killed 65 people and injured about 1,500.',
     facts: [

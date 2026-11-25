@@ -5,6 +5,7 @@
 
 import { buildAzimuthTable } from '../level3/geometry';
 import { glRadarSupported } from '../gl/support';
+import { archiveFetch } from '../savedData';
 
 const BUCKET = 'https://unidata-nexrad-level2.s3.amazonaws.com';
 export const LEVEL2_ATTRIBUTION =
@@ -38,7 +39,10 @@ const stamp = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.ge
 // Newest complete volume for a radar. Lists only the last couple of hours
 // (start-after) so each check is a few KB.
 async function listKeys(prefix, startAfter, signal) {
-  const res = await fetch(`${BUCKET}/?list-type=2&prefix=${prefix}${startAfter ? `&start-after=${startAfter}` : ''}`, { signal, cache: 'no-store' });
+  const url = `${BUCKET}/?list-type=2&prefix=${prefix}${startAfter ? `&start-after=${startAfter}` : ''}`;
+  // Finished days (archive) can come from a saved copy; today's list changes.
+  const past = !startAfter && prefix.slice(0, 10) < new Date().toISOString().slice(0, 10).replace(/-/g, '/');
+  const res = await (past ? archiveFetch : fetch)(url, { signal, cache: 'no-store' });
   if (!res.ok) throw new Error(`Level II archive returned ${res.status}.`);
   // Volumes end in _V0x (older ones in _V0x.gz, and before 2008 just .gz);
   // _MDM files are metadata only. Files under 100 KB are fragments of a

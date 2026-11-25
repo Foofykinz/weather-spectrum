@@ -19,6 +19,7 @@ import { makeScaler } from '../level3/scaling';
 const BUCKET = 'https://unidata-nexrad-level3.s3.amazonaws.com';
 
 import { glRadarSupported } from '../gl/support';
+import { archiveFetch } from '../savedData';
 
 export const LEVEL3_ATTRIBUTION =
   'Radar: NOAA NEXRAD Level III via <a href="https://registry.opendata.aws/noaa-nexrad/" target="_blank" rel="noopener noreferrer">NODD/Unidata</a>';
@@ -121,7 +122,9 @@ const listingCache = new Map(); // hour prefix -> keys (only hours that are over
 
 async function listHour(prefix, hourEnd, signal) {
   if (listingCache.has(prefix)) return listingCache.get(prefix);
-  const res = await fetch(`${BUCKET}/?list-type=2&prefix=${prefix}`, { signal });
+  // Hours that are over can come from a saved copy (replays); the current hour can't.
+  const url = `${BUCKET}/?list-type=2&prefix=${prefix}`;
+  const res = await (hourEnd < Date.now() - 600e3 ? archiveFetch : fetch)(url, { signal });
   if (!res.ok) throw new Error(`Level III archive returned ${res.status}.`);
   const keys = [...(await res.text()).matchAll(/<Key>([^<]+)<\/Key>/g)].map((m) => m[1]);
   if (hourEnd < Date.now() - 600e3) listingCache.set(prefix, keys);

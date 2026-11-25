@@ -13,7 +13,7 @@ import { subscribeAlertStyle, alertFill } from '../../radar/alertStyle';
 // frame: undefined = live (NWS, refreshed each minute); { loading: true } =
 // a loop frame still loading (draw nothing rather than the wrong time);
 // otherwise the state for the loop frame on screen.
-export default function WarningsLayer({ frame, onStatus }) {
+export default function WarningsLayer({ frame, onStatus, live: liveOn = true }) {
   const map = useMap();
   const statusCb = useRef(onStatus);
   statusCb.current = onStatus;
@@ -85,11 +85,13 @@ export default function WarningsLayer({ frame, onStatus }) {
   // loop is instant.
   useEffect(
     () =>
-      subscribeWarnings((s) => {
-        live.current = s;
-        if (frameRef.current === undefined) draw.current?.(s);
-      }),
-    []
+      liveOn
+        ? subscribeWarnings((s) => {
+            live.current = s;
+            if (frameRef.current === undefined) draw.current?.(s);
+          })
+        : undefined,
+    [liveOn]
   );
 
   useEffect(() => {

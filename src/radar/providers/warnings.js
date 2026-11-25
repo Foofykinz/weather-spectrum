@@ -8,6 +8,7 @@
 // from the Iowa Environmental Mesonet archive of the same NWS products (it
 // keeps every polygon update with the minutes it was valid); watch areas are
 // rebuilt from the NWS API's message history.
+import { archiveFetch } from '../savedData';
 
 const NWS = 'https://api.weather.gov/alerts';
 const IEM_SBW = 'https://mesonet.agron.iastate.edu/geojson/sbw.py';
@@ -116,8 +117,8 @@ function newestPerEvent(features, now) {
   return out;
 }
 
-async function getJson(url, signal) {
-  const res = await fetch(url, { signal, headers: { Accept: 'application/geo+json' } });
+async function getJson(url, signal, get = fetch) {
+  const res = await get(url, { signal, headers: { Accept: 'application/geo+json' } });
   if (!res.ok) throw new Error(`${new URL(url).hostname} request failed (${res.status})`);
   return res.json();
 }
@@ -187,7 +188,7 @@ async function fetchWatchHistory(start, signal) {
   let url = `${NWS}?status=actual&event=${WATCH_EVENTS}&start=${new Date(start).toISOString().slice(0, 19)}Z&limit=500`;
   const feats = [];
   for (let page = 0; url && page < 10; page++) {
-    const json = await getJson(url, signal);
+    const json = await getJson(url, signal, archiveFetch);
     feats.push(...(json.features || []));
     url = json.features?.length ? json.pagination?.next : null;
   }
@@ -258,7 +259,7 @@ const pastCache = new Map(); // minute -> Promise<warnings>
 function pastWarnings(t, signal) {
   const minute = new Date(Math.floor(t / 60000) * 60000).toISOString().slice(0, 16) + 'Z';
   if (!pastCache.has(minute)) {
-    const p = getJson(`${IEM_SBW}?ts=${minute}`, signal).then((json) =>
+    const p = getJson(`${IEM_SBW}?ts=${minute}`, signal, archiveFetch).then((json) =>
       sortWarnings((json.features || []).filter((f) => f.properties.significance === 'W' && WARN_BY_PHEN.has(f.properties.phenomena)).map(pastWarning))
     );
     p.catch(() => pastCache.delete(minute));

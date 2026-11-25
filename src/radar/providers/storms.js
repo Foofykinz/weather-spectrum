@@ -5,6 +5,7 @@
 //   live:  /geojson/nexrad_attr.geojson         (refreshed every 2 minutes here)
 //   past:  /geojson/nexrad_attr.py?valid=<time> (the storms at that time)
 // These are automated radar detections, not warnings or observations.
+import { archiveFetch } from '../savedData';
 
 const IEM = 'https://mesonet.agron.iastate.edu';
 const POLL_MS = 120000;
@@ -58,8 +59,8 @@ function dedupe(list) {
   return out;
 }
 
-async function load(url, signal) {
-  const r = await fetch(url, { signal });
+async function load(url, signal, get = fetch) {
+  const r = await get(url, { signal });
   if (!r.ok) throw new Error(`Storm data returned ${r.status}`);
   const j = await r.json();
   return (j.features || []).filter((f) => f.geometry?.coordinates).map(storm).filter(isNotable);
@@ -107,7 +108,7 @@ export function stormsAt(t) {
   if (!pastCache.has(minute)) {
     pastCache.set(
       minute,
-      load(`${IEM}/geojson/nexrad_attr.py?valid=${minute}`).then(
+      load(`${IEM}/geojson/nexrad_attr.py?valid=${minute}`, undefined, archiveFetch).then(
         (storms) => {
           ready.set(minute, storms);
           if (ready.size > 40) ready.delete(ready.keys().next().value);
@@ -136,7 +137,7 @@ export function radarStormHistory(radar, start, end) {
     const url = `${IEM}/cgi-bin/request/gis/nexrad_storm_attrs.py?fmt=csv&radar=${radar}&sts=${sts}&ets=${ets}`;
     spanCache.set(
       id,
-      fetch(url)
+      archiveFetch(url)
         .then((r) => {
           if (!r.ok) throw new Error(`Storm data returned ${r.status}`);
           return r.text();

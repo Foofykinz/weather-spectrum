@@ -57,7 +57,7 @@ function popupHtml(s) {
   </div>`;
 }
 
-export default function StormsLayer({ time, times, radar }) {
+export default function StormsLayer({ time, times, radar, live = true }) {
   const map = useMap();
   const group = useRef(null);
   const liveData = useRef(null);
@@ -90,10 +90,12 @@ export default function StormsLayer({ time, times, radar }) {
   useEffect(() => {
     group.current = L.layerGroup().addTo(map);
     map.attributionControl?.addAttribution(STORMS_ATTRIBUTION);
-    const unsub = subscribeStorms((d) => {
-      liveData.current = d;
-      if (timeRef.current === undefined) draw(d.storms);
-    });
+    const unsub = live
+      ? subscribeStorms((d) => {
+          liveData.current = d;
+          if (timeRef.current === undefined) draw(d.storms);
+        })
+      : () => {};
     return () => {
       unsub();
       group.current?.remove();
