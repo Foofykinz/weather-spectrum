@@ -128,7 +128,7 @@ export function terrainStyle(liberty, countiesUrl) {
       minzoom: 4,
       filter: ['all', ['==', ['get', 'class'], 'motorway'], ['!=', ['get', 'ramp'], 1]],
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#c0272d', 'line-width': z(4, 0.8, 7, 1.6, 10, 2.6, 12, 3.5) },
+      paint: { 'line-color': '#a5483f', 'line-opacity': 0.8, 'line-width': z(4, 0.7, 7, 1.3, 10, 2.2, 12, 3) },
     },
     // County lines: thin and dark. State lines: black and heavier. Country: heavier still.
     {
