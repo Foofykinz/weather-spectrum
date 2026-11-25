@@ -573,6 +573,7 @@ export default function RadarMap({
   syncGroup, // shared view group for multi-panel layouts
   primary = true, // the one panel that owns zoom buttons, fly-to and saved view
   splitBasemap = true,
+  basemap = 'dark', // 'dark' | 'terrain'
   embed = false, // inside a page: no scroll-wheel zoom; touch devices use the zoom buttons
   keepInitialView = false,
   mapRef, // gets the Leaflet map (used by the post maker)
@@ -598,7 +599,7 @@ export default function RadarMap({
     >
       <Panes />
       {mapRef && <MapHandle mapRef={mapRef} />}
-      <VectorBasemap labelsPane="labels" onError={onBasemapError} split={splitBasemap} />
+      <VectorBasemap labelsPane="labels" onError={onBasemapError} split={splitBasemap} theme={basemap} />
       {animation && (
         <AnimationLayers
           specs={animation.specs}

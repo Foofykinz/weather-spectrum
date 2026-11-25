@@ -526,13 +526,15 @@ function drawBanner(ctx, text, right, color, y, w, h, font, M) {
   ctx.textBaseline = 'alphabetic';
 }
 
-const CREDIT = 'Data: NOAA/NWS. Map: OpenFreeMap, © OpenStreetMap';
+const BASE_CREDIT = 'Data: NOAA/NWS. Map: OpenFreeMap, © OpenStreetMap';
+const TERRAIN_CREDIT = 'Data: NOAA/NWS. Map: OpenFreeMap, © OpenStreetMap, USGS';
 
 // opts: { size, style, font, headline, subline, legend, list, brand, logoImg, moves }
 // moves: { head|list|legend: { px, py, s } } boxes the user moved or resized
 // (top-left corner as fractions of the picture, and scale).
 // Returns where each box was drawn: { id: { x, y, w, h, s } } in canvas pixels.
 export function drawPost(canvas, snap, crop, info, opts, legendImg) {
+  const CREDIT = snap.terrain ? TERRAIN_CREDIT : BASE_CREDIT;
   const { size, style, font } = opts;
   setTz(info.tz);
   canvas.width = size.w;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Zap, AlertTriangle, Target, Snowflake, Thermometer, Palette } from 'lucide-react';
+import { X, Zap, AlertTriangle, Target, Snowflake, Thermometer, Palette, Map as MapIcon } from 'lucide-react';
 import { STYLE_GROUPS, defaultColor, defaultFill } from '../../radar/alertStyle';
 
 // Everything drawn on top of the radar, in one place: warnings, storm markers,
@@ -7,7 +7,8 @@ import { STYLE_GROUPS, defaultColor, defaultFill } from '../../radar/alertStyle'
 // items: { warnings, storms, lightning, zones } booleans; obs: null | 'temps' | 'wind'.
 // onChange(changes): URL parameter changes, as RadarPage's updateParams takes them.
 // alertStyle / onAlertStyle: the viewer's alert colors and fill level (radar/alertStyle).
-export default function OverlayPanel({ open, onClose, warnings, storms, lightning, zones, obs, onChange, alertStyle, onAlertStyle, pastMode = false }) {
+// basemap / onBasemap: the background map, 'dark' or 'terrain'.
+export default function OverlayPanel({ open, onClose, warnings, storms, lightning, zones, obs, onChange, alertStyle, onAlertStyle, basemap, onBasemap, pastMode = false }) {
   if (!open) return null;
   const rows = [
     { key: 'warnings', on: warnings, icon: AlertTriangle, name: 'Warnings', desc: 'Tornado, severe thunderstorm, flash flood and other NWS warning polygons, plus tornado and severe thunderstorm watches.', set: (v) => ({ warn: v ? null : '0' }), opacity: 'warnFill' },
@@ -24,6 +25,36 @@ export default function OverlayPanel({ open, onClose, warnings, storms, lightnin
         </button>
       </div>
       <ul className="divide-y divide-slate-800">
+        {onBasemap && (
+          <li className="px-3 py-2.5">
+            <div className="flex items-start gap-3">
+              <MapIcon className="mt-0.5 h-4 w-4 shrink-0 text-sky-300" />
+              <div className="min-w-0 flex-1">
+                <div className="font-semibold text-slate-100">Map</div>
+                <div className="text-xs leading-snug text-slate-400">
+                  {basemap === 'terrain' ? 'Satellite view of the land with county lines, highways and towns.' : 'Dark map that keeps the radar colors easy to read.'}
+                </div>
+                <div className="mt-2 inline-flex rounded-md border border-slate-700 p-0.5" role="radiogroup" aria-label="Map">
+                  {[
+                    ['dark', 'Dark'],
+                    ['terrain', 'Terrain'],
+                  ].map(([v, label]) => (
+                    <button
+                      key={v}
+                      type="button"
+                      role="radio"
+                      aria-checked={basemap === v}
+                      onClick={() => onBasemap(v)}
+                      className={`rounded px-2.5 py-1 text-xs font-semibold ${basemap === v ? 'bg-sky-400/20 text-sky-200' : 'text-slate-300 hover:bg-slate-800'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </li>
+        )}
         {rows.map((r) => {
           const off = pastMode && r.live;
           const on = r.on && !off;

@@ -94,7 +94,8 @@ function drawTextLabels(ctx, root, box, scale) {
   }
 }
 
-// Returns { canvas, scale, toLatLng(x, y), toPoint(lat, lng) } where x, y are canvas pixels.
+// Returns { canvas, scale, toLatLng(x, y), toPoint(lat, lng), terrain } where x, y are canvas
+// pixels and terrain is true when the satellite terrain map is showing (its credit names USGS).
 // toLatLng uses the view at capture time, so later map moves don't matter.
 export async function snapshotMap(map, scale = 2) {
   const root = map.getContainer();
@@ -152,5 +153,5 @@ export async function snapshotMap(map, scale = 2) {
   }
   ctx.globalAlpha = 1;
   drawTextLabels(ctx, root, box, scale);
-  return { canvas, scale, toLatLng, toPoint };
+  return { canvas, scale, toLatLng, toPoint, terrain: !!map._wsTerrain };
 }

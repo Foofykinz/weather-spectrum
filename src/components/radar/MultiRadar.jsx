@@ -98,6 +98,7 @@ function RadarPanel({ index, product, tilt, station, onPick, onSelectStation, sh
         syncGroup={shared.syncGroup}
         primary={index === 0}
         splitBasemap={false}
+        basemap={shared.basemap}
         keepInitialView={shared.keepInitialView}
       />
 
@@ -163,7 +164,7 @@ function RadarPanel({ index, product, tilt, station, onPick, onSelectStation, sh
   );
 }
 
-export default function MultiRadar({ layout, params, updateParams, station, onSelectStation, onLayout, initialView, onViewChange, opacity, now, keepInitialView = false }) {
+export default function MultiRadar({ layout, params, updateParams, station, onSelectStation, onLayout, initialView, onViewChange, opacity, basemap = 'dark', now, keepInitialView = false }) {
   const panels = PANEL_KEYS.slice(0, layout).map((k, i) => {
     const p = getProduct(params.get(k) || PANEL_DEFAULTS[i]);
     return p.scope === 'site' ? p : getProduct(PANEL_DEFAULTS[i]); // panels are single-radar views
@@ -236,7 +237,7 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
     return { specs: pp.specs, times: pp.times, index: idx, onLoaded };
   };
 
-  const shared = { now, opacity, initialView, onViewChange, lightningOn, onLightningStatus: setLightningStatus, warningsOn, onWarningsStatus: setWarningsStatus, warningsFrame: anim ? warningsAtTime(anim.ref[anim.index]) : undefined, syncGroup, keepInitialView };
+  const shared = { now, opacity, basemap, initialView, onViewChange, lightningOn, onLightningStatus: setLightningStatus, warningsOn, onWarningsStatus: setWarningsStatus, warningsFrame: anim ? warningsAtTime(anim.ref[anim.index]) : undefined, syncGroup, keepInitialView };
   const pickPanel = (i, id, t) => updateParams({ [PANEL_KEYS[i]]: id, [TILT_KEYS[i]]: t });
   const canLoop = panels.some((p) => p.frames);
 

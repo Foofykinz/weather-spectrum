@@ -24,6 +24,7 @@ import { activateAlertStyle, getAlertStyle, setAlertStyle, subscribeAlertStyle }
 // Per-viewer conveniences only (last map view & opacity). Safe if storage is blocked.
 const VIEW_KEY = 'ws.radar.view';
 const OPACITY_KEY = 'ws.radar.opacity';
+const BASEMAP_KEY = 'ws.radar.basemap';
 const DEFAULT_VIEW = { lat: 38.5, lon: -96.5, zoom: 4 };
 
 function readStored(key, fallback) {
@@ -70,6 +71,11 @@ function SingleRadar() {
     const o = Number(readStored(OPACITY_KEY, 0.85));
     return o >= 0.1 && o <= 1 ? o : 0.85;
   });
+  const [basemap, setBasemapState] = useState(() => (readStored(BASEMAP_KEY, 'dark') === 'terrain' ? 'terrain' : 'dark'));
+  const setBasemap = (b) => {
+    setBasemapState(b);
+    writeStored(BASEMAP_KEY, b);
+  };
   const [panelOpen, setPanelOpen] = useState(false);
   const [overlaysOpen, setOverlaysOpen] = useState(false);
   // The viewer's alert colors and opacity (radar tool only).
@@ -381,6 +387,7 @@ function SingleRadar() {
         keepInitialView={!!viewFromParam(params.get('at'))}
         onTileErrors={setTileErrors}
         onBasemapError={setBasemapError}
+        basemap={basemap}
         lightning={lightningOn && !past}
         animation={
           video
@@ -522,6 +529,8 @@ function SingleRadar() {
           onChange={updateParams}
           alertStyle={alertStyle}
           onAlertStyle={setAlertStyle}
+          basemap={basemap}
+          onBasemap={setBasemap}
           pastMode={past}
         />
 
@@ -676,6 +685,7 @@ function MultiRadarPage({ layout }) {
       initialView={initialView}
       onViewChange={onViewChange}
       opacity={opacity}
+      basemap={readStored(BASEMAP_KEY, 'dark') === 'terrain' ? 'terrain' : 'dark'}
       now={now}
       keepInitialView={!!viewFromParam(params.get('at'))}
     />
