@@ -21,7 +21,7 @@ export default function WarningsStatus({ status, now, compact = false }) {
 
   return (
     <div
-      className={`rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 py-1.5 shadow-lg text-[11px] ${compact ? '' : 'mb-2'}`}
+      className={`ws-glass rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 py-1.5 shadow-lg text-[11px] ${compact ? '' : 'mb-2'}`}
       title="National Weather Service warnings and watches in effect (whole US). Click a spot on the map for details."
     >
       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-slate-400">

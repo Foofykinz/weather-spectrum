@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { Layers, ArrowLeft, Play, History, Image as ImageIcon, SlidersHorizontal } from 'lucide-react';
 import PostMaker from '../components/radar/PostMaker';
 import LoopControls from '../components/radar/LoopControls';
+import { useLiquidGlass } from '../components/LiquidGlass';
 import LayoutSwitch from '../components/radar/LayoutSwitch';
 import MultiRadar from '../components/radar/MultiRadar';
 import { snapshotMap } from '../radar/snapshot';
@@ -26,6 +27,15 @@ import { activateAlertStyle, getAlertStyle, setAlertStyle, subscribeAlertStyle }
 const VIEW_KEY = 'ws.radar.view';
 const OPACITY_KEY = 'ws.radar.opacity';
 const BASEMAP_KEY = 'ws.radar.basemap';
+const BASEMAPS = ['dark', 'terrain', 'night'];
+const storedBasemap = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem(BASEMAP_KEY));
+    return BASEMAPS.includes(v) ? v : 'dark';
+  } catch {
+    return 'dark';
+  }
+};
 const DEFAULT_VIEW = { lat: 38.5, lon: -96.5, zoom: 4 };
 
 function readStored(key, fallback) {
@@ -72,7 +82,7 @@ function SingleRadar() {
     const o = Number(readStored(OPACITY_KEY, 0.85));
     return o >= 0.1 && o <= 1 ? o : 0.85;
   });
-  const [basemap, setBasemapState] = useState(() => (readStored(BASEMAP_KEY, 'dark') === 'terrain' ? 'terrain' : 'dark'));
+  const [basemap, setBasemapState] = useState(() => storedBasemap());
   const setBasemap = (b) => {
     setBasemapState(b);
     writeStored(BASEMAP_KEY, b);
@@ -189,7 +199,9 @@ function SingleRadar() {
         const times = await product.frames(site, LOOP_FRAMES, controller.signal);
         if (controller.signal.aborted) return;
         if (times.length < 2) throw new Error('Not enough recent scans to loop.');
-        setAnim({ times, specs: times.map((t) => product.layer(site, t)), index: 0, playing: true, loaded: 0, hold: 0 });
+        // Starts on the newest frame (the scan already on screen) and plays
+        // once every frame has downloaded (see the ticker below).
+        setAnim({ times, specs: times.map((t) => product.layer(site, t)), index: times.length - 1, playing: true, loaded: 0, hold: 0 });
       } else {
         setLoopProgress([0, 0]);
         const frames = await loadArchive(product, site, tilt, new Date(), controller.signal, (d, n) => !controller.signal.aborted && setLoopProgress([d, n]));
@@ -214,6 +226,7 @@ function SingleRadar() {
       setAnim((a) => {
         if (!a?.playing) return a;
         const last = a.times.length - 1;
+        if (a.loaded < a.times.length) return a.index === last ? a : { ...a, index: last }; // still downloading
         if (a.index < last) return { ...a, index: a.index + 1 };
         if (a.hold < LAST_FRAME_HOLD) return { ...a, hold: a.hold + 1 };
         return { ...a, index: 0, hold: 0 };
@@ -340,7 +353,10 @@ function SingleRadar() {
     if (window.innerWidth < 640) setPanelOpen(false);
   };
 
-  const selectStation = (id) => updateParams({ site: id });
+  // Clicking a radar site: on a single-radar product, switch to that radar;
+  // on a national product, open that radar's Super-Res Base Reflectivity.
+  const selectStation = (id) =>
+    updateParams(product.scope === 'site' ? { site: id } : { site: id, product: 'site-reflectivity', tilt: null });
 
   // Dual/quad views are single-radar views: make sure a radar is selected.
   const setLayout = (n) => {
@@ -380,8 +396,9 @@ function SingleRadar() {
         opacity={opacity}
         initialView={initialView}
         onViewChange={onViewChange}
-        showStations={product.scope === 'site'}
-        station={station}
+        showStations
+        flyToStation={product.scope === 'site'}
+        station={product.scope === 'site' ? station : null}
         onSelectStation={selectStation}
         keepInitialView={!!viewFromParam(params.get('at'))}
         onTileErrors={setTileErrors}
@@ -394,7 +411,7 @@ function SingleRadar() {
             : pastFrames && pastAnim.playing
             ? { specs: pastSpecs, index: pastAnim.index, onLoaded: noop }
             : anim
-              ? { specs: anim.specs, index: anim.index, onLoaded: onFramesLoaded }
+              ? { specs: anim.specs, index: anim.index, onLoaded: onFramesLoaded, holdUntilLoaded: true }
               : null
         }
         onLightningStatus={setLightningStatus}
@@ -416,7 +433,7 @@ function SingleRadar() {
         <div className="pointer-events-auto flex flex-wrap items-center gap-2">
           <Link
             to="/"
-            className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 shadow-lg"
+            className="ws-glass flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2.5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-800 shadow-lg"
           >
             <ArrowLeft className="w-4 h-4" />
             <span className="hidden sm:inline">Weather Spectrum</span>
@@ -428,9 +445,9 @@ function SingleRadar() {
               setOverlaysOpen(false);
             }}
             aria-expanded={panelOpen}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
+            className={`flex items-center gap-2 whitespace-nowrap rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg backdrop-blur ws-glass ${
               panelOpen
-                ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
+                ? 'ws-glass-active border-sky-400/70 bg-sky-400/15 text-sky-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
           >
@@ -447,9 +464,9 @@ function SingleRadar() {
             }}
             aria-expanded={overlaysOpen}
             title="Warnings, storm markers, lightning, wind and winter alerts, station readings"
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ws-glass ${
               overlaysOpen
-                ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
+                ? 'ws-glass-active border-sky-400/70 bg-sky-400/15 text-sky-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
           >
@@ -466,9 +483,9 @@ function SingleRadar() {
             aria-pressed={past}
             aria-expanded={pickerOpen}
             title="Past radar: pick a date and time"
-            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ${
+            className={`flex items-center gap-1.5 whitespace-nowrap rounded-lg border px-2.5 py-2 text-xs font-semibold shadow-lg backdrop-blur ws-glass ${
               past || pickerOpen
-                ? 'border-sky-400/70 bg-sky-400/15 text-sky-200'
+                ? 'ws-glass-active border-sky-400/70 bg-sky-400/15 text-sky-200'
                 : 'border-slate-700/80 bg-slate-900/85 text-slate-200 hover:bg-slate-800'
             }`}
           >
@@ -480,7 +497,7 @@ function SingleRadar() {
             onClick={openPost}
             disabled={!scanTime || post?.busy}
             title="Make an image and caption for a social media post"
-            className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 px-2.5 py-2 text-xs font-semibold text-slate-200 shadow-lg backdrop-blur hover:bg-slate-800 disabled:opacity-40"
+            className="ws-glass flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 px-2.5 py-2 text-xs font-semibold text-slate-200 shadow-lg backdrop-blur hover:bg-slate-800 disabled:opacity-40"
           >
             <ImageIcon className="w-4 h-4" />
             <span className="hidden sm:inline">{post?.busy ? 'Preparing...' : 'Post'}</span>
@@ -492,7 +509,7 @@ function SingleRadar() {
               onClick={startLoop}
               disabled={!!loopProgress}
               title="Play the last 10 scans"
-              className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 px-2.5 py-2 text-xs font-semibold text-slate-200 shadow-lg backdrop-blur hover:bg-slate-800"
+              className="ws-glass flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-slate-700/80 bg-slate-900/85 px-2.5 py-2 text-xs font-semibold text-slate-200 shadow-lg backdrop-blur hover:bg-slate-800"
             >
               <Play className="w-4 h-4" />
               <span className="hidden sm:inline">
@@ -684,7 +701,7 @@ function MultiRadarPage({ layout }) {
       initialView={initialView}
       onViewChange={onViewChange}
       opacity={opacity}
-      basemap={readStored(BASEMAP_KEY, 'dark') === 'terrain' ? 'terrain' : 'dark'}
+      basemap={storedBasemap()}
       now={now}
       keepInitialView={!!viewFromParam(params.get('at'))}
     />
@@ -692,6 +709,7 @@ function MultiRadarPage({ layout }) {
 }
 
 export default function RadarPage() {
+  useLiquidGlass(); // glass cards over the radar (components/LiquidGlass)
   const [params] = useSearchParams();
   const n = Number(params.get('layout'));
   // Past radar is single-view only.

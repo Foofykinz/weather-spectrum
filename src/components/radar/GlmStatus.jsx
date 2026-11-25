@@ -13,7 +13,7 @@ export default function GlmStatus({ status, now, compact = false }) {
   const ageSec = newest ? Math.round((now - newest.getTime()) / 1000) : null;
   const lag = ageSec == null ? null : ageSec < 90 ? 'ok' : ageSec < 300 ? 'delayed' : 'stale';
   return (
-    <div className={`rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 py-1.5 shadow-lg text-[11px] ${compact ? '' : 'mb-2'}`}>
+    <div className={`ws-glass rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 py-1.5 shadow-lg text-[11px] ${compact ? '' : 'mb-2'}`}>
       <div className="flex items-center gap-2 text-slate-400">
         <span className="font-semibold text-slate-200">Lightning</span>
         <span className="tabular-nums truncate">

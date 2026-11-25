@@ -10,7 +10,7 @@ export default function LoopControls({ anim, onToggle, onScrub, onLive }) {
   const t = anim.times[anim.index];
   const loading = anim.loaded < n;
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2 py-1.5 shadow-lg text-xs">
+    <div className="ws-glass flex items-center gap-2 rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2 py-1.5 shadow-lg text-xs">
       <button
         type="button"
         onClick={onToggle}

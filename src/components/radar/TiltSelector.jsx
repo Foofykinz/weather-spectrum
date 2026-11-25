@@ -15,7 +15,7 @@ export default function TiltSelector({ tilts, selected, onSelect, loading }) {
     <div
       role="radiogroup"
       aria-label="Elevation tilt"
-      className="flex flex-wrap items-center gap-1 rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2 py-1.5 shadow-lg"
+      className="ws-glass flex flex-wrap items-center gap-1 rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2 py-1.5 shadow-lg"
     >
       <span className="text-[10px] uppercase tracking-wider text-slate-500 mr-1">Tilt</span>
       {tilts.map((t) => {
@@ -28,7 +28,7 @@ export default function TiltSelector({ tilts, selected, onSelect, loading }) {
             aria-checked={active}
             onClick={() => onSelect(t.tilt)}
             className={`rounded px-2 py-1 text-xs tabular-nums font-semibold border ${
-              active ? 'border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700 text-slate-300 hover:bg-slate-800'
+              active ? 'ws-glass-active border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700 text-slate-300 hover:bg-slate-800'
             }`}
           >
             {t.elevation.toFixed(1)}°

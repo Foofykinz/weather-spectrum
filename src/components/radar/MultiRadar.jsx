@@ -94,7 +94,7 @@ function RadarPanel({ index, product, tilt, station, onPick, onSelectStation, sh
         warnings={shared.warningsOn}
         warningsFrame={shared.warningsFrame}
         onWarningsStatus={index === 0 ? shared.onWarningsStatus : undefined}
-        animation={looping ? { specs: loop.specs, index: loop.index, onLoaded: loop.onLoaded } : null}
+        animation={looping ? { specs: loop.specs, index: loop.index, onLoaded: loop.onLoaded, holdUntilLoaded: true } : null}
         syncGroup={shared.syncGroup}
         primary={index === 0}
         splitBasemap={false}
@@ -112,7 +112,7 @@ function RadarPanel({ index, product, tilt, station, onPick, onSelectStation, sh
             }}
             aria-expanded={!!menuOpen}
             aria-label={`Panel ${index + 1} product`}
-            className="flex max-w-[11rem] sm:max-w-[15rem] items-center gap-1 rounded-md border border-slate-700/80 bg-slate-900/90 backdrop-blur px-2 py-1 text-xs font-semibold text-slate-100 shadow-lg hover:bg-slate-800"
+            className="ws-glass flex max-w-[11rem] sm:max-w-[15rem] items-center gap-1 rounded-md border border-slate-700/80 bg-slate-900/90 backdrop-blur px-2 py-1 text-xs font-semibold text-slate-100 shadow-lg hover:bg-slate-800"
           >
             <span className="truncate">{getProduct(menuProductId(product.id)).name}</span>
             <ChevronDown className="w-3.5 h-3.5 shrink-0 text-slate-400" aria-hidden />
@@ -138,7 +138,7 @@ function RadarPanel({ index, product, tilt, station, onPick, onSelectStation, sh
             document.body
           )}
         </div>
-        <div className="pointer-events-auto rounded-md border border-slate-700/80 bg-slate-900/90 backdrop-blur px-2 py-1 text-[11px] leading-tight shadow-lg tabular-nums">
+        <div className="ws-glass pointer-events-auto rounded-md border border-slate-700/80 bg-slate-900/90 backdrop-blur px-2 py-1 text-[11px] leading-tight shadow-lg tabular-nums">
           {frame.status === 'ok' && shownTime ? (
             <span className="flex items-center gap-1.5 text-slate-200">
               <span className={`inline-block w-1.5 h-1.5 rounded-full ${dot[looping ? 'unknown' : f.level]}`} aria-hidden />
@@ -204,7 +204,8 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
       if (c.signal.aborted) return;
       const ref = perPanel.find(Boolean)?.times;
       if (!ref || ref.length < 2) throw new Error('No panel in this view can be animated.');
-      setAnim({ ref, perPanel, index: 0, playing: true, loaded: 0, hold: 0 });
+      // Starts on the newest frame and plays once every panel's frames are in.
+      setAnim({ ref, perPanel, index: ref.length - 1, playing: true, loaded: {}, hold: 0 });
     } catch (err) {
       if (err.name !== 'AbortError') setLoopError(err.message);
     }
@@ -215,6 +216,8 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
     const id = setInterval(() => {
       setAnim((a) => {
         if (!a?.playing) return a;
+        const whole = a.perPanel.every((pp, i) => !pp || (a.loaded[i] || 0) >= pp.specs.length);
+        if (!whole) return a.index === a.ref.length - 1 ? a : { ...a, index: a.ref.length - 1 }; // still downloading
         if (a.index < a.ref.length - 1) return { ...a, index: a.index + 1 };
         if (a.hold < LAST_FRAME_HOLD) return { ...a, hold: a.hold + 1 };
         return { ...a, index: 0, hold: 0 };
@@ -222,7 +225,11 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
     }, FRAME_MS);
     return () => clearInterval(id);
   }, [anim?.playing]);
-  const onLoaded = useCallback((n) => setAnim((a) => (a ? { ...a, loaded: Math.max(a.loaded, n) } : a)), []);
+  const onLoaded = useCallback((i, n) => setAnim((a) => (a ? { ...a, loaded: { ...a.loaded, [i]: Math.max(a.loaded[i] || 0, n) } } : a)), []);
+
+  // Frames downloaded, for the progress counter: the slowest animated panel, in frames of the shared loop.
+  const loadedFrames = (a) =>
+    Math.min(a.ref.length, ...a.perPanel.map((pp, i) => (pp ? Math.floor(((a.loaded[i] || 0) * a.ref.length) / pp.specs.length) : a.ref.length)));
 
   // Each animated panel shows its newest frame at or before the shared time.
   const loopFor = (i) => {
@@ -234,7 +241,7 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
     pp.times.forEach((d, j) => {
       if (d.getTime() <= t) idx = j;
     });
-    return { specs: pp.specs, times: pp.times, index: idx, onLoaded };
+    return { specs: pp.specs, times: pp.times, index: idx, onLoaded: (n) => onLoaded(i, n) };
   };
 
   const shared = { now, opacity, basemap, initialView, onViewChange, lightningOn, onLightningStatus: setLightningStatus, warningsOn, onWarningsStatus: setWarningsStatus, warningsFrame: anim ? warningsAtTime(anim.ref[anim.index]) : undefined, syncGroup, keepInitialView };
@@ -265,7 +272,7 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
           onClick={() => updateParams({ ltg: lightningOn ? null : '1' })}
           aria-pressed={lightningOn}
           title="Lightning (GOES GLM satellite flashes)"
-          className={`flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-semibold ${lightningOn ? 'border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700/80 hover:bg-slate-800'}`}
+          className={`flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-semibold ${lightningOn ? 'ws-glass-active border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700/80 hover:bg-slate-800'}`}
         >
           <Zap className="w-4 h-4" />
           <span className="hidden sm:inline">Lightning</span>
@@ -275,7 +282,7 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
           onClick={() => updateParams({ warn: warningsOn ? '0' : null })}
           aria-pressed={warningsOn}
           title="NWS warning polygons (tornado, severe thunderstorm, flash flood and more)"
-          className={`flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-semibold ${warningsOn ? 'border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700/80 hover:bg-slate-800'}`}
+          className={`flex items-center gap-1 whitespace-nowrap rounded-md border px-2 py-1.5 text-xs font-semibold ${warningsOn ? 'ws-glass-active border-sky-400/70 bg-sky-400/15 text-sky-200' : 'border-slate-700/80 hover:bg-slate-800'}`}
         >
           <AlertTriangle className="w-4 h-4" />
           <span className="hidden sm:inline">Warnings</span>
@@ -310,7 +317,7 @@ export default function MultiRadar({ layout, params, updateParams, station, onSe
           {anim && (
             <div className="sm:flex-1 sm:max-w-xl">
               <LoopControls
-                anim={{ times: anim.ref, index: anim.index, playing: anim.playing, loaded: Math.min(anim.loaded, anim.ref.length) }}
+                anim={{ times: anim.ref, index: anim.index, playing: anim.playing, loaded: loadedFrames(anim) }}
                 onToggle={() => setAnim((a) => ({ ...a, playing: !a.playing }))}
                 onScrub={(i) => setAnim((a) => ({ ...a, index: i, playing: false, hold: 0 }))}
                 onLive={stopLoop}

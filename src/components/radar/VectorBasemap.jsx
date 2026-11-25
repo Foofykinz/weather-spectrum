@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
+import { nightStyle, NASA_ATTRIBUTION } from '../../radar/nightStyle';
 import { terrainStyle, addInterstateShield, attachCountyDetail, SHIELD_PREFIX, USGS_ATTRIBUTION } from '../../radar/terrainStyle';
 
 // Dark basemap from OpenFreeMap (https://openfreemap.org/): free, no API key,
@@ -18,6 +19,7 @@ export const STYLE_URLS = {
   dark: 'https://tiles.openfreemap.org/styles/dark',
   light: 'https://tiles.openfreemap.org/styles/positron',
   terrain: 'https://tiles.openfreemap.org/styles/liberty', // shield images and fonts; see radar/terrainStyle
+  night: 'https://tiles.openfreemap.org/styles/dark', // plus NASA city lights; see radar/nightStyle
 };
 
 export const OPENFREEMAP_ATTRIBUTION =
@@ -92,6 +94,7 @@ export default function VectorBasemap({ labelsPane, onError, split = true, theme
     const layers = [];
     map.attributionControl?.addAttribution(OPENFREEMAP_ATTRIBUTION);
     if (theme === 'terrain') map.attributionControl?.addAttribution(USGS_ATTRIBUTION);
+    if (theme === 'night') map.attributionControl?.addAttribution(NASA_ATTRIBUTION);
 
     (async () => {
       try {
@@ -109,14 +112,20 @@ export default function VectorBasemap({ labelsPane, onError, split = true, theme
         maplibre.setWorkerUrl(workerUrl);
 
         const styled =
-          theme === 'light' ? slateStyle(style) : theme === 'terrain' ? terrainStyle(style, `${window.location.origin}/data/county-lines.json`) : style;
+          theme === 'light'
+            ? slateStyle(style)
+            : theme === 'terrain'
+              ? terrainStyle(style, `${window.location.origin}/data/county-lines.json`)
+              : theme === 'night'
+                ? nightStyle(style)
+                : style;
         const { below, above } = theme === 'terrain' ? splitPlain(styled) : splitStyle(styled);
         const common = { interactive: false, attributionControl: false };
         if (split) {
           layers.push(maplibreGL({ ...common, style: below, pane: 'tilePane' }).addTo(map));
           layers.push(maplibreGL({ ...common, style: above, pane: labelsPane }).addTo(map));
         } else {
-          const whole = theme === 'dark' ? { ...style, layers: style.layers.map(legiblePlaceName) } : styled;
+          const whole = theme === 'dark' || theme === 'night' ? { ...styled, layers: styled.layers.map(legiblePlaceName) } : styled;
           layers.push(maplibreGL({ ...common, style: whole, pane: 'tilePane' }).addTo(map));
         }
         if (theme === 'terrain') {
@@ -136,6 +145,7 @@ export default function VectorBasemap({ labelsPane, onError, split = true, theme
         }
         map._wsBasemaps = layers; // read by the post maker's snapshot
         map._wsTerrain = theme === 'terrain'; // its credit line names USGS
+        map._wsNight = theme === 'night'; // its credit line names NASA
       } catch (err) {
         // The radar still works without a basemap; just report it.
         if (!cancelled) onError?.(err);
@@ -146,9 +156,11 @@ export default function VectorBasemap({ labelsPane, onError, split = true, theme
       cancelled = true;
       delete map._wsBasemaps;
       delete map._wsTerrain;
+      delete map._wsNight;
       layers.forEach((l) => map.removeLayer(l));
       map.attributionControl?.removeAttribution(OPENFREEMAP_ATTRIBUTION);
       map.attributionControl?.removeAttribution(USGS_ATTRIBUTION);
+      map.attributionControl?.removeAttribution(NASA_ATTRIBUTION);
     };
   }, [map, labelsPane, split, theme]); // eslint-disable-line react-hooks/exhaustive-deps
 

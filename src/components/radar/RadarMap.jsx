@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MapContainer, CircleMarker, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -42,6 +42,38 @@ function Panes() {
 // Map tiles with weak returns hidden: pixels whose color is one of
 // spec.hideColors (exact palette colors, as 0xRRGGBB) become transparent.
 // Values are never changed, only left out.
+// Failed tile downloads are tried again (after 1, 2 and 4 seconds) before a
+// square is given up on, so one dropped request doesn't leave a hole in the
+// radar. retryUrl adds a "retry" parameter so the browser asks the server
+// again instead of reusing the failed answer.
+const RETRIES = 3;
+const retryUrl = (url, n) => `${url}${url.includes('?') ? '&' : '?'}retry=${n}`;
+function withRetries(img, layer, url, onFail) {
+  let tries = 0;
+  img.onerror = (e) => {
+    if (tries < RETRIES && layer._map) {
+      tries += 1;
+      setTimeout(() => {
+        if (layer._map) img.src = retryUrl(url, tries);
+      }, 1000 * 2 ** (tries - 1));
+    } else onFail(e);
+  };
+  img.src = url;
+}
+
+const RetryTiles = L.TileLayer.extend({
+  createTile(coords, done) {
+    const tile = document.createElement('img');
+    tile.onload = () => this._tileOnLoad(done, tile);
+    if (this.options.crossOrigin || this.options.crossOrigin === '') tile.crossOrigin = this.options.crossOrigin === true ? '' : this.options.crossOrigin;
+    tile.alt = '';
+    tile.setAttribute('role', 'presentation');
+    withRetries(tile, this, this.getTileUrl(coords), (e) => this._tileOnError(done, tile, e));
+    return tile;
+  },
+});
+const RetryWms = L.TileLayer.WMS.extend({ createTile: RetryTiles.prototype.createTile });
+
 const FilteredTiles = L.TileLayer.extend({
   createTile(coords, done) {
     const size = this.getTileSize();
@@ -66,8 +98,7 @@ const FilteredTiles = L.TileLayer.extend({
       }
       done(null, canvas);
     };
-    img.onerror = (e) => done(e, canvas);
-    img.src = this.getTileUrl(coords);
+    withRetries(img, this, this.getTileUrl(coords), (e) => done(e, canvas));
     return canvas;
   },
 });
@@ -105,9 +136,12 @@ function createRadarLayer(spec, { opacity, maxNativeZoom, attribution }) {
     opacity,
     maxZoom: 18,
     attribution,
-    // Fewer requests on mobile: don't load tiles mid-pan, keep a small buffer.
-    updateWhenIdle: true,
-    keepBuffer: 1,
+    // Desktop: load tiles while the map is being dragged (Leaflet asks at
+    // most every 200 ms) and keep a ring of tiles around the view, so panning
+    // never uncovers empty map. Phones: load once the map stops and keep a
+    // small ring, to save data.
+    updateWhenIdle: L.Browser.mobile,
+    keepBuffer: L.Browser.mobile ? 1 : 3,
     crossOrigin: true,
     // Skip requests outside the product's coverage area.
     ...(spec.bounds ? { bounds: L.latLngBounds(spec.bounds) } : {}),
@@ -115,10 +149,10 @@ function createRadarLayer(spec, { opacity, maxNativeZoom, attribution }) {
   if (spec.kind === 'wms') {
     // 512px images: a quarter as many requests as 256px tiles, same sharpness,
     // because the server renders each image fresh for exactly this area.
-    return L.tileLayer.wms(spec.url, { ...common, ...spec.params, tileSize: 512 });
+    return new RetryWms(spec.url, { ...common, ...spec.params, tileSize: 512 });
   }
   if (spec.hideColors) return new FilteredTiles(spec.url, { ...common, maxNativeZoom, hideColors: spec.hideColors });
-  return L.tileLayer(spec.url, { ...common, maxNativeZoom });
+  return new RetryTiles(spec.url, { ...common, maxNativeZoom });
 }
 
 // Sharp zoom for scans we decode ourselves: the overview image of the whole
@@ -206,6 +240,7 @@ function attachSharpZoom(map, base, spec, getOpacity) {
 function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors }) {
   const map = useMap();
   const current = useRef(null);
+  const mine = useRef(new Set()); // every layer this component added
   const sharp = useRef(null);
   const opacityRef = useRef(opacity);
   opacityRef.current = opacity;
@@ -218,6 +253,7 @@ function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors })
     const layer = createRadarLayer(spec, { opacity, maxNativeZoom, attribution });
     const previous = current.current;
     current.current = layer;
+    mine.current.add(layer);
     errorCb.current?.(0);
 
     layer.on('tileerror', () => {
@@ -234,10 +270,12 @@ function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors })
     sharp.current = spec.kind === 'canvas' && spec.radial && !(layer instanceof GLRadarLayer) ? attachSharpZoom(map, layer, spec, () => opacityRef.current) : null;
     const sharpNow = sharp.current;
 
-    // Safety net: never leave an old scan on screen for long if the new one is slow.
+    // The old scan stays under the new one until the new one is complete, so a
+    // slow square shows the previous scan rather than a hole. Safety net: never
+    // leave the old scan on screen for long if the new one can't finish.
     const t = setTimeout(() => {
       if (previous && map.hasLayer(previous)) map.removeLayer(previous);
-    }, 8000);
+    }, 30000);
 
     return () => {
       clearTimeout(t);
@@ -250,19 +288,39 @@ function RadarTiles({ spec, opacity, maxNativeZoom, attribution, onTileErrors })
     else current.current?.setOpacity(opacity);
   }, [opacity]);
 
-  // Remove all radar imagery when this component goes away (e.g. product
+  // Remove this component's radar imagery when it goes away (e.g. product
   // switched and the new one hasn't loaded) so we never show the wrong product.
+  // Only its own layers: a loop's frames may be in the same pane.
   useEffect(
     () => () => {
-      map.eachLayer((l) => {
-        if (l.options?.pane === 'radar') map.removeLayer(l);
-      });
+      mine.current.forEach((l) => map.hasLayer(l) && map.removeLayer(l));
+      mine.current.clear();
       current.current = null;
     },
     [map]
   );
 
   return null;
+}
+
+// Switching loop frames: a straight cut. The next frame is shown and every
+// other frame hidden in the same step, and only frames that have fully
+// downloaded are shown, so nothing flashes. (A fade would show two scans at
+// once for a moment, which reads as ghost echoes; fading one out while the
+// other fades in dims the radar.) state: { top } kept per loop.
+// When a loop starts, its first frame (the same scan as the still one) has
+// just downloaded and its tiles take ~0.2 s to appear: the still scan stays
+// under it that long.
+const STILL_HANDOFF_MS = 250;
+function fadeTo(layer, opacity) {
+  const el = layer.getContainer?.();
+  if (el) el.style.transition = 'none';
+  layer.setOpacity(opacity);
+}
+function showFrame(layers, next, opacity, state) {
+  fadeTo(next, opacity);
+  layers.forEach((l) => l !== next && fadeTo(l, 0));
+  state.top = next;
 }
 
 // Radar loop: one layer per frame, all added at once (hidden) so their images
@@ -280,6 +338,7 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
   const shownCb = useRef(onShown);
   shownCb.current = onShown;
   const shown = useRef(null); // the layer on screen (hold mode)
+  const fade = useRef({ top: null }); // frame on screen (showFrame)
   const stale = useRef(null); // the previous loop's last shown layer, until a new one is up
   const pool = useRef(new Map()); // hold mode: the previous loop's layers, by image address
   const want = useRef(index);
@@ -289,13 +348,14 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
   // Hold mode: show the wanted frame if it's whole, else keep the current one.
   const showWanted = () => {
     const l = layers.current[want.current];
-    if (!l || l.isLoading()) return;
-    layers.current.forEach((x) => x !== l && x.setOpacity(0));
-    l.setOpacity(opacityRef.current);
+    if (!l || l.isLoading?.()) return; // image overlays (decoded scans) are always whole
+    showFrame(layers.current, l, opacityRef.current, fade.current);
     shown.current = l;
     if (stale.current) {
-      map.removeLayer(stale.current);
+      // The previous loop's frame goes now that a new one is up.
+      const old = stale.current;
       stale.current = null;
+      map.removeLayer(old);
     }
     shownCb.current?.(want.current);
   };
@@ -304,7 +364,10 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
   useEffect(() => {
     if (specs.every((s) => s.kind === 'canvas' && s.radial) && glRadarSupported()) {
       const l = new GLRadarLayer(specs.map((s) => s.radial), { pane: 'radar', opacity, attribution });
-      l.once('load', () => loadedCb.current?.(specs.length));
+      l.once('load', () => {
+        loadedCb.current?.(specs.length);
+        shownCb.current?.(want.current);
+      });
       gpu.current = l.addTo(map);
       return () => {
         map.removeLayer(l);
@@ -331,7 +394,8 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
         // than show it square by square, until a whole frame is ready.
         l.on('loading', () => {
           if (l !== shown.current) return;
-          l.setOpacity(0);
+          fadeTo(l, 0);
+          if (fade.current.top === l) fade.current.top = null;
           shown.current = null;
           shownCb.current?.(null);
         });
@@ -361,7 +425,7 @@ function AnimationLayers({ specs, index, opacity, maxNativeZoom, attribution, on
   useEffect(() => {
     if (gpu.current) gpu.current.setIndex(index).setOpacity(opacity);
     else if (holdUntilLoaded) showWanted();
-    else layers.current.forEach((l, i) => l.setOpacity(i === index ? opacity : 0));
+    else if (layers.current[index]) showFrame(layers.current, layers.current[index], opacity, fade.current);
   }, [index, opacity, specs]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(
@@ -528,12 +592,24 @@ function FlyToStation({ station, keepInitialView }) {
 
 // Clicking a radar dot stops the click from reaching the map, so it selects the
 // radar without also opening a value readout underneath.
+// Radar sites, clickable, in their own pane above warnings (440) and storm
+// markers (460) so nothing covers them. Drawn as SVG: only the circles take
+// clicks, so warnings and value taps underneath still get theirs.
 function StationMarkers({ selectedId, onSelect }) {
+  const map = useMap();
+  if (!map.getPane('stations')) {
+    const pane = map.createPane('stations');
+    pane.style.zIndex = '470';
+  }
+  const renderer = useRef(null);
+  renderer.current ||= L.svg({ pane: 'stations' });
   return STATIONS.map((s) => {
     const selected = s.id === selectedId;
     return (
       <CircleMarker
         key={s.id}
+        pane="stations"
+        renderer={renderer.current}
         center={[s.lat, s.lon]}
         radius={selected ? 7 : 5}
         pathOptions={{
@@ -559,6 +635,7 @@ export default function RadarMap({
   initialView,
   onViewChange,
   showStations,
+  flyToStation = true, // move the map to the selected radar when it changes
   station,
   onSelectStation,
   onTileErrors,
@@ -573,7 +650,7 @@ export default function RadarMap({
   syncGroup, // shared view group for multi-panel layouts
   primary = true, // the one panel that owns zoom buttons, fly-to and saved view
   splitBasemap = true,
-  basemap = 'dark', // 'dark' | 'terrain'
+  basemap = 'dark', // 'dark' | 'terrain' | 'night'
   embed = false, // inside a page: no scroll-wheel zoom; touch devices use the zoom buttons
   keepInitialView = false,
   mapRef, // gets the Leaflet map (used by the post maker)
@@ -584,6 +661,14 @@ export default function RadarMap({
   stormsTimes, // all loop frame times, preloaded
   overlay, // GeoJSON features with their own fill/stroke colors (e.g. SPC outlooks)
 }) {
+  const [loopShown, setLoopShown] = useState(false);
+  const loopShownTimer = useRef(0);
+  useEffect(() => {
+    if (!animation) {
+      clearTimeout(loopShownTimer.current);
+      setLoopShown(false);
+    }
+  }, [animation]);
   return (
     <MapContainer
       center={[initialView.lat, initialView.lon]}
@@ -609,10 +694,16 @@ export default function RadarMap({
           attribution={product.attribution}
           onLoaded={animation.onLoaded}
           holdUntilLoaded={animation.holdUntilLoaded}
-          onShown={animation.onShown}
+          onShown={(i) => {
+            clearTimeout(loopShownTimer.current);
+            if (i != null) loopShownTimer.current = setTimeout(() => setLoopShown(true), STILL_HANDOFF_MS);
+            else setLoopShown(false);
+            animation.onShown?.(i);
+          }}
         />
       )}
-      {layer && !animation && (
+      {/* The still scan stays up under a loop until the loop has a whole frame to show. */}
+      {layer && (!animation || (animation.holdUntilLoaded && !loopShown)) && (
         <RadarTiles
           spec={layer}
           opacity={opacity}
@@ -622,7 +713,7 @@ export default function RadarMap({
         />
       )}
       {showStations && <StationMarkers selectedId={station?.id} onSelect={onSelectStation} />}
-      {showStations && primary && <FlyToStation station={station} keepInitialView={keepInitialView} />}
+      {showStations && primary && flyToStation && <FlyToStation station={station} keepInitialView={keepInitialView} />}
       <ValueProbe product={product} details={layer ? details : null} />
       {lightning && <GlmLayer onStatus={onLightningStatus} />}
       {warnings && <WarningsLayer frame={warningsFrame} onStatus={onWarningsStatus} live={liveOverlays} />}
@@ -710,7 +801,7 @@ function ZoomButtons() {
     'w-10 h-10 flex items-center justify-center text-lg text-slate-200 hover:bg-slate-700/80 active:bg-slate-600';
   return (
     <div className="leaflet-bottom leaflet-right" style={{ marginBottom: 28 }}>
-      <div ref={ref} className="leaflet-control flex flex-col rounded-lg overflow-hidden border border-slate-700 bg-slate-900/85 backdrop-blur shadow-lg mr-3">
+      <div ref={ref} className="ws-glass leaflet-control flex flex-col rounded-lg overflow-hidden border border-slate-700 bg-slate-900/85 backdrop-blur shadow-lg mr-3">
         <button type="button" aria-label="Zoom in" className={btn} onClick={() => map.zoomIn()}>
           +
         </button>

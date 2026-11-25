@@ -8,7 +8,7 @@
 // can only be read right after it draws, so it's asked to redraw once and
 // copied at that moment.
 
-const SKIP_PANES = new Set(['markerPane', 'shadowPane', 'tooltipPane', 'popupPane', 'overlayPane']);
+const SKIP_PANES = new Set(['markerPane', 'shadowPane', 'tooltipPane', 'popupPane', 'overlayPane', 'stations']); // stations: radar site markers (RadarMap)
 
 function copyBasemaps(map) {
   const copies = new Map();
@@ -153,5 +153,5 @@ export async function snapshotMap(map, scale = 2) {
   }
   ctx.globalAlpha = 1;
   drawTextLabels(ctx, root, box, scale);
-  return { canvas, scale, toLatLng, toPoint, terrain: !!map._wsTerrain };
+  return { canvas, scale, toLatLng, toPoint, terrain: !!map._wsTerrain, night: !!map._wsNight };
 }

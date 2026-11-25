@@ -106,7 +106,7 @@ export default function RadarStatus({ product, station, frame, now, tileErrors }
   }
 
   return (
-    <div className="rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 py-2 shadow-lg text-xs leading-snug">
+    <div className="ws-glass rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 py-2 shadow-lg text-xs leading-snug">
       <div className="text-slate-400 mb-0.5 truncate">
         <span className="text-slate-200 font-semibold">{product.name}</span> · {where}
         {tilt}

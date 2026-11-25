@@ -18,7 +18,7 @@ const OPTIONS = [
 
 export default function LayoutSwitch({ layout, onChange }) {
   return (
-    <div role="radiogroup" aria-label="Radar layout" className="flex shrink-0 rounded-md border border-slate-700/80 bg-slate-900/85 p-0.5 shadow-lg backdrop-blur">
+    <div role="radiogroup" aria-label="Radar layout" className="ws-glass flex shrink-0 rounded-md border border-slate-700/80 bg-slate-900/85 p-0.5 shadow-lg backdrop-blur">
       {OPTIONS.map((o) => (
         <button
           key={o.n}

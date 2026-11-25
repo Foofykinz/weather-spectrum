@@ -97,9 +97,10 @@ void main() {
 
 export { glRadarSupported } from './support';
 
-// Crossfade between loop frames (ms). Each frame is still one real scan;
-// during the fade the two neighboring scans are blended.
-const FADE_MS = 280;
+// Crossfade between loop frames (ms). 0: a straight cut, as for tile loops
+// (RadarMap showFrame); a blend shows two scans at once, which reads as ghost
+// echoes. A layer can still ask for one with the fadeMs option.
+const FADE_MS = 0;
 
 function compile(gl, type, src) {
   const s = gl.createShader(type);

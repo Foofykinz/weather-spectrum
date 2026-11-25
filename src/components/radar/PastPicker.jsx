@@ -20,7 +20,7 @@ export default function PastPicker({ time, onShow, onLive, onClose }) {
   const btn = 'rounded-md border border-slate-700/80 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-800';
 
   return (
-    <div className="pointer-events-auto w-full sm:w-80 rounded-lg border border-slate-700/80 bg-slate-900/95 backdrop-blur p-3 shadow-lg text-xs text-slate-200">
+    <div className="ws-glass ws-glass-panel pointer-events-auto w-full sm:w-80 rounded-lg border border-slate-700/80 bg-slate-900/95 backdrop-blur p-3 shadow-lg text-xs text-slate-200">
       <div className="flex items-center justify-between mb-2">
         <span className="font-semibold">Past radar</span>
         <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-200" aria-label="Close">

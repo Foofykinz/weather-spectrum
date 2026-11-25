@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Info } from 'lucide-react';
 import { LEGENDS, legendGradient, rampGradient, tickPosition, radarMode } from '../../radar/legends';
 
-const box = 'rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 pt-2 pb-1.5 shadow-lg';
+const box = 'ws-glass rounded-lg border border-slate-700/80 bg-slate-900/85 backdrop-blur px-3 pt-2 pb-1.5 shadow-lg';
 
 function Header({ title, units, info, onInfo }) {
   return (
@@ -149,7 +149,7 @@ export default function RadarLegend({ product, frame, compact = false }) {
   if (!legend) return null;
   const hasNote = !compact && (legend.note || legend.type === 'levels');
   const cls = compact
-    ? 'ws-legend-compact rounded-md border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2 pt-1 pb-0.5 shadow-lg'
+    ? 'ws-glass ws-legend-compact rounded-md border border-slate-700/80 bg-slate-900/85 backdrop-blur px-2 pt-1 pb-0.5 shadow-lg'
     : `${box}${info ? '' : ' ws-legend-hide-notes'}`;
   return (
     <div className={cls}>

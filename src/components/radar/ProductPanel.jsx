@@ -41,7 +41,7 @@ export default function ProductPanel({
   if (!open) return null;
 
   return (
-    <div className="pointer-events-auto w-full sm:w-80 min-h-0 flex flex-col rounded-lg border border-slate-700/80 bg-slate-900/95 backdrop-blur shadow-2xl text-sm text-slate-200">
+    <div className="ws-glass ws-glass-panel pointer-events-auto w-full sm:w-80 min-h-0 flex flex-col rounded-lg border border-slate-700/80 bg-slate-900/95 backdrop-blur shadow-2xl text-sm text-slate-200">
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/80">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Radar</h2>
         <button type="button" onClick={onClose} aria-label="Close panel" className="p-1 rounded hover:bg-slate-700">

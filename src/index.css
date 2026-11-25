@@ -83,12 +83,6 @@ select option {
   scrollbar-width: none;
 }
 
-/* Radar loops built from map tiles (national mosaic, broadcast): a short
-   crossfade between frames instead of a hard cut. Each frame is still one
-   real scan. Decoded single-radar loops fade on the GPU the same way. */
-.leaflet-radar-pane .leaflet-layer {
-  transition: opacity 280ms linear;
-}
 
 /* "Typical" / "Greater" labels on the tornado season map */
 .ws-clim-label {
@@ -102,4 +96,36 @@ select option {
 }
 @media (max-width: 640px) {
   .ws-clim-label { font-size: 13px; padding: 0 5px; border-width: 1.5px; }
+}
+
+/* Frosted glass cards over the radar (class "ws-glass"): translucent, with a
+   Gaussian blur of the map behind them and a light rim. Chromium browsers
+   also bend the backdrop at the rim (components/LiquidGlass.jsx), which sets
+   its own backdrop-filter on each card. */
+.ws-glass {
+  background-color: rgba(15, 23, 42, 0.42) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.5);
+  backdrop-filter: blur(12px) saturate(1.5);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -1px 0 rgba(255, 255, 255, 0.06), 0 8px 24px rgba(0, 0, 0, 0.35) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+}
+/* Text-heavy panels stay a little more solid so they read easily. */
+.ws-glass.ws-glass-panel {
+  background-color: rgba(15, 23, 42, 0.62) !important;
+}
+.ws-glass.ws-glass-active {
+  background-color: rgba(56, 189, 248, 0.2) !important;
+}
+button.ws-glass:not(.ws-glass-active):hover,
+a.ws-glass:not(.ws-glass-active):hover {
+  background-color: rgba(30, 41, 59, 0.55) !important;
+}
+
+/* Radar tiles: show each radar square with a sharp edge. Tiles are stretched
+   on high-resolution screens and past a product's native zoom, and the
+   browser's default smoothing turns the squares into a blur. (Decoded scans
+   are drawn sharp already: ws-radar-crisp.) */
+.leaflet-radar-pane img.leaflet-tile,
+.leaflet-radar-pane canvas.leaflet-tile {
+  image-rendering: pixelated;
 }

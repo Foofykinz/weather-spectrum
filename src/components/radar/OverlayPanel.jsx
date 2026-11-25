@@ -17,7 +17,7 @@ export default function OverlayPanel({ open, onClose, warnings, storms, lightnin
     { key: 'zones', on: zones, icon: Snowflake, name: 'Wind and winter alerts', desc: 'High wind, winter storm, blizzard, ice storm and lake effect snow warnings, watches and advisories (NWS). Tap an area for details.', set: (v) => ({ zones: v ? null : '0' }), live: true, opacity: 'zoneFill' },
   ];
   return (
-    <div className="pointer-events-auto w-full sm:w-80 min-h-0 flex flex-col overflow-y-auto rounded-lg border border-slate-700/80 bg-slate-900/95 backdrop-blur shadow-2xl text-sm text-slate-200">
+    <div className="ws-glass ws-glass-panel pointer-events-auto w-full sm:w-80 min-h-0 flex flex-col overflow-y-auto rounded-lg border border-slate-700/80 bg-slate-900/95 backdrop-blur shadow-2xl text-sm text-slate-200">
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-700/80">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Overlays</h2>
         <button type="button" onClick={onClose} aria-label="Close overlays" className="p-1 rounded hover:bg-slate-700">
@@ -32,12 +32,17 @@ export default function OverlayPanel({ open, onClose, warnings, storms, lightnin
               <div className="min-w-0 flex-1">
                 <div className="font-semibold text-slate-100">Map</div>
                 <div className="text-xs leading-snug text-slate-400">
-                  {basemap === 'terrain' ? 'Satellite view of the land with county lines, highways and towns.' : 'Dark map that keeps the radar colors easy to read.'}
+                  {basemap === 'terrain'
+                    ? 'Satellite view of the land with county lines, highways and towns.'
+                    : basemap === 'night'
+                      ? 'The dark map with city lights seen from space at night (NASA satellite imagery).'
+                      : 'Dark map that keeps the radar colors easy to read.'}
                 </div>
                 <div className="mt-2 inline-flex rounded-md border border-slate-700 p-0.5" role="radiogroup" aria-label="Map">
                   {[
                     ['dark', 'Dark'],
                     ['terrain', 'Terrain'],
+                    ['night', 'Night'],
                   ].map(([v, label]) => (
                     <button
                       key={v}

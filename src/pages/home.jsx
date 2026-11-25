@@ -85,8 +85,8 @@ const FEATURES = [
     shots: 'radar',
     title: 'Advanced NEXRAD radar',
     text: 'The products storm chasers and weather enthusiasts rely on: single-radar reflectivity and velocity, correlation coefficient, differential reflectivity, hydrometeor classification, echo tops and VIL, plus the national mosaic. Tap the map to read exact values, compare up to four products side by side, and turn on warnings, watches, storm markers, satellite lightning and station temperatures or wind.',
-    to: '/radar',
-    link: 'Open the advanced radar',
+    to: '/radar?layout=4', // the four-panel view: reflectivity, velocity, CC and ZDR from one radar
+    link: 'Compare four radar products',
   },
   {
     shots: 'graphics',
