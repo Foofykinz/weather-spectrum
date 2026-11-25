@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Layers, Clapperboard, History } from 'lucide-react';
 import { CITIES, RADARS, STATION_PAGES } from '../seo/places';
 import { cityPath, stationPath } from '../seo/meta';
 
@@ -47,6 +47,30 @@ const SOURCES = [
   },
 ];
 
+const FEATURES = [
+  {
+    icon: Layers,
+    title: 'Advanced NEXRAD radar',
+    text: 'The products storm chasers and weather enthusiasts rely on: single-radar reflectivity and velocity, correlation coefficient, differential reflectivity, hydrometeor classification, echo tops and VIL, plus the national mosaic. Tap the map to read exact values, compare up to four products side by side, and turn on warnings, watches, storm markers, lightning and station temperatures or wind.',
+    to: '/radar',
+    link: 'Open the advanced radar',
+  },
+  {
+    icon: Clapperboard,
+    title: 'Weather graphics and radar videos',
+    text: 'Turn the radar view into a post: a headline header with ready-made looks, warning lists, labels and arrows pinned to the map, your own logo and colors, and a caption written from the NWS alerts. Save it as an image or a short radar video sized for social media, whether you run a weather page or are posting from a chase.',
+    to: '/radar',
+    link: 'Make a weather graphic',
+  },
+  {
+    icon: History,
+    title: 'Historic tornado radar replays',
+    text: 'Replay the real archived radar scans from tornadoes such as Moore, Joplin, El Reno, Mayfield, Rolling Fork and Enderlin, with the National Weather Service warnings as they were issued and the official facts from each storm survey.',
+    to: '/events',
+    link: 'See the tornado replays',
+  },
+];
+
 export default function Home() {
   return (
     <>
@@ -59,14 +83,15 @@ export default function Home() {
         <div className="relative max-w-5xl mx-auto px-5 sm:px-6 pt-24 pb-28 sm:pt-32 sm:pb-36 text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">Weather Spectrum</p>
           <h1 className="mt-5 text-4xl sm:text-6xl md:text-7xl font-bold leading-[1.05] tracking-tight text-white">
-            Live weather radar
+            Free live weather radar
             <span className="block ws-spectrum-text">
-              from NOAA NEXRAD
+              across the United States
             </span>
           </h1>
           <p className="mt-6 text-base sm:text-lg leading-relaxed text-gray-300 max-w-2xl mx-auto">
-            Reflectivity, velocity, dual-polarization products and lightning from NOAA radar data, updated as each scan
-            arrives, with values you can read directly from the map.
+            Track storms with live NOAA NEXRAD Doppler radar, severe weather warnings, satellite lightning and detailed
+            radar products, updated as each scan arrives. Replay historic tornadoes, and turn the radar into weather graphics
+            and videos you can share.
           </p>
 
           <div className="mt-11">
@@ -90,6 +115,29 @@ export default function Home() {
               </li>
             ))}
           </ul>
+        </div>
+      </section>
+
+      {/* What the site does */}
+      <section className="bg-slate-950 border-t border-white/5">
+        <div className="max-w-5xl mx-auto px-5 sm:px-6 py-14 sm:py-16">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white">More than a radar map</h2>
+          <p className="mt-3 max-w-3xl leading-relaxed text-slate-400">
+            Weather Spectrum is a free interactive weather radar built on real NOAA NEXRAD Doppler data. No account or app is
+            needed: open the radar in your browser and it shows every scan as it comes in.
+          </p>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {FEATURES.map(({ icon: Icon, title, text, to, link }) => (
+              <div key={title} className="flex flex-col rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+                <Icon className="h-6 w-6 text-sky-300" aria-hidden />
+                <h3 className="mt-3 text-lg font-semibold text-white">{title}</h3>
+                <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-400">{text}</p>
+                <Link to={to} className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-sky-300 hover:text-sky-200">
+                  {link} <ArrowRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 

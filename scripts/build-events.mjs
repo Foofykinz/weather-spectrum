@@ -1,12 +1,13 @@
 // Collect the official warning timeline for each event page, from the IEM
 // archive of NWS warnings, and save it with the site (src/seo/event-data.json).
-// Run by hand when adding an event:  node scripts/build-events.mjs
+// Run by hand when adding an event:  node scripts/build-events.mjs [slug ...]
+// (with slugs, only those events are fetched; the others are kept as saved).
 //
 // For each event: every tornado warning (and severe thunderstorm warning) in
 // effect over the tornado's path while it was on the ground, with its issue
 // and end times and each follow-up statement (time, first headline line).
 // Nothing is summarized: lines are taken from the products themselves.
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 
 const IEM = 'https://mesonet.agron.iastate.edu';
 // Points along each tornado's path (from the NWS event summaries), and the
@@ -19,6 +20,8 @@ const EVENTS = {
   'mayfield-tornado-2021': { wfo: 'PAH', start: '2021-12-11T02:40Z', end: '2021-12-11T03:50Z', points: [[36.5, -89.1], [36.62, -88.9], [36.74, -88.64], [36.88, -88.33]] },
   'greenfield-tornado-2024': { wfo: 'DMX', start: '2024-05-21T19:50Z', end: '2024-05-21T20:45Z', points: [[41.13, -94.65], [41.31, -94.46], [41.45, -94.3]] },
   'barnsdall-tornado-2024': { wfo: 'TSA', start: '2024-05-07T01:50Z', end: '2024-05-07T03:30Z', points: [[36.56, -96.16], [36.66, -96.05], [36.75, -95.98], [36.8, -95.93]] },
+  'rolling-fork-tornado-2023': { wfo: 'JAN', start: '2023-03-25T00:40Z', end: '2023-03-25T02:10Z', points: [[32.84, -91.0], [32.91, -90.88], [33.1, -90.5], [33.26, -90.11]] },
+  'enderlin-tornado-2025': { wfo: 'FGF', start: '2025-06-21T03:45Z', end: '2025-06-21T04:21Z', points: [[46.57, -97.6], [46.63, -97.59], [46.69, -97.58]] },
 };
 
 const get = async (url) => {
@@ -50,8 +53,10 @@ function headline(text) {
   return at ? at[0].replace(/^\*\s*/, '').replace(/\s+/g, ' ').trim().slice(0, 300) : null;
 }
 
-const out = {};
+const only = process.argv.slice(2);
+const out = only.length ? JSON.parse(readFileSync('src/seo/event-data.json', 'utf8')) : {};
 for (const [slug, ev] of Object.entries(EVENTS)) {
+  if (only.length && !only.includes(slug)) continue;
   const seen = new Map();
   const t0 = Date.parse(ev.start.replace('Z', ':00Z'));
   const t1 = Date.parse(ev.end.replace('Z', ':00Z'));

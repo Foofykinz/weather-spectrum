@@ -23,9 +23,9 @@ export const stationPath = (r) => `/stations/${r.icao.toLowerCase()}`;
 
 const STATIC = {
   '/': {
-    title: 'Weather Spectrum | Live NEXRAD Weather Radar',
+    title: 'Free Live Weather Radar & Doppler Radar | Weather Spectrum',
     description:
-      'Live NEXRAD weather radar: super-resolution reflectivity and velocity, dual-polarization products, echo tops and GOES satellite lightning from NOAA data.',
+      'Track storms across the U.S. with free live Doppler radar from NOAA NEXRAD, severe weather warnings, satellite lightning and historic radar replays. Create and share weather graphics.',
     jsonLd: [
       { '@type': 'WebSite', name: SITE_NAME, url: SITE },
       ORG,
@@ -34,7 +34,7 @@ const STATIC = {
   '/radar': {
     title: 'Live Radar | Weather Spectrum',
     description:
-      'Full-screen NEXRAD radar with reflectivity, velocity, correlation coefficient, ZDR, KDP, echo tops, VIL, multi-panel views, loops and GOES lightning.',
+      'Free full-screen NEXRAD radar for storm chasers and weather enthusiasts: reflectivity, velocity, correlation coefficient, ZDR, KDP, echo tops, VIL, multi-panel views, loops and GOES lightning.',
     jsonLd: [{ '@type': 'WebApplication', name: `${SITE_NAME} Radar`, url: `${SITE}/radar`, applicationCategory: 'WeatherApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } }],
   },
   '/about': {
