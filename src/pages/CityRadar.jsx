@@ -50,7 +50,7 @@ export default function CityRadar() {
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
             to={`/radar?product=site-reflectivity&site=${primary.id}&at=${at}`}
-            className="inline-flex items-center rounded-xl ws-spectrum px-5 py-2.5 font-semibold text-slate-950 shadow-lg shadow-sky-400/20"
+            className="inline-flex items-center rounded-xl ws-spectrum px-5 py-2.5 font-semibold text-slate-950"
           >
             Open full radar
           </Link>

@@ -1,12 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Layers, Clapperboard, History } from 'lucide-react';
 import { CITIES, RADARS, STATION_PAGES } from '../seo/places';
 import { cityPath, stationPath } from '../seo/meta';
-
-// Faint 60px grid, drawn as an inline SVG (no extra request).
-const GRID =
-  "url(\"data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M60 0H0v60' fill='none' stroke='%23ffffff' stroke-opacity='0.04'/%3E%3C/svg%3E\")";
 
 const PRODUCTS = [
   'Super-resolution reflectivity',
@@ -88,7 +83,6 @@ const SHOTS = {
 const FEATURES = [
   {
     shots: 'radar',
-    icon: Layers,
     title: 'Advanced NEXRAD radar',
     text: 'The products storm chasers and weather enthusiasts rely on: single-radar reflectivity and velocity, correlation coefficient, differential reflectivity, hydrometeor classification, echo tops and VIL, plus the national mosaic. Tap the map to read exact values, compare up to four products side by side, and turn on warnings, watches, storm markers, satellite lightning and station temperatures or wind.',
     to: '/radar',
@@ -96,7 +90,6 @@ const FEATURES = [
   },
   {
     shots: 'graphics',
-    icon: Clapperboard,
     title: 'Weather graphics and radar videos',
     text: 'Turn the radar view into a post: a headline header with ready-made looks, warning lists, labels and arrows pinned to the map, your own logo and colors, and a caption written from the NWS alerts. Save it as an image or a short radar video sized for social media, whether you run a weather page or are posting from a chase.',
     to: '/weather-graphics',
@@ -104,7 +97,6 @@ const FEATURES = [
   },
   {
     shots: 'replays',
-    icon: History,
     title: 'Historic tornado radar replays',
     text: 'Replay the real archived radar scans from tornadoes such as Bridge Creek-Moore in 1999, Greensburg, Joplin, El Reno, Rolling Fork and Enderlin, with the National Weather Service warnings as they were issued and the official facts from each storm survey.',
     to: '/events',
@@ -114,7 +106,7 @@ const FEATURES = [
 
 function Shot({ shot, eager = false }) {
   return (
-    <figure className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60 shadow-2xl shadow-black/30">
+    <figure className="overflow-hidden rounded-2xl border border-white/10 bg-slate-900/60">
       <img src={shot.src} alt={shot.alt} width={shot.w} height={shot.h} loading={eager ? 'eager' : 'lazy'} className="h-auto w-full" />
       <figcaption className="px-4 py-3 text-sm leading-relaxed text-slate-400">{shot.caption}</figcaption>
     </figure>
@@ -125,18 +117,11 @@ export default function Home() {
   return (
     <div className="bg-gradient-to-b from-slate-900 to-slate-950">
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0" style={{ backgroundImage: GRID }} aria-hidden />
-        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-blue-500 opacity-10 blur-3xl" aria-hidden />
-        <div className="absolute -bottom-32 right-0 w-96 h-96 rounded-full bg-sky-400 opacity-10 blur-3xl" aria-hidden />
-
-        <div className="relative max-w-5xl mx-auto px-5 sm:px-6 pt-14 pb-12 sm:pt-20 sm:pb-16">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">Weather Spectrum</p>
-          <h1 className="mt-4 text-4xl sm:text-6xl font-bold leading-[1.05] tracking-tight text-white">
+      <section>
+        <div className="max-w-5xl mx-auto px-5 sm:px-6 pt-14 pb-12 sm:pt-20 sm:pb-16">
+          <h1 className="text-4xl sm:text-6xl font-bold leading-[1.05] tracking-tight text-white">
             Free live weather radar
-            <span className="block ws-spectrum-text">
-              across the United States
-            </span>
+            <span className="block">across the United States</span>
           </h1>
           <p className="mt-5 text-lg leading-relaxed text-slate-300 max-w-3xl">
             Track storms with live NOAA NEXRAD Doppler radar, severe weather warnings, satellite lightning and detailed
@@ -145,15 +130,8 @@ export default function Home() {
           </p>
 
           <div className="mt-8">
-            <Link to="/radar" className="relative inline-block group">
-              <span
-                className="absolute inset-0 rounded-xl ws-spectrum blur-lg opacity-50 group-hover:opacity-80 transition-opacity"
-                aria-hidden
-              />
-              <span className="relative inline-flex items-center gap-2 rounded-xl ws-spectrum px-8 py-3.5 text-lg font-bold text-slate-950 shadow-lg shadow-sky-400/20">
-                Live Radar
-                <ArrowRight className="w-5 h-5" aria-hidden />
-              </span>
+            <Link to="/radar" className="inline-block rounded-xl ws-spectrum px-8 py-3.5 text-lg font-bold text-slate-950">
+              Live Radar
             </Link>
           </div>
 
@@ -185,20 +163,19 @@ export default function Home() {
             needed: open the radar in your browser and it shows every scan as it comes in.
           </p>
           <div className="mt-10 space-y-14">
-            {FEATURES.map(({ icon: Icon, title, text, to, link, shots }, i) => {
+            {FEATURES.map(({ title, text, to, link, shots }, i) => {
               // The radar picture is already at the top of the page.
               const pics = shots === 'radar' ? [] : SHOTS[shots];
               return (
                 <div key={title} className={`grid items-center gap-6 md:gap-10 ${pics.length ? 'md:grid-cols-2' : ''}`}>
                   <div className={pics.length && i % 2 === 0 ? 'md:order-2' : ''}>
-                    <Icon className="h-7 w-7 text-sky-300" aria-hidden />
-                    <h3 className="mt-3 text-2xl font-semibold text-white">{title}</h3>
+                    <h3 className="text-2xl font-semibold text-white">{title}</h3>
                     <p className="mt-3 max-w-3xl leading-relaxed text-slate-400">{text}</p>
                     <Link
                       to={to}
-                      className="mt-5 inline-flex items-center gap-2 rounded-xl border border-white/15 px-5 py-2.5 font-semibold text-slate-100 hover:bg-white/5"
+                      className="mt-5 inline-block rounded-xl border border-white/15 px-5 py-2.5 font-semibold text-slate-100 hover:bg-white/5"
                     >
-                      {link} <ArrowRight className="h-4 w-4" aria-hidden />
+                      {link}
                     </Link>
                   </div>
                   {pics.length > 0 && (

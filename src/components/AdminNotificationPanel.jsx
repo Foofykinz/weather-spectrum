@@ -10,33 +10,34 @@ export default function AdminNotificationPanel() {
 
   const WORKER_URL = 'https://weather-spectrum-notifications.alysonwalters22.workers.dev';
 
+  // Starting points only: every [bracketed] blank must be filled in before sending.
   const quickTemplates = [
     {
       icon: <AlertTriangle className="w-5 h-5" />,
       label: 'Severe Weather',
-      title: '⚠️ Severe Weather Alert',
-      message: 'Severe thunderstorm warning issued for your area. Seek shelter immediately.',
+      title: 'Severe Thunderstorm Warning',
+      message: '[Area]: Severe Thunderstorm Warning until [time]. Details at weather.gov.',
       color: 'bg-red-500'
     },
     {
       icon: <Tornado className="w-5 h-5" />,
       label: 'Tornado',
-      title: '🌪️ Tornado Warning',
-      message: 'TORNADO WARNING! Take shelter now in lowest floor interior room.',
+      title: 'Tornado Warning',
+      message: '[Area]: Tornado Warning until [time]. Take shelter now in an interior room on the lowest floor.',
       color: 'bg-purple-500'
     },
     {
       icon: <Cloud className="w-5 h-5" />,
       label: 'Daily Forecast',
-      title: '☀️ Today\'s Weather',
-      message: 'Good morning! Today will be sunny with highs in the mid-70s.',
+      title: "Today's weather",
+      message: '[Forecast from the NWS for your area]',
       color: 'bg-blue-500'
     },
     {
       icon: <Zap className="w-5 h-5" />,
       label: 'Special Event',
-      title: '✨ Rare Weather Event',
-      message: 'Aurora borealis may be visible tonight! Check the sky after 10 PM.',
+      title: '[Event]',
+      message: '[What is happening, where and when]',
       color: 'bg-yellow-500'
     }
   ];
@@ -44,6 +45,10 @@ export default function AdminNotificationPanel() {
   const handleSendNotification = async () => {
     if (!title || !message) {
       setResult({ success: false, message: 'Title and message are required' });
+      return;
+    }
+    if (/\[[^\]]*\]/.test(title + message)) {
+      setResult({ success: false, message: 'Fill in the [bracketed] parts first.' });
       return;
     }
 
@@ -149,7 +154,7 @@ export default function AdminNotificationPanel() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g., ⚠️ Severe Weather Alert"
+              placeholder="e.g., Tornado Warning"
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent"
               maxLength={100}
             />

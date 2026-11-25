@@ -65,7 +65,7 @@ export default function PushNotificationButton({ variant = 'default' }) {
       ) : subscribed ? (
         <>
           <Check className="w-6 h-6" />
-          <span>✓ Subscribed to Alerts</span>
+          <span>Subscribed to alerts</span>
         </>
       ) : (
         <>

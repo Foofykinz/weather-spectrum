@@ -6,12 +6,6 @@
 .ws-spectrum {
   background-image: linear-gradient(90deg, #38bdf8, #4ade80, #facc15, #fb923c);
 }
-.ws-spectrum-text {
-  background-image: linear-gradient(90deg, #38bdf8, #4ade80 35%, #facc15 65%, #fb923c);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
 
 /* Radar page: dark styling for Leaflet's built-in attribution (data credits). */
 .ws-radar-map.leaflet-container .leaflet-control-attribution {

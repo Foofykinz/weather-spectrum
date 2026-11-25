@@ -34,7 +34,7 @@ export default function LightningPage() {
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
             to="/radar?ltg=1"
-            className="inline-flex items-center rounded-xl ws-spectrum px-5 py-2.5 font-semibold text-slate-950 shadow-lg shadow-sky-400/20"
+            className="inline-flex items-center rounded-xl ws-spectrum px-5 py-2.5 font-semibold text-slate-950"
           >
             Open full radar with lightning
           </Link>

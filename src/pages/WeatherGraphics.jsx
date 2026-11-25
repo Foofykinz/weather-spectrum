@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
 
 // Landing page for the post maker (radar posts and tornado warning posts).
 // Everything described here is a feature the post makers have today; the
@@ -69,7 +68,7 @@ export default function WeatherGraphics() {
           <Link to="/" className="hover:text-white">Home</Link> <span aria-hidden>/</span> Weather graphics
         </nav>
         <h1 className="mt-4 text-3xl sm:text-5xl font-bold tracking-tight text-white">
-          Weather graphics and radar videos <span className="ws-spectrum-text">from real NEXRAD data</span>
+          Weather graphics and radar videos from real NEXRAD data
         </h1>
         <p className="mt-4 text-lg text-slate-300 leading-relaxed max-w-3xl">
           Turn the live radar and National Weather Service alerts into a finished post in a couple of minutes: a clear headline,
@@ -79,9 +78,9 @@ export default function WeatherGraphics() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Link
             to="/radar?post=1"
-            className="inline-flex items-center gap-2 rounded-xl ws-spectrum px-6 py-3 font-semibold text-slate-950 shadow-lg shadow-sky-400/20"
+            className="inline-flex items-center rounded-xl ws-spectrum px-6 py-3 font-semibold text-slate-950"
           >
-            Make a weather graphic <ArrowRight className="h-5 w-5" aria-hidden />
+            Make a weather graphic
           </Link>
           <Link to="/tornado-warnings" className="inline-flex items-center rounded-xl border border-white/15 px-6 py-3 font-semibold text-slate-100 hover:bg-white/5">
             Make a tornado warning recap

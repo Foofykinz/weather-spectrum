@@ -14,8 +14,7 @@ export default function About() {
   return (
     <div className="bg-gradient-to-b from-slate-900 to-slate-950">
       <div className="max-w-3xl mx-auto px-5 sm:px-6 py-16 sm:py-20">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">About</p>
-        <h1 className="mt-4 text-3xl sm:text-4xl font-bold tracking-tight text-white">Weather Spectrum</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">Weather Spectrum</h1>
         <p className="mt-5 text-lg leading-relaxed text-gray-300">
           Weather Spectrum is a radar viewer for anyone who follows severe weather closely.
           It brings NEXRAD radar products and satellite lightning together on one fast map, using real observations
@@ -58,7 +57,7 @@ export default function About() {
         <div className="mt-12">
           <Link
             to="/radar"
-            className="inline-flex items-center rounded-xl ws-spectrum px-6 py-3 font-semibold text-slate-950 shadow-lg shadow-sky-400/20"
+            className="inline-flex items-center rounded-xl ws-spectrum px-6 py-3 font-semibold text-slate-950"
           >
             Open Live Radar
           </Link>
