@@ -24,6 +24,8 @@ import {
 } from '../../radar/post';
 import { makeView, drawMarks, loadLabelFont } from '../../posts/marks';
 import HeaderEditor from './HeaderEditor';
+import { loadDraft, restorable, useAutosave, useTemplates, marksInView } from '../../posts/drafts';
+import { DraftBar, TemplatesPanel } from '../PostMemory';
 import { useMarkEditor } from '../MarkEditor';
 import { videoType, recordVideo } from '../../radar/video';
 import BrandPanel from '../BrandPanel';
@@ -160,6 +162,39 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
     return undefined;
   };
   const markEd = useMarkEditor({ canvasRef: preview, view, font: font.body, logoImg: stampLogo, boxes, onTap });
+
+  // ---- Autosave and templates (kept in this browser).
+  const [draftOffer, setDraftOffer] = useState(() => loadDraft('radar'));
+  const current = { sizeId, styleId, fontId, showLegend, showList, headline, subline, bannerOn, banner, zone, header, moves, captionId, edits, place: base.station, marks: markEd.marks };
+  useAutosave('radar', current);
+  const templates = useTemplates('radar');
+  const applyState = (st) => {
+    if (st.sizeId !== undefined) setSizeId(st.sizeId);
+    if (st.styleId !== undefined) setStyleId(st.styleId);
+    if (st.showLegend !== undefined) setShowLegend(st.showLegend);
+    if (st.showList !== undefined) setShowList(st.showList);
+    if (st.headline !== undefined) setHeadline(st.headline);
+    if (st.subline !== undefined) setSubline(st.subline);
+    if (st.bannerOn !== undefined) setBannerOn(st.bannerOn);
+    if (st.banner !== undefined) setBanner(st.banner);
+    if (st.zone !== undefined && st.place === base.station) setZone(st.zone);
+    if (st.moves !== undefined) setMoves(st.moves);
+    if (st.captionId !== undefined) setCaptionId(st.captionId);
+    if (st.edits !== undefined) setEdits(st.edits);
+    if (st.fontId !== undefined) {
+      const f = FONTS.find((x) => x.id === st.fontId);
+      if (f) pickFont(f);
+    }
+    if (st.header !== undefined) {
+      setHeader(st.header || {});
+      if (st.header?.font) pickHeaderFont(st.header.font);
+    }
+    if (st.marks === undefined) return 0;
+    const { kept, dropped } = marksInView(st.marks, view);
+    markEd.setAll(kept);
+    return dropped;
+  };
+  const saveTemplate = (name, withMarks) => templates.save(name, { sizeId, styleId, fontId, showLegend, showList, header, moves, ...(withMarks ? { marks: markEd.marks } : {}) });
   const addMarks = (c, s, sn, cr) => drawMarks(c, markEd.marks, makeView(sn, cr, mapArea(s, styleId, layoutHd)), { font: font.body, logoImg: stampLogo });
 
   const fontReady = !font.css || fontState[font.id] === 'ok' || fontState[font.id] === 'failed';
@@ -411,8 +446,19 @@ export default function PostMaker({ snap, base, makeVideoFrames, onClose }) {
               ))}
             </div>
             <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-3">
+              <DraftBar
+                draft={draftOffer}
+                ready={!!view}
+                onRestore={() => {
+                  const dropped = applyState(restorable(draftOffer));
+                  setDraftOffer(null);
+                  return dropped;
+                }}
+                onDiscard={() => setDraftOffer(null)}
+              />
               {tab === 'picture' && (
                 <>
+                  <TemplatesPanel templates={templates} onApply={applyState} onSave={saveTemplate} hasMarks={markEd.marks.length > 0} />
             <div className="flex gap-1.5">
               <button type="button" className={`${chip(mode === 'image')} flex-1`} onClick={() => setMode('image')}>
                 Image

@@ -14,7 +14,10 @@ function loadState(st) {
   const hit = cache.get(st);
   if (hit && Date.now() - hit.at < TTL) return hit.promise;
   const promise = fetch(`${IEM}?network=${st}_ASOS&minutes=90`)
-    .then((r) => (r.ok ? r.json() : { features: [] }))
+    .then((r) => {
+      if (!r.ok) throw new Error(`IEM ${r.status}`); // not kept, so the next try downloads again
+      return r.json();
+    })
     .then((j) =>
       (j.features || [])
         .map((f) => {

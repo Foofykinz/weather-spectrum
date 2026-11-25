@@ -14,7 +14,7 @@ import { TOUR } from '../broadcast/cities';
 import { cityWeather } from '../broadcast/nws';
 import L from 'leaflet';
 import { tempsNear, tempLayer, windNear, windLayer } from '../broadcast/temps';
-import { subscribeZoneAlerts, alertGroups, windInView, zoneLayer, alertTime } from '../broadcast/zoneAlerts';
+import { subscribeZoneAlerts, alertGroups, zoneLayer, alertTime } from '../broadcast/zoneAlerts';
 
 // 24/7 broadcast page, made to be captured by OBS as a 1920x1080 browser
 // source. Runs itself: flies from city to city showing radar, current
@@ -309,7 +309,7 @@ function crawlText(state, groups = []) {
       return `${warningName(w)}${where ? `: ${where}` : ''} ${bannerTime(w, zoneForStation({ state: st }))}`.trim();
     });
   const wind = groups.map((g) => `${g.top.type.event}: ${g.states.join(', ')} ${alertTime(g.onset, g.ends, zoneForStation({ state: g.top.states[0] }))}`);
-  return [head, ...listed, ...wind, 'Unofficial broadcast. Always follow official warnings: weather.gov'].join('      •      ');
+  return [head, ...listed, ...wind, 'Always follow official warnings from the National Weather Service: weather.gov'].join('      •      ');
 }
 
 // Wind / winter check-in screen, drawn over the main map (which flies to the
@@ -333,7 +333,10 @@ function AlertScreen({ group, index, count, tz, radarTime }) {
         </div>
         <div className="flex flex-1 items-center justify-between bg-[#0c1638]/90 px-8">
           <span className="truncate text-[38px] font-semibold text-white">{group.states.join(' · ')}</span>
-          <span className="ml-6 whitespace-nowrap text-[34px] font-semibold text-sky-300">{alertTime(group.onset, group.ends, tz)}</span>
+          <span className="ml-6 whitespace-nowrap text-[34px] font-semibold text-sky-300">
+            {group.spans && <span className="mr-3 text-[24px] uppercase tracking-wide text-slate-300">All areas</span>}
+            {alertTime(group.onset, group.ends, tz)}
+          </span>
         </div>
       </div>
       {group.also.length > 0 && (
@@ -731,7 +734,7 @@ function BroadcastPage() {
     let zoom = ZOOM;
     let halfLon = ((W / 2 / (256 * 2 ** ZOOM)) * 360) * 1.05;
     let halfLat = halfLon * ((H - BAR) / W) * Math.cos((city.lat * Math.PI) / 180) * 1.1;
-    const draw = async (tries = 0) => {
+    const draw = async (tries = 0, again = 0) => {
       const map = mapRef.current;
       if (!map) {
         if (tries < 40 && alive) t = setTimeout(() => draw(tries + 1), 250);
@@ -746,16 +749,20 @@ function BroadcastPage() {
         wind = zoneGroup.top.type.kind === 'wind';
         halfLon = ((W / 2 / (256 * 2 ** zoom)) * 360) * 1.05;
         halfLat = halfLon * ((H - BAR) / W) * Math.cos((center.lat * Math.PI) / 180) * 1.1;
-      } else {
-        wind = windInView(zoneAlerts, [[city.lat - halfLat, city.lon - halfLon], [city.lat + halfLat, city.lon + halfLon]]);
       }
+      // City stops always show temperatures; wind gusts are for the wind check-in screen.
       let obs = wind ? await windNear(center, halfLat, halfLon) : await tempsNear(center, halfLat, halfLon);
       // Check-in screen: just the stations in and around the alert area.
       if (zoneGroup) {
         const [[s, w], [n, e]] = zoneGroup.focus;
         obs = obs.filter((o) => o.lat > s - 0.75 && o.lat < n + 0.75 && o.lon > w - 0.75 && o.lon < e + 0.75);
       }
-      if (!alive || !obs.length) return;
+      if (!alive) return;
+      // Nothing came back (download failed or no recent readings): try again shortly.
+      if (!obs.length) {
+        if (again < 3) t = setTimeout(() => draw(tries, again + 1), 30000);
+        return;
+      }
       if (!map.getPane('temps')) Object.assign(map.createPane('temps').style, { zIndex: 460, pointerEvents: 'none' });
       layer = (wind ? windLayer : tempLayer)(map, obs, zoom, zoneGroup ? 75 : 70).addTo(map);
       map.attributionControl?.addAttribution(wind ? 'Wind: ASOS via IEM' : 'Temperatures: ASOS via IEM');

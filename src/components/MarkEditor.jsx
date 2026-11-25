@@ -14,7 +14,7 @@ import LabelStyleEditor, { ColorRow, Slider } from './LabelStyleEditor';
 // onTap(kind, detail) (optional): what a tap with the Move tool landed on:
 // 'mark' (a label / arrow / circle / logo, also right after adding one),
 // 'box' (detail: the box id) or 'empty' (detail: the canvas point).
-// Returns { marks, panel, overlay, canvasProps }.
+// Returns { marks, panel, overlay, canvasProps, setAll(marks) }.
 export function useMarkEditor({ canvasRef, view, font, logoImg, boxes, onTap }) {
   const [marks, setMarksRaw] = useState([]);
   const [tool, setTool] = useState('select');
@@ -453,7 +453,13 @@ export function useMarkEditor({ canvasRef, view, font, logoImg, boxes, onTap }) 
     style: { touchAction: tool !== 'select' || marks.length || boxes ? 'none' : 'auto', cursor: tool === 'select' ? (marks.length || boxes ? 'move' : 'default') : 'crosshair' },
   };
 
-  return { marks, panel, overlay, canvasProps };
+  // Replace every mark at once (a restored draft or a template); undoable.
+  const setAll = (list) => {
+    setMarks(Array.isArray(list) ? list : []);
+    setSelId(null);
+  };
+
+  return { marks, panel, overlay, canvasProps, setAll };
 }
 
 export { ColorRow };

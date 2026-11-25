@@ -179,6 +179,9 @@ function groupsOf(alerts) {
         // Times of the alerts the screen is named after.
         onset: main.map((a) => a.onset).sort()[0],
         ends: main.map((a) => a.ends).sort().at(-1),
+        // The main alerts start or end at different times, so onset..ends is the
+        // span across all of them (each office's own times are in its text).
+        spans: new Set(main.map((a) => `${a.onset}|${a.ends}`)).size > 1,
       };
     });
 }
