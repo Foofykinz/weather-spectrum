@@ -1,7 +1,7 @@
 # Old About page
 /about.html        /about     301
 # Removed sections
-/hail-map          /radar     301
+/hail-map          https://hailspectrum.com/map     301
 /blog              /          301
 /blog/*            /          301
 /forecast          /          301

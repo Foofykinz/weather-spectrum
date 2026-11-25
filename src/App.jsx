@@ -64,6 +64,7 @@ function Footer() {
               <Link to="/radar" className="hover:text-white transition-colors">Live Radar</Link>
               <Link to="/events" className="hover:text-white transition-colors">Tornado radar replays</Link>
               <Link to="/tornado-warnings" className="hover:text-white transition-colors">Tornado warnings by year</Link>
+              <a href="https://hailspectrum.com/map" className="hover:text-white transition-colors">Hail map (Hail Spectrum)</a>
               <Link to="/about" className="hover:text-white transition-colors">About</Link>
               {/* Legal pages are standalone documents served directly by the host. */}
               <a href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</a>

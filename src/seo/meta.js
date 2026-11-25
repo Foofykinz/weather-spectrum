@@ -111,7 +111,10 @@ function eventMeta(e) {
         '@type': 'Article',
         headline: eventTitle(e),
         url: SITE + eventPath(e),
-        about: { '@type': 'Event', name: `${e.dateText} ${e.place} tornado`, startDate: e.date, location: { '@type': 'Place', name: e.place } },
+        // A past storm isn't a scheduled event: described as a plain topic so
+        // Google doesn't ask for ticket/organizer fields.
+        about: { '@type': 'Thing', name: `${e.dateText} ${e.place} tornado` },
+        contentLocation: { '@type': 'Place', name: e.place },
         publisher: ORG,
       },
       breadcrumbs([['Home', '/'], ['Tornado radar replays', '/events'], [e.short, eventPath(e)]]),
