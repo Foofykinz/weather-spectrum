@@ -6,9 +6,18 @@ import { indexVolume, indexBlocks, recordsOf, tiltsFor, sweepMoment } from './de
 import { bunzip } from './bunzip.js';
 import { liveVolumes, previousVolume } from './live';
 import { buildLut, scanBounds, scanImageSize, renderBox } from '../level3/render';
+import { STATIONS } from '../stations';
 
 const BUCKET = 'https://unidata-nexrad-level2.s3.amazonaws.com';
 const volumes = new Map(); // archive key -> Promise<volume>
+
+// Radar location for an archive key ("YYYY/MM/DD/KTLX/..."): pre-2008 volumes
+// don't include it.
+function siteFor(key) {
+  const icao = String(key).split('/')[3];
+  const s = STATIONS.find((x) => x.icao === icao);
+  return s ? { lat: s.lat, lon: s.lon } : null;
+}
 
 function archiveVolume(key) {
   if (!volumes.has(key)) {
@@ -17,7 +26,7 @@ function archiveVolume(key) {
         if (!r.ok) throw new Error(`Level II archive returned ${r.status}.`);
         return r.arrayBuffer();
       })
-      .then((buf) => indexVolume(buf));
+      .then((buf) => indexVolume(buf, siteFor(key)));
     job.catch(() => volumes.delete(key));
     volumes.set(key, job);
     while (volumes.size > 2) volumes.delete(volumes.keys().next().value);
@@ -86,7 +95,7 @@ async function archiveSweep(key, moment, want) {
         checked = len;
         let vol = null;
         try {
-          vol = indexBlocks(recordsOf(buf.subarray(0, len)), done);
+          vol = indexBlocks(recordsOf(buf.subarray(0, len)), done, siteFor(key));
         } catch (err) {
           if (done) throw err;
         }
@@ -135,7 +144,7 @@ async function archiveSweep(key, moment, want) {
     if (added || done) {
       let vol = null;
       try {
-        vol = indexBlocks(blocks, done);
+        vol = indexBlocks(blocks, done, siteFor(key));
       } catch (err) {
         if (done) throw err;
       }
@@ -144,7 +153,7 @@ async function archiveSweep(key, moment, want) {
       if (done) throw new Error('This product is not in this volume.');
     }
     if (!(await more())) {
-      const vol = indexBlocks(blocks, true);
+      const vol = indexBlocks(blocks, true, siteFor(key));
       const pick = choose(vol, true);
       if (!pick) throw new Error('This product is not in this volume.');
       return { vol, pick };

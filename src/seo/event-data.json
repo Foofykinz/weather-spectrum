@@ -962,5 +962,201 @@
     "link": "https://mesonet.agron.iastate.edu/vtec/?year=2025&wfo=KFGF&phenomena=TO&significance=W&eventid=0016"
    }
   ]
+ },
+ "bridge-creek-moore-tornado-1999": {
+  "warnings": [
+   {
+    "phen": "TO",
+    "etn": 40,
+    "issued": "1999-05-03T23:07:00Z",
+    "expires": "1999-05-04T00:00:00Z",
+    "first": "MULTIPLE TORNADOS WERE REPORTED IN GRADY COUNTY NEAR AND IN THE TOWN OF CHICKASHA. THE TORNADOES WERE MOVING NORTHEAST AT 25 MPH. * LOCATIONS IN THE WARNING INCLUDE ALEX...AMBER...BRADLEY",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Grady, OK"
+    ],
+    "updates": [],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=1999&wfo=KOUN&phenomena=TO&significance=W&eventid=0040"
+   },
+   {
+    "phen": "TO",
+    "etn": 44,
+    "issued": "1999-05-03T23:40:00Z",
+    "expires": "1999-05-04T00:30:00Z",
+    "first": "A TORNADO WAS REPORTED 6 MILES NORTH OF MIDDLEBERG...MOVING NORTHEAST AT 30 MPH. * LOCATIONS IN THE WARNING INCLUDE BLANCHARD...MIDDLEBERG...MOORE",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Cleveland, OK",
+     "Grady, OK",
+     "McClain, OK"
+    ],
+    "updates": [],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=1999&wfo=KOUN&phenomena=TO&significance=W&eventid=0044"
+   },
+   {
+    "phen": "SV",
+    "etn": 191,
+    "issued": "1999-05-03T23:51:00Z",
+    "expires": "1999-05-04T00:15:00Z",
+    "first": "DOPPLER RADAR INDICATED A SEVERE THUNDERSTORM 14 MILES SOUTHWEST OF CROSSROADS MALL...MOVING EAST AT 30 MPH. HAIL FROM THIS STORM IS LIKELY TO EXTEND INTO SOUTHERN OKLAHOMA COUNTY. * LOCATIONS IN THE WARNING INCLUDE BETHANY...CHOCTAW...DEL CITY",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Oklahoma, OK"
+    ],
+    "updates": [],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=1999&wfo=KOUN&phenomena=SV&significance=W&eventid=0191"
+   },
+   {
+    "phen": "TO",
+    "etn": 47,
+    "issued": "1999-05-04T00:17:00Z",
+    "expires": "1999-05-04T01:00:00Z",
+    "first": "AT 717 PM CDT...A COUPLE OF TORNADOES WAS REPORTED WITH THIS STORM. ONE WAS LOCATED AT MAY AND 119TH STREET IN SOUTHWEST OKLAHOMA CITY WITH ANOTHER TORNADO ALONG INDIAN HILLS ROAD IN FAR NORTHWEST NORMAN. THESE TORNADOES WERE MOVING NORTHEAST AT 20 MPH.",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Cleveland, OK",
+     "McClain, OK",
+     "Oklahoma, OK"
+    ],
+    "updates": [],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=1999&wfo=KOUN&phenomena=TO&significance=W&eventid=0047"
+   }
+  ]
+ },
+ "greensburg-tornado-2007": {
+  "warnings": [
+   {
+    "phen": "TO",
+    "etn": 23,
+    "issued": "2007-05-05T01:38:00Z",
+    "expires": "2007-05-05T02:15:00Z",
+    "first": "NATIONAL WEATHER SERVICE DOPPLER RADAR INDICATED A SEVERE THUNDERSTORM CAPABLE OF PRODUCING A TORNADO 5 MILES WEST OF PROTECTION...OR 5 MILES EAST OF SITKA...MOVING NORTHEAST AT 20 MPH. ANOTHER STRONG CIRCULATION WAS LOCATED 3 MILES NORTH OF SITKA * LOCATIONS IMPACTED INCLUDE",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Clark, KS",
+     "Comanche, KS"
+    ],
+    "updates": [
+     {
+      "time": "2007-05-05T01:43:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 915 PM CDT FOR NORTHWESTERN COMANCHE AND EAST CENTRAL CLARK COUNTIES"
+     },
+     {
+      "time": "2007-05-05T01:48:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 915 PM CDT FOR NORTHWESTERN COMANCHE AND EAST CENTRAL CLARK COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2007&wfo=KDDC&phenomena=TO&significance=W&eventid=0023"
+   },
+   {
+    "phen": "TO",
+    "etn": 24,
+    "issued": "2007-05-05T01:55:00Z",
+    "expires": "2007-05-05T02:30:00Z",
+    "first": "NATIONAL WEATHER SERVICE DOPPLER RADAR INDICATED A SEVERE THUNDERSTORM CAPABLE OF PRODUCING A TORNADO OVER NORTHWESTERN COMANCHE COUNTY...OR 6 MILES NORTH OF PROTECTION",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Kiowa, KS",
+     "Clark, KS",
+     "Comanche, KS"
+    ],
+    "updates": [
+     {
+      "time": "2007-05-05T02:02:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 930 PM CDT FOR NORTHWESTERN COMANCHE...EXTREME NORTHEASTERN CLARK AND SOUTHWESTERN KIOWA COUNTIES"
+     },
+     {
+      "time": "2007-05-05T02:08:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 930 PM CDT FOR NORTHWESTERN COMANCHE...EXTREME NORTHEASTERN CLARK AND SOUTHWESTERN KIOWA COUNTIES"
+     },
+     {
+      "time": "2007-05-05T02:13:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 930 PM CDT FOR NORTHWESTERN COMANCHE...EXTREME NORTHEASTERN CLARK AND SOUTHWESTERN KIOWA COUNTIES"
+     },
+     {
+      "time": "2007-05-05T02:17:00Z",
+      "line": "THE TORNADO WARNING FOR COMANCHE AND CLARK COUNTIES IS CANCELLED"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2007&wfo=KDDC&phenomena=TO&significance=W&eventid=0024"
+   },
+   {
+    "phen": "TO",
+    "etn": 25,
+    "issued": "2007-05-05T02:19:00Z",
+    "expires": "2007-05-05T03:00:00Z",
+    "first": "NATIONAL WEATHER SERVICE METEOROLOGISTS WERE TRACKING A CONFIRMED LARGE AND EXTREMELY DANGEROUS TORNADO 14 MILES SOUTH OF GREENSBURG...OR 11 MILES NORTHWEST OF WILMORE...MOVING NORTHEAST AT 25 MPH. * LOCATIONS IMPACTED INCLUDE",
+    "tags": {
+     "tornado": null,
+     "emergency": true
+    },
+    "counties": [
+     "Kiowa, KS"
+    ],
+    "updates": [
+     {
+      "time": "2007-05-05T02:28:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 1000 PM CDT FOR EASTERN KIOWA COUNTY"
+     },
+     {
+      "time": "2007-05-05T02:36:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 1000 PM CDT FOR CENTRAL KIOWA COUNTY"
+     },
+     {
+      "time": "2007-05-05T02:41:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 1000 PM CDT FOR CENTRAL KIOWA COUNTY"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2007&wfo=KDDC&phenomena=TO&significance=W&eventid=0025"
+   },
+   {
+    "phen": "TO",
+    "etn": 26,
+    "issued": "2007-05-05T02:50:00Z",
+    "expires": "2007-05-05T03:30:00Z",
+    "first": "NATIONAL WEATHER SERVICE METEOROLOGISTS WERE TRACKING A CONFIRMED LARGE AND EXTREMELY DANGEROUS TORNADO 2 MILES SOUTH OF GREENSBURG...MOVING NORTHEAST AT 30 MPH. * LOCATIONS IMPACTED INCLUDE",
+    "tags": {
+     "tornado": null,
+     "emergency": false
+    },
+    "counties": [
+     "Kiowa, KS",
+     "Edwards, KS"
+    ],
+    "updates": [
+     {
+      "time": "2007-05-05T02:58:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 1030 PM CDT FOR NORTHEASTERN KIOWA AND SOUTHEASTERN EDWARDS COUNTIES"
+     },
+     {
+      "time": "2007-05-05T03:08:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 1030 PM CDT FOR NORTHEASTERN KIOWA AND SOUTHEASTERN EDWARDS COUNTIES"
+     },
+     {
+      "time": "2007-05-05T03:15:00Z",
+      "line": "A TORNADO WARNING REMAINS IN EFFECT UNTIL 1030 PM CDT FOR NORTHEASTERN KIOWA AND SOUTHEASTERN EDWARDS COUNTIES"
+     }
+    ],
+    "link": "https://mesonet.agron.iastate.edu/vtec/?year=2007&wfo=KDDC&phenomena=TO&significance=W&eventid=0026"
+   }
+  ]
  }
 }

@@ -51,7 +51,7 @@ const FEATURES = [
   {
     icon: Layers,
     title: 'Advanced NEXRAD radar',
-    text: 'The products storm chasers and weather enthusiasts rely on: single-radar reflectivity and velocity, correlation coefficient, differential reflectivity, hydrometeor classification, echo tops and VIL, plus the national mosaic. Tap the map to read exact values, compare up to four products side by side, and turn on warnings, watches, storm markers, lightning and station temperatures or wind.',
+    text: 'The products storm chasers and weather enthusiasts rely on: single-radar reflectivity and velocity, correlation coefficient, differential reflectivity, hydrometeor classification, echo tops and VIL, plus the national mosaic. Tap the map to read exact values, compare up to four products side by side, and turn on warnings, watches, storm markers, satellite lightning and station temperatures or wind.',
     to: '/radar',
     link: 'Open the advanced radar',
   },
@@ -59,13 +59,13 @@ const FEATURES = [
     icon: Clapperboard,
     title: 'Weather graphics and radar videos',
     text: 'Turn the radar view into a post: a headline header with ready-made looks, warning lists, labels and arrows pinned to the map, your own logo and colors, and a caption written from the NWS alerts. Save it as an image or a short radar video sized for social media, whether you run a weather page or are posting from a chase.',
-    to: '/radar',
-    link: 'Make a weather graphic',
+    to: '/weather-graphics',
+    link: 'See the weather graphics',
   },
   {
     icon: History,
     title: 'Historic tornado radar replays',
-    text: 'Replay the real archived radar scans from tornadoes such as Moore, Joplin, El Reno, Mayfield, Rolling Fork and Enderlin, with the National Weather Service warnings as they were issued and the official facts from each storm survey.',
+    text: 'Replay the real archived radar scans from tornadoes such as Bridge Creek-Moore in 1999, Greensburg, Joplin, El Reno, Rolling Fork and Enderlin, with the National Weather Service warnings as they were issued and the official facts from each storm survey.',
     to: '/events',
     link: 'See the tornado replays',
   },
@@ -111,7 +111,11 @@ export default function Home() {
             {PRODUCTS.map((p) => (
               <li key={p} className="flex items-center gap-2">
                 <span className="w-1 h-1 rounded-full bg-sky-400/70" aria-hidden />
-                {p}
+                {p === 'Satellite lightning' ? (
+                  <Link to="/lightning" className="underline decoration-white/20 underline-offset-4 hover:text-white">{p}</Link>
+                ) : (
+                  p
+                )}
               </li>
             ))}
           </ul>

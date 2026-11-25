@@ -1,8 +1,9 @@
-// NEXRAD Level II (Archive II, message 31) decoder.
+// NEXRAD Level II (Archive II) decoder: message 31 "Digital Radar Data Generic
+// Format" (2008 on) and the older message 1 "Digital Radar Data" (1991-2008:
+// reflectivity, velocity and spectrum width only).
 //
 // Format reference: WSR-88D Interface Control Document for the Archive II /
-// User (ICD 2620010) and the RDA/RPG ICD (2620002), message type 31
-// "Digital Radar Data Generic Format".
+// User (ICD 2620010) and the RDA/RPG ICD (2620002).
 //
 // A volume file is a 24-byte header ("AR2V00xx.") followed by records, each a
 // 4-byte length and a bzip2-compressed block of messages. Each message has a
@@ -33,6 +34,8 @@ export function recordsOf(input) {
   const file = input instanceof Uint8Array ? input : new Uint8Array(input);
   const fv = new DataView(file.buffer, file.byteOffset, file.byteLength);
   const blocks = [];
+  // The oldest files (1990s) start with "ARCHIVE2." instead and are always raw.
+  if (str(file, 0, 8) === 'ARCHIVE2') return [file.subarray(24)];
   let o = str(file, 0, 4) === 'AR2V' ? 24 : 0;
   // Older archive files (inside .gz) hold the messages directly after the
   // header, with no compressed records: one raw block.
@@ -47,15 +50,38 @@ export function recordsOf(input) {
   return blocks;
 }
 
-export function indexVolume(arrayBuffer) {
-  if (str(new Uint8Array(arrayBuffer), 0, 4) !== 'AR2V') throw new Error('Not a Level II volume.');
-  return indexBlocks(recordsOf(arrayBuffer));
+export function indexVolume(arrayBuffer, siteHint = null) {
+  const head = str(new Uint8Array(arrayBuffer), 0, 8);
+  if (head.slice(0, 4) !== 'AR2V' && head !== 'ARCHIVE2') throw new Error('Not a Level II volume.');
+  return indexBlocks(recordsOf(arrayBuffer), true, siteHint);
+}
+
+// Message 1 angles: 16-bit binary angle, 180/32768 degrees per count.
+const ANGLE1 = 180 / 32768;
+// Message 1 moments: where each one's gate fields and data pointer sit in the
+// message body, and its fixed coding (value = (code - offset) / scale).
+// Velocity resolution: 2 = 0.5 m/s steps, 4 = 1 m/s steps.
+function legacyMoments(v, m) {
+  const out = {};
+  const add = (name, ptr, gates, firstAt, stepAt, scale, offset) => {
+    const p = v.getUint16(m + ptr);
+    const n = v.getUint16(m + gates);
+    if (!p || !n) return;
+    out[name] = { data: m + p, gates: n, firstM: v.getInt16(m + firstAt), stepM: v.getUint16(m + stepAt), scale, offset };
+  };
+  add('REF', 36, 26, 18, 22, 2, 66);
+  const velScale = v.getUint16(m + 42) === 4 ? 1 : 2;
+  add('VEL', 38, 28, 20, 24, velScale, 129);
+  add('SW ', 40, 28, 20, 24, 2, 129);
+  return out;
 }
 
 // Index decompressed message blocks (in order) into cuts and radials.
 // complete: false for a volume still being scanned; then every cut except
 // the newest one is finished (cuts arrive one after another).
-export function indexBlocks(blocks, complete = true) {
+// siteHint: { lat, lon } for message 1 volumes, which don't carry the radar's
+// location (message 31 volumes do).
+export function indexBlocks(blocks, complete = true, siteHint = null) {
   const radials = [];
   let site = null;
   let vcp = null;
@@ -94,14 +120,37 @@ export function indexBlocks(blocks, complete = true) {
           ptrs,
         });
         p = h + Math.max(sizeHw * 2, 16);
+      } else if (type === 1 && p + FRAME <= b.length) {
+        // Pre-2008 "digital radar data": fixed 2432-byte frame, body after the headers.
+        legacy = true;
+        const m = h + 16;
+        const mom = legacyMoments(v, m);
+        if (!vcp) vcp = v.getUint16(m + 44) || null;
+        const ptrs = {};
+        for (const [name, x] of Object.entries(mom)) {
+          if (x.data + x.gates <= p + FRAME) ptrs[name] = x.data - 28; // same "28 bytes before the data" as message 31
+          else delete mom[name];
+        }
+        radials.push({
+          buf: b,
+          view: v,
+          time: (v.getUint16(m + 4) - 1) * 86400000 + v.getUint32(m),
+          az: v.getUint16(m + 8) * ANGLE1,
+          res: 1,
+          elevNum: v.getUint16(m + 16),
+          elev: v.getUint16(m + 14) * ANGLE1,
+          ptrs,
+          mom,
+        });
+        p += FRAME;
       } else {
-        if (type === 1) legacy = true; // pre-2008 "digital radar data" message
         p += FRAME;
       }
     }
   }
+  if (!site && legacy && siteHint) site = { lat: siteHint.lat, lon: siteHint.lon };
   if (!site || !radials.length) {
-    throw new Error(legacy ? 'This volume uses the older (pre-2008) Level II format, which isn’t supported yet.' : 'No radar data in this volume.');
+    throw new Error(legacy && radials.length ? 'This older Level II volume doesn’t say where the radar is.' : 'No radar data in this volume.');
   }
 
   // Cuts (elevation numbers) and what each contains.
@@ -125,6 +174,10 @@ export function indexBlocks(blocks, complete = true) {
 function momentHeader(r, name) {
   const q = r.ptrs[name];
   if (q == null) return null;
+  if (r.mom) {
+    const x = r.mom[name];
+    return x && { q, gates: x.gates, firstM: x.firstM, stepM: x.stepM, wordBits: 8, scale: x.scale, offset: x.offset };
+  }
   const v = r.view;
   return {
     q,

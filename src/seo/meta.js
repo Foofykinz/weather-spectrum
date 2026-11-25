@@ -37,6 +37,32 @@ const STATIC = {
       'Free full-screen NEXRAD radar for storm chasers and weather enthusiasts: reflectivity, velocity, correlation coefficient, ZDR, KDP, echo tops, VIL, multi-panel views, loops and GOES lightning.',
     jsonLd: [{ '@type': 'WebApplication', name: `${SITE_NAME} Radar`, url: `${SITE}/radar`, applicationCategory: 'WeatherApplication', operatingSystem: 'Any', offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' } }],
   },
+  '/lightning': {
+    title: 'Weather Radar with Lightning | Live Lightning Map | Weather Spectrum',
+    description:
+      'Free live weather radar with satellite lightning: NOAA NEXRAD radar and GOES-19/18 lightning flashes from the last 15 minutes, colored by age and updated about once a minute.',
+    jsonLd: [
+      { '@type': 'WebPage', name: 'Weather Radar with Lightning', url: `${SITE}/lightning` },
+      breadcrumbs([['Home', '/'], ['Weather radar with lightning', '/lightning']]),
+    ],
+  },
+  '/weather-graphics': {
+    title: 'Weather Graphics Creator & Radar Video Maker | Weather Spectrum',
+    description:
+      'Make weather graphics and radar videos from real NEXRAD radar and NWS alerts: headers, warning maps, labels and arrows, your logo, and captions written from the alerts. Free, in your browser.',
+    image: { src: '/examples/high-wind-warning-post.jpg', w: 1080, h: 1080 },
+    jsonLd: [
+      {
+        '@type': 'WebApplication',
+        name: 'Weather Spectrum weather graphics',
+        url: `${SITE}/weather-graphics`,
+        applicationCategory: 'DesignApplication',
+        operatingSystem: 'Any',
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      },
+      breadcrumbs([['Home', '/'], ['Weather graphics', '/weather-graphics']]),
+    ],
+  },
   '/about': {
     title: 'About | Weather Spectrum',
     description: 'What Weather Spectrum is, where its radar and lightning data come from, and how it should and should not be used.',
@@ -105,7 +131,7 @@ function eventMeta(e) {
   const icao = r?.icao || `K${e.radar}`;
   return {
     title: `${eventTitle(e)} | ${icao} Reflectivity & Velocity Replay`,
-    description: `Replay the real ${icao} NEXRAD radar of the ${e.dateText} ${e.place} ${e.rating} tornado: reflectivity, velocity (couplet) and correlation coefficient (debris signature) loops, with the NWS warning timeline and official facts.`,
+    description: `Replay the real ${icao} NEXRAD radar of the ${e.dateText} ${e.place} ${e.rating} tornado: reflectivity${e.dualPol === false ? ' and velocity (couplet)' : ', velocity (couplet) and correlation coefficient (debris signature)'} loops, with the NWS warning timeline and official facts.`,
     jsonLd: [
       {
         '@type': 'Article',
@@ -143,6 +169,8 @@ export function headTags(path) {
   const clean = path.replace(/\/+$/, '') || '/';
   const canonical = SITE + (clean === '/' ? '/' : clean);
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  // Sharing image: the page's own (path on this site) or the default.
+  const img = m.image ? { src: SITE + m.image.src, w: m.image.w, h: m.image.h } : { src: OG_IMAGE, w: 1200, h: 630 };
   const tags = [
     `<title>${esc(m.title)}</title>`,
     `<meta name="description" content="${esc(m.description)}" />`,
@@ -152,13 +180,13 @@ export function headTags(path) {
     `<meta property="og:title" content="${esc(m.title)}" />`,
     `<meta property="og:description" content="${esc(m.description)}" />`,
     `<meta property="og:url" content="${canonical}" />`,
-    `<meta property="og:image" content="${OG_IMAGE}" />`,
-    `<meta property="og:image:width" content="1200" />`,
-    `<meta property="og:image:height" content="630" />`,
+    `<meta property="og:image" content="${img.src}" />`,
+    `<meta property="og:image:width" content="${img.w}" />`,
+    `<meta property="og:image:height" content="${img.h}" />`,
     `<meta name="twitter:card" content="summary_large_image" />`,
     `<meta name="twitter:title" content="${esc(m.title)}" />`,
     `<meta name="twitter:description" content="${esc(m.description)}" />`,
-    `<meta name="twitter:image" content="${OG_IMAGE}" />`,
+    `<meta name="twitter:image" content="${img.src}" />`,
   ];
   if (m.jsonLd && !m.noindex) {
     const graph = { '@context': 'https://schema.org', '@graph': m.jsonLd };

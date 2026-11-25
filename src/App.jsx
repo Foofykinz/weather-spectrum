@@ -10,6 +10,8 @@ import EventPage from './pages/EventPage';
 import EventsIndex from './pages/EventsIndex';
 import TornadoWarnings from './pages/TornadoWarnings';
 import StormLabPro from './pages/StormLabPro';
+import LightningPage from './pages/LightningPage';
+import WeatherGraphics from './pages/WeatherGraphics';
 import CookieConsent from './components/CookieConsent';
 import { initOneSignal } from './utils/oneSignalConfig';
 import { useSeo } from './seo/useSeo';
@@ -62,6 +64,8 @@ function Footer() {
           <div className="flex flex-col gap-3">
             <nav aria-label="Site" className="flex flex-wrap gap-x-6 gap-y-2 text-slate-300">
               <Link to="/radar" className="hover:text-white transition-colors">Live Radar</Link>
+              <Link to="/lightning" className="hover:text-white transition-colors">Radar with lightning</Link>
+              <Link to="/weather-graphics" className="hover:text-white transition-colors">Weather graphics</Link>
               <Link to="/events" className="hover:text-white transition-colors">Tornado radar replays</Link>
               <Link to="/tornado-warnings" className="hover:text-white transition-colors">Tornado warnings by year</Link>
               <a href="https://hailspectrum.com/map" className="hover:text-white transition-colors">Hail map (Hail Spectrum)</a>
@@ -105,6 +109,8 @@ export function AppShell() {
           <Route path="/events/:slug" element={<EventPage />} />
           <Route path="/tornado-warnings" element={<TornadoWarnings />} />
           <Route path="/storm-lab-pro" element={<StormLabPro />} />
+          <Route path="/lightning" element={<LightningPage />} />
+          <Route path="/weather-graphics" element={<WeatherGraphics />} />
           <Route path="/admin" element={<Suspense fallback={null}><Admin /></Suspense>} />
           <Route path="/broadcast" element={<Suspense fallback={loading}><BroadcastPage /></Suspense>} />
           <Route path="*" element={<NotFound />} />

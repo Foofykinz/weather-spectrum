@@ -263,6 +263,17 @@ function SingleRadar() {
     }
   };
 
+  // ?post=1 (from the weather graphics page): open the post maker once the
+  // radar is up, giving the map a moment to draw its tiles first.
+  const autoPost = useRef(params.get('post') === '1');
+  const openPostRef = useRef(openPost);
+  openPostRef.current = openPost;
+  useEffect(() => {
+    if (!autoPost.current || !scanTime || !mapRef.current) return;
+    autoPost.current = false;
+    setTimeout(() => openPostRef.current(), 2500);
+  }, [scanTime]);
+
   // Video: show each loop scan on the map in turn and copy it, with the
   // warnings in effect at that scan. Returns [{ snap, time, alerts, details }].
   const makeVideoFrames = async (onProgress) => {

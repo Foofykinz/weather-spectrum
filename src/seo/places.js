@@ -44,7 +44,7 @@ export const CITIES = [
 ];
 
 // Stations with their own page (others are listed on city pages only).
-export const STATION_PAGES = ['TLX', 'INX'];
+export const STATION_PAGES = ['TLX', 'INX', 'FWS', 'HGX', 'VNX', 'FDR', 'SRX', 'ICT', 'LCH', 'GRK'];
 
 // Ground range used for coverage lists: the reach of the dual-polarization
 // Level III products.

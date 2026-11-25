@@ -40,8 +40,14 @@ const stamp = (d) => `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.ge
 async function listKeys(prefix, startAfter, signal) {
   const res = await fetch(`${BUCKET}/?list-type=2&prefix=${prefix}${startAfter ? `&start-after=${startAfter}` : ''}`, { signal, cache: 'no-store' });
   if (!res.ok) throw new Error(`Level II archive returned ${res.status}.`);
-  // Volumes end in _V0x (older ones in _V0x.gz); _MDM files are metadata only.
-  return [...(await res.text()).matchAll(/<Key>([^<]+_V\d+(?:\.gz)?)<\/Key>/g)].map((m) => m[1]).sort();
+  // Volumes end in _V0x (older ones in _V0x.gz, and before 2008 just .gz);
+  // _MDM files are metadata only. Files under 100 KB are fragments of a
+  // volume (a few radials), not a full scan.
+  const out = [];
+  for (const m of (await res.text()).matchAll(/<Key>([^<]+)<\/Key>[\s\S]*?<Size>(\d+)<\/Size>/g)) {
+    if (KEY_RE.test(m[1]) && +m[2] >= 100e3) out.push(m[1]);
+  }
+  return out.sort();
 }
 
 // The `count` newest archived volumes that started at or before `end`.
@@ -70,8 +76,9 @@ export async function latestLevel2Key(icao, signal) {
   throw err;
 }
 
+const KEY_RE = /\d{8}_\d{6}(?:_V\d+(?:\.gz)?|\.gz)$/;
 export const level2KeyTime = (key) => {
-  const m = /(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})_V\d+(?:\.gz)?$/.exec(key);
+  const m = /(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})(?:_V\d+(?:\.gz)?|\.gz)$/.exec(key);
   return m ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6])) : null;
 };
 

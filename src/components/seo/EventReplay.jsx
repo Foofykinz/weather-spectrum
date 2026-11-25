@@ -24,7 +24,8 @@ const noop = () => {};
 
 export default function EventReplay({ event }) {
   const level3 = event.date >= LEVEL3_FROM;
-  const options = level3 ? PRODUCTS.level3 : PRODUCTS.level2;
+  // Events before dual-polarization (event.dualPol === false) have no CC.
+  const options = (level3 ? PRODUCTS.level3 : PRODUCTS.level2).filter((o) => event.dualPol !== false || !o[0].endsWith('cc'));
   const [pid, setPid] = useState(options[0][0]);
   const product = getProduct(pid);
   const tilt = options.find((o) => o[0] === pid)?.[2];
@@ -136,12 +137,14 @@ export default function EventReplay({ event }) {
           )}
         </div>
       </div>
+      {event.date >= '2009' && (
       <a
         href={`/radar?product=${pid}&site=${station.id}${tilt && tilt !== 'N0' ? `&tilt=${tilt}` : ''}&time=${event.end}&at=${at}`}
         className="absolute right-2 top-2 z-[1000] rounded-md border border-slate-700/80 bg-slate-900/85 px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-slate-800"
       >
         Open in full radar
       </a>
+      )}
     </div>
   );
 }

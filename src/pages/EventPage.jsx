@@ -35,7 +35,7 @@ export default function EventPage() {
         </div>
         <p className="mt-2 text-xs text-slate-500">
           Real archived scans from the {station.icao} radar ({e.date >= '2020-04-01' ? 'NOAA NEXRAD Level III, every low-level scan' : 'NOAA NEXRAD Level II, one low-level scan per volume, as often as radars scanned it then'}), with the NWS warnings in
-          effect at each scan and automated storm markers from the NWS radar algorithms. Tap the map to read exact values.
+          effect at each scan and {e.date >= '2009' ? '' : 'where available, '}automated storm markers from the NWS radar algorithms. Tap the map to read exact values.
         </p>
 
         <section className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -52,11 +52,21 @@ export default function EventPage() {
               <li>
                 <strong className="text-slate-100">Velocity:</strong> a velocity couplet, strong winds toward the radar (green) right next to strong winds away from
                 it (red), marks the rotation itself.
+                {e.dualPol === false && (
+                  <> In radar data from this era, speeds above about 26 m/s (58 mph) toward or away from the radar wrap around and show up in the opposite color, so the strongest part of a couplet can look mixed.</>
+                )}
               </li>
-              <li>
-                <strong className="text-slate-100">Correlation coefficient:</strong> a small area of unusually low values at the couplet, a debris signature, means
-                the radar is seeing debris lofted by a tornado.
-              </li>
+              {e.dualPol === false ? (
+                <li>
+                  <strong className="text-slate-100">No debris signature:</strong> correlation coefficient, the product that shows lofted tornado debris, comes from
+                  dual-polarization radar, which was added to the NEXRAD network between 2011 and 2013. This storm was scanned before that.
+                </li>
+              ) : (
+                <li>
+                  <strong className="text-slate-100">Correlation coefficient:</strong> a small area of unusually low values at the couplet, a debris signature, means
+                  the radar is seeing debris lofted by a tornado.
+                </li>
+              )}
             </ul>
 
             <h2 className="mt-8 text-xl font-semibold text-white">Warning timeline</h2>
