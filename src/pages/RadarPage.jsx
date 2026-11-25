@@ -5,6 +5,7 @@ import PostMaker from '../components/radar/PostMaker';
 import LoopControls from '../components/radar/LoopControls';
 import LayoutSwitch from '../components/radar/LayoutSwitch';
 import MultiRadar from '../components/radar/MultiRadar';
+import { snapshotMap } from '../radar/snapshot';
 import RadarMap from '../components/radar/RadarMap';
 import RadarLegend from '../components/radar/RadarLegend';
 import RadarStatus from '../components/radar/RadarStatus';
@@ -258,7 +259,6 @@ function SingleRadar() {
     setPastAnim((a) => ({ ...a, playing: false }));
     setPost({ busy: true });
     try {
-      const { snapshotMap } = await import('../radar/snapshot');
       const snap = await snapshotMap(map);
       setPost({
         snap,
@@ -294,7 +294,6 @@ function SingleRadar() {
     else throw new Error('This product has no loop to make a video from.');
     if (src.length < 2) throw new Error('Not enough scans for a video.');
     const times = src.map((f) => f.validTime);
-    const { snapshotMap } = await import('../radar/snapshot');
     const box = map.getContainer().getBoundingClientRect();
     const scale = Math.min(2, Math.max(1, 1700 / box.height));
     const wait = async (ok, ms) => {

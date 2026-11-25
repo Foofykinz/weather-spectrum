@@ -1,5 +1,7 @@
-import React, { Suspense, lazy, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import React, { Suspense, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { lazyPage } from './utils/lazyPage';
+import PageErrorBoundary from './components/PageErrorBoundary';
 
 import Home from './pages/home';
 import About from './pages/About';
@@ -12,6 +14,7 @@ import TornadoWarnings from './pages/TornadoWarnings';
 import StormLabPro from './pages/StormLabPro';
 import LightningPage from './pages/LightningPage';
 import WeatherGraphics from './pages/WeatherGraphics';
+import TornadoSeason from './pages/TornadoSeason';
 import CookieConsent from './components/CookieConsent';
 import { initOneSignal } from './utils/oneSignalConfig';
 import { useSeo } from './seo/useSeo';
@@ -20,9 +23,9 @@ import { cityPath } from './seo/meta';
 
 // The radar application and admin page load on demand, so content pages
 // (home, about, city and station pages) stay light.
-const RadarPage = lazy(() => import('./pages/RadarPage'));
-const Admin = lazy(() => import('./pages/Admin'));
-const BroadcastPage = lazy(() => import('./pages/BroadcastPage'));
+const RadarPage = lazyPage(() => import('./pages/RadarPage'));
+const Admin = lazyPage(() => import('./pages/Admin'));
+const BroadcastPage = lazyPage(() => import('./pages/BroadcastPage'));
 // The 24/7 stream page: no cookie banner or notification prompt on screen.
 const isBroadcast = () => typeof window !== 'undefined' && window.location.pathname.startsWith('/broadcast');
 
@@ -68,6 +71,7 @@ function Footer() {
               <Link to="/weather-graphics" className="hover:text-white transition-colors">Weather graphics</Link>
               <Link to="/events" className="hover:text-white transition-colors">Tornado radar replays</Link>
               <Link to="/tornado-warnings" className="hover:text-white transition-colors">Tornado warnings by year</Link>
+              <Link to="/tornado-season" className="hover:text-white transition-colors">Tornado season by month</Link>
               <a href="https://hailspectrum.com/map" className="hover:text-white transition-colors">Hail map (Hail Spectrum)</a>
               <Link to="/about" className="hover:text-white transition-colors">About</Link>
               {/* Legal pages are standalone documents served directly by the host. */}
@@ -95,10 +99,12 @@ function Footer() {
 // prerender step (StaticRouter, see entry-server.jsx).
 export function AppShell() {
   useSeo();
+  const { pathname } = useLocation();
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100">
       <Header />
       <main className="flex-1">
+        <PageErrorBoundary resetKey={pathname}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/radar" element={<Suspense fallback={loading}><RadarPage /></Suspense>} />
@@ -108,6 +114,7 @@ export function AppShell() {
           <Route path="/events" element={<EventsIndex />} />
           <Route path="/events/:slug" element={<EventPage />} />
           <Route path="/tornado-warnings" element={<TornadoWarnings />} />
+          <Route path="/tornado-season" element={<TornadoSeason />} />
           <Route path="/storm-lab-pro" element={<StormLabPro />} />
           <Route path="/lightning" element={<LightningPage />} />
           <Route path="/weather-graphics" element={<WeatherGraphics />} />
@@ -115,6 +122,7 @@ export function AppShell() {
           <Route path="/broadcast" element={<Suspense fallback={loading}><BroadcastPage /></Suspense>} />
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </PageErrorBoundary>
       </main>
       <Footer />
       {!isBroadcast() && <CookieConsent />}

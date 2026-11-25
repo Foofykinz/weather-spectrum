@@ -1,4 +1,5 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
+import { lazyPage } from '../utils/lazyPage';
 import { Link, useParams } from 'react-router-dom';
 import { RADARS, STATION_PAGES, WFO_NAMES, COVERAGE_KM, stateName, compass, radarGeometry, citiesNear, fmt } from '../seo/places';
 import { cityPath, stationPath } from '../seo/meta';
@@ -7,7 +8,7 @@ import { RADAR_PRODUCTS } from '../radar/products';
 import StationLive from '../components/seo/StationLive';
 import NotFound from './NotFound';
 
-const RadarEmbed = lazy(() => import('../components/radar/RadarEmbed'));
+const RadarEmbed = lazyPage(() => import('../components/radar/RadarEmbed'));
 
 // Reusable NEXRAD station page. Enabled stations are listed in STATION_PAGES
 // (src/seo/places.js); adding one there adds its page, sitemap entry and links.

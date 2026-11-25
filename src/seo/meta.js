@@ -88,6 +88,15 @@ const STATIC = {
       breadcrumbs([['Home', '/'], ['Tornado warnings', '/tornado-warnings']]),
     ],
   },
+  '/tornado-season': {
+    title: 'Tornado Season by Month: Where Tornadoes Happen Each Month | Weather Spectrum',
+    description:
+      'Maps of where tornadoes, large hail and damaging winds are most common in each month of the year, from 30 years of NOAA Storm Prediction Center records, with the average number per month and the states with the most.',
+    jsonLd: [
+      { '@type': 'WebPage', name: 'Tornado season by month', url: `${SITE}/tornado-season` },
+      breadcrumbs([['Home', '/'], ['Tornado season by month', '/tornado-season']]),
+    ],
+  },
   '/admin': { title: 'Admin | Weather Spectrum', description: 'Administration.', noindex: true },
   '/broadcast': { title: 'Broadcast | Weather Spectrum', description: 'Weather Spectrum live broadcast screen.', noindex: true },
   '/404': { title: 'Page not found | Weather Spectrum', description: 'This page does not exist.', noindex: true },

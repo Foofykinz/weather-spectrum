@@ -1,3 +1,5 @@
+import { makeZip } from './zip';
+
 // Save a file the browser made (post images and videos).
 // Chrome on Android starts the download a moment after the click, so the link
 // has to be on the page when clicked and the file kept around for a while;
@@ -28,7 +30,6 @@ export async function saveAll(files, zipName) {
       if (err.name === 'AbortError') return null;
     }
   }
-  const { makeZip } = await import('./zip');
   saveFile(await makeZip(files), zipName);
   return `${files.length} images saved in one zip file (${zipName}).`;
 }

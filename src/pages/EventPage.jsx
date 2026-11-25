@@ -1,10 +1,11 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
+import { lazyPage } from '../utils/lazyPage';
 import { Link, useParams } from 'react-router-dom';
 import { EVENTS, eventPath, eventTitle } from '../seo/events';
 import { getStation } from '../radar/stations';
 import NotFound from './NotFound';
 
-const EventReplay = lazy(() => import('../components/seo/EventReplay'));
+const EventReplay = lazyPage(() => import('../components/seo/EventReplay'));
 
 const PHEN = { TO: 'Tornado Warning', SV: 'Severe Thunderstorm Warning' };
 const time = (iso, tz) => new Date(iso).toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', timeZoneName: 'short' });

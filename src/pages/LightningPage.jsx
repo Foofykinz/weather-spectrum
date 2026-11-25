@@ -1,8 +1,9 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
+import { lazyPage } from '../utils/lazyPage';
 import { Link } from 'react-router-dom';
 import { GLM_AGES } from '../radar/providers/glm';
 
-const LightningEmbed = lazy(() => import('../components/radar/LightningEmbed'));
+const LightningEmbed = lazyPage(() => import('../components/radar/LightningEmbed'));
 
 const AGE_TEXT = {
   '<1 min': 'Less than a minute old',

@@ -1,4 +1,5 @@
-import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazyPage } from '../utils/lazyPage';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Share2 } from 'lucide-react';
 import {
@@ -6,8 +7,8 @@ import {
 } from '../warnings/history';
 import OFFICES from '../warnings/wfo-names.json';
 
-const TornadoWarningMap = lazy(() => import('../components/seo/TornadoWarningMap'));
-const WarningPostMaker = lazy(() => import('../components/seo/WarningPostMaker'));
+const TornadoWarningMap = lazyPage(() => import('../components/seo/TornadoWarningMap'));
+const WarningPostMaker = lazyPage(() => import('../components/seo/WarningPostMaker'));
 const THEME_KEY = 'ws-warnings-map-theme';
 const savedTheme = () => {
   try {

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
-import { terrainStyle, addInterstateShield, SHIELD_PREFIX, USGS_ATTRIBUTION } from '../../radar/terrainStyle';
+import { terrainStyle, addInterstateShield, attachCountyDetail, SHIELD_PREFIX, USGS_ATTRIBUTION } from '../../radar/terrainStyle';
 
 // Dark basemap from OpenFreeMap (https://openfreemap.org/): free, no API key,
 // commercial use allowed, attribution required.
@@ -14,7 +14,7 @@ import { terrainStyle, addInterstateShield, SHIELD_PREFIX, USGS_ATTRIBUTION } fr
 //   above radar: borders + place names        (our "labels" pane)
 // That keeps towns and state lines readable inside heavy precipitation.
 
-const STYLE_URLS = {
+export const STYLE_URLS = {
   dark: 'https://tiles.openfreemap.org/styles/dark',
   light: 'https://tiles.openfreemap.org/styles/positron',
   terrain: 'https://tiles.openfreemap.org/styles/liberty', // shield images and fonts; see radar/terrainStyle
@@ -41,7 +41,7 @@ const legiblePlaceName = (layer) =>
 // muted blue water, and solid state and country lines that show at national
 // zoom (Positron's own are pale and dashed).
 const SLATE = { land: '#cfd5dd', land2: '#c7ced8', water: '#8ea6bb', state: '#7b8697', country: '#4b5563', stateLabel: '#374151' };
-function slateStyle(style) {
+export function slateStyle(style) {
   const layers = style.layers.map((l) => {
     const paint = { ...(l.paint || {}) };
     let extra = {};
@@ -130,6 +130,9 @@ export default function VectorBasemap({ labelsPane, onError, split = true, theme
             if (m.isStyleLoaded()) addAll();
             else m.once('styledata', addAll);
           }
+          // County lines are on the last layer (the labels layer, or the only one).
+          const top = layers[layers.length - 1].getMaplibreMap?.();
+          if (top) attachCountyDetail(top, window.location.origin);
         }
         map._wsBasemaps = layers; // read by the post maker's snapshot
         map._wsTerrain = theme === 'terrain'; // its credit line names USGS

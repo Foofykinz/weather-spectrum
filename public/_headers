@@ -2,3 +2,9 @@
   Content-Type: application/javascript
 /data/ugc-shapes.json
   Cache-Control: public, max-age=86400
+/data/county-lines.json
+  Cache-Control: public, max-age=604800
+/data/counties/*
+  Cache-Control: public, max-age=604800
+/data/climatology/*
+  Cache-Control: public, max-age=86400

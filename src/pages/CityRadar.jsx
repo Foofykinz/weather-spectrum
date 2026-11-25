@@ -1,4 +1,5 @@
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense } from 'react';
+import { lazyPage } from '../utils/lazyPage';
 import { Link, useParams } from 'react-router-dom';
 import { CITIES, RADARS, STATION_PAGES, WFO_NAMES, COVERAGE_KM, stateName, compass, radarGeometry, fmt } from '../seo/places';
 import { cityPath, stationPath } from '../seo/meta';
@@ -6,7 +7,7 @@ import { STATIONS } from '../radar/stations';
 import StationLive from '../components/seo/StationLive';
 import NotFound from './NotFound';
 
-const RadarEmbed = lazy(() => import('../components/radar/RadarEmbed'));
+const RadarEmbed = lazyPage(() => import('../components/radar/RadarEmbed'));
 
 // Every NEXRAD radar (from the full network list) within reach of a point.
 function coveringRadars(lat, lon) {

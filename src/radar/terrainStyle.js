@@ -5,8 +5,10 @@
 // allowed so the post maker can copy it). Roads, state lines, shields and
 // names come from OpenFreeMap's vector tiles, using its "liberty" style for
 // the shield images and fonts. OpenFreeMap has no US county lines, so those
-// come from public/data/county-lines.json (Census, see
-// scripts/build-county-lines.mjs).
+// come from the Census: zoomed out, one light file for the whole country
+// (public/data/county-lines.json, scripts/build-county-lines.mjs); zoomed in,
+// detailed lines for just the states on screen (public/data/counties/,
+// scripts/build-county-detail.mjs, attachCountyDetail below).
 
 const USGS = (service) => `https://basemap.nationalmap.gov/arcgis/rest/services/${service}/MapServer/tile/{z}/{y}/{x}`;
 
@@ -64,6 +66,39 @@ export function addInterstateShield(map, id) {
   map.addImage(id, ctx.getImageData(0, 0, w, h), { pixelRatio: r });
 }
 
+// County lines switch from the national file to the detailed state files at
+// this MapLibre zoom (one less than the Leaflet zoom: about city level).
+const DETAIL_ZOOM = 7.5;
+const COUNTY_PAINT = { 'line-color': '#0a0a0a', 'line-opacity': z(5, 0.55, 8, 0.85), 'line-width': z(5, 0.6, 8, 1, 12, 1.6) };
+
+// Adds each state's detailed county lines the first time the map is zoomed in
+// over it, so nobody downloads the whole country. base: the site's origin.
+export function attachCountyDetail(map, base) {
+  let index = null;
+  const added = new Set();
+  const check = async () => {
+    if (map.getZoom() < DETAIL_ZOOM - 0.5) return;
+    index ||= fetch(`${base}/data/counties/index.json`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .catch(() => ({}));
+    const boxes = await index;
+    if (!map.getStyle()) return; // map removed meanwhile
+    const b = map.getBounds();
+    for (const [fp, [w, s, e, n]] of Object.entries(boxes)) {
+      if (added.has(fp) || e < b.getWest() || w > b.getEast() || n < b.getSouth() || s > b.getNorth()) continue;
+      added.add(fp);
+      map.addSource(`counties-${fp}`, { type: 'geojson', data: `${base}/data/counties/${fp}.json` });
+      map.addLayer(
+        { id: `boundary_county_${fp}`, type: 'line', source: `counties-${fp}`, minzoom: DETAIL_ZOOM, layout: { 'line-join': 'round' }, paint: COUNTY_PAINT },
+        map.getLayer('boundary_state') ? 'boundary_state' : undefined
+      );
+    }
+  };
+  map.on('moveend', check);
+  if (map.isStyleLoaded()) check();
+  else map.once('load', check);
+}
+
 // liberty: OpenFreeMap's liberty style JSON. countiesUrl: absolute URL of county-lines.json.
 export function terrainStyle(liberty, countiesUrl) {
   const shields = liberty.layers.filter((l) => l.id === 'highway-shield-us-interstate' || l.id === 'road_shield_us');
@@ -101,8 +136,9 @@ export function terrainStyle(liberty, countiesUrl) {
       type: 'line',
       source: 'counties',
       minzoom: 5,
+      maxzoom: DETAIL_ZOOM,
       layout: { 'line-join': 'round' },
-      paint: { 'line-color': '#0a0a0a', 'line-opacity': z(5, 0.55, 8, 0.85), 'line-width': z(5, 0.6, 8, 1, 12, 1.6) },
+      paint: COUNTY_PAINT,
     },
     {
       id: 'boundary_state',
