@@ -40,7 +40,7 @@ export function setAreas(map, month, colors) {
 
 // Camera framing the month's typical area, tilted. backoff: zoom out a little,
 // since the tilt makes the near (south) side larger than the fit assumes.
-export function cameraFor(map, month, padding, backoff) {
+export function cameraFor(map, month, padding, backoff, pitch = PITCH) {
   const ring = (month?.typical || []).flatMap((p) => p[0]);
   if (!ring.length) return null;
   const lons = ring.map((p) => p[0]);
@@ -52,5 +52,5 @@ export function cameraFor(map, month, padding, backoff) {
     ],
     { padding }
   );
-  return cam && { center: cam.center, zoom: Math.min(5.2, cam.zoom - backoff), pitch: PITCH, bearing: 0 };
+  return cam && { center: cam.center, zoom: Math.min(5.2, cam.zoom - backoff), pitch, bearing: 0 };
 }

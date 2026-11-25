@@ -1,44 +1,24 @@
 // Post maker memory, kept in this browser only:
-// - a draft: the post being worked on, saved as it changes, offered back the
-//   next time the post maker opens;
-// - templates: named looks (size, style, font, header, box spots, and
-//   optionally the labels and arrows) to reuse on later posts.
-// kind: 'radar' | 'tornado' (each post maker keeps its own).
+// - a draft: the post's look, saved as it changes, offered back the next time
+//   the post maker opens;
+// - templates: named looks to reuse on later posts.
+// Only design settings are ever saved (size, style, font, header look, colors,
+// box spots, options). Wording never is: no headline, second line, banner,
+// caption text, or labels and arrows. designOnly() enforces that on every
+// save and on every read, so older saves that held text are cleaned too.
+// kind: 'radar' | 'tornado' | 'climo' (each post maker keeps its own).
 
 import { useEffect, useRef, useState } from 'react';
 
 const DRAFT_DAYS = 14;
-// Text typed into a post (headline, banner, caption) often names an alert and
-// its end time. Older than this, a restored draft leaves it out so expired
-// alert details don't end up in a new post.
-export const TEXT_FRESH_MS = 3 * 3600e3;
-const TEXT_FIELDS = ['headline', 'subline', 'banner', 'edits'];
+const CONTENT_FIELDS = ['headline', 'subline', 'banner', 'edits', 'marks', 'for'];
+export const designOnly = (state) =>
+  state && typeof state === 'object' ? Object.fromEntries(Object.entries(state).filter(([k]) => !CONTENT_FIELDS.includes(k))) : null;
+const hasContent = (state) => !!state && typeof state === 'object' && CONTENT_FIELDS.some((k) => k in state);
 
-// The parts of a draft that are safe to bring back now.
-export function restorable(draft) {
-  if (!draft) return null;
-  if (Date.now() - draft.at <= TEXT_FRESH_MS) return draft.state;
-  return Object.fromEntries(Object.entries(draft.state).filter(([k]) => !TEXT_FIELDS.includes(k)));
-}
-export const textIsStale = (draft) => !!draft && Date.now() - draft.at > TEXT_FRESH_MS;
+// The parts of a draft to bring back (its look).
+export const restorable = (draft) => (draft ? designOnly(draft.state) : null);
 
-// Labels and arrows are pinned to map spots. Ones saved for another area would
-// sit off this picture (or over the wrong town), so only marks that land on
-// this picture are kept. view: makeView() result.
-export function marksInView(marks, view) {
-  const list = Array.isArray(marks) ? marks : [];
-  if (!view) return { kept: [], dropped: list.length };
-  const { area } = view;
-  const on = (ll) => {
-    if (!ll || !Number.isFinite(ll.lat) || !Number.isFinite(ll.lng)) return false;
-    const p = view.toCanvas(ll);
-    return p.x >= area.x && p.x <= area.x + area.w && p.y >= area.y && p.y <= area.y + area.h;
-  };
-  const kept = list.filter((m) => on(m.a) || on(m.b));
-  return { kept, dropped: list.length - kept.length };
-}
-export const droppedNote = (n) =>
-  n ? ` ${n} label${n === 1 ? '' : 's'}/arrow${n === 1 ? '' : 's'} for another area ${n === 1 ? 'was' : 'were'} left out.` : '';
 const MAX_TEMPLATES = 40;
 const draftKey = (kind) => `ws-post-draft-${kind}`;
 const templatesKey = (kind) => `ws-post-templates-${kind}`;
@@ -65,13 +45,16 @@ function write(key, value) {
 export function loadDraft(kind) {
   const d = read(draftKey(kind), null);
   if (!d?.state || !Number.isFinite(d.at) || Date.now() - d.at > DRAFT_DAYS * 864e5) return null;
-  return d;
+  const clean = { at: d.at, state: designOnly(d.state) };
+  if (hasContent(d.state)) write(draftKey(kind), clean); // drop text saved by older versions
+  return clean;
 }
 
 // Saves `state` as the draft whenever it changes, but only once it differs
 // from how the post maker opened (just opening it saves nothing).
 // Returns [lastSavedAt, clear].
-export function useAutosave(kind, state) {
+export function useAutosave(kind, full) {
+  const state = designOnly(full);
   const sig = JSON.stringify(state);
   const first = useRef(sig);
   const [savedAt, setSavedAt] = useState(null);
@@ -93,7 +76,13 @@ export function useAutosave(kind, state) {
 export function useTemplates(kind) {
   const [list, setList] = useState(() => {
     const v = read(templatesKey(kind), []);
-    return Array.isArray(v) ? v.filter((t) => t && t.id && t.name && t.state) : [];
+    const list = Array.isArray(v) ? v.filter((t) => t && t.id && t.name && t.state) : [];
+    if (list.some((t) => hasContent(t.state))) {
+      const clean = list.map((t) => ({ ...t, state: designOnly(t.state) }));
+      write(templatesKey(kind), clean); // drop text saved by older versions
+      return clean;
+    }
+    return list;
   });
   const store = (next) => {
     if (write(templatesKey(kind), next)) setList(next);
@@ -102,7 +91,7 @@ export function useTemplates(kind) {
   const save = (name, state) => {
     const clean = String(name || '').trim().slice(0, 40) || 'My template';
     const existing = list.find((t) => t.name.toLowerCase() === clean.toLowerCase());
-    const t = { id: existing?.id || `t${Date.now().toString(36)}`, name: clean, at: Date.now(), state };
+    const t = { id: existing?.id || `t${Date.now().toString(36)}`, name: clean, at: Date.now(), state: designOnly(state) };
     return store([t, ...list.filter((x) => x.id !== t.id)].slice(0, MAX_TEMPLATES));
   };
   const remove = (id) => store(list.filter((t) => t.id !== id));

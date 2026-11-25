@@ -53,7 +53,7 @@ const FEATURES = [
   },
   {
     title: 'Templates and autosave',
-    text: 'Save a look as a template to reuse on the next post. Your work in progress is saved in your browser as you go, and older drafts come back without their old alert text so expired details stay out of new posts.',
+    text: 'Save a look as a template to reuse on the next post, and your last look is kept in your browser as you go. Only the design is saved (size, style, font, header and colors), never your text, labels or arrows, so old alert details never end up in a new post.',
   },
   {
     title: 'Tornado warning recaps',

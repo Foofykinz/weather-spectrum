@@ -11,7 +11,7 @@ import { saveFile, savedMessage, isPhone, saveAll } from '../../utils/saveFile';
 import SaveImageSheet from '../SaveImageSheet';
 import { makeView, drawMarks, loadLabelFont } from '../../posts/marks';
 import HeaderEditor from '../radar/HeaderEditor';
-import { loadDraft, restorable, useAutosave, useTemplates, marksInView } from '../../posts/drafts';
+import { loadDraft, restorable, useAutosave, useTemplates } from '../../posts/drafts';
 import { DraftBar, TemplatesPanel } from '../PostMemory';
 import { useMarkEditor } from '../MarkEditor';
 
@@ -154,7 +154,7 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
 
   // ---- Autosave and templates (kept in this browser).
   const [draftOffer, setDraftOffer] = useState(() => loadDraft('tornado'));
-  const current = { sizeId, styleId, fontId, theme, areaMode, showStats, showChart, headline, subline, header, moves, captionId, edits, format, marks: markEd.marks };
+  const current = { sizeId, styleId, fontId, theme, areaMode, showStats, showChart, header, moves, captionId, format }; // the look only (posts/drafts)
   useAutosave('tornado', current);
   const templates = useTemplates('tornado');
   const applyState = (st) => {
@@ -164,11 +164,8 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
     if (st.areaMode !== undefined) setAreaMode(st.areaMode);
     if (st.showStats !== undefined) setShowStats(st.showStats);
     if (st.showChart !== undefined) setShowChart(st.showChart);
-    if (st.headline !== undefined) setHeadline(st.headline);
-    if (st.subline !== undefined) setSubline(st.subline);
     if (st.moves !== undefined) setMoves(st.moves);
     if (st.captionId !== undefined) setCaptionId(st.captionId);
-    if (st.edits !== undefined) setEdits(st.edits);
     if (st.format !== undefined) setFormat(st.format);
     if (st.fontId !== undefined) {
       const f = FONTS.find((x) => x.id === st.fontId);
@@ -178,12 +175,8 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
       setHeader(st.header || {});
       if (st.header?.font) pickHeaderFont(st.header.font);
     }
-    if (st.marks === undefined) return 0;
-    const { kept, dropped } = marksInView(st.marks, view);
-    markEd.setAll(kept);
-    return dropped;
   };
-  const saveTemplate = (name, withMarks) => templates.save(name, { sizeId, styleId, fontId, theme, areaMode, showStats, showChart, header, moves, format, ...(withMarks ? { marks: markEd.marks } : {}) });
+  const saveTemplate = (name) => templates.save(name, { sizeId, styleId, fontId, theme, areaMode, showStats, showChart, header, moves, format });
   const head = headline ?? defaultHeadline(info);
   const sub = subline ?? defaultSubline(info);
   const fontReady = !font.css || fontState[font.id] === 'ok' || fontState[font.id] === 'failed';
@@ -401,15 +394,14 @@ export default function WarningPostMaker({ info, warnings, pageBounds, theme: pa
                 draft={draftOffer}
                 ready={!!view}
                 onRestore={() => {
-                  const dropped = applyState(restorable(draftOffer));
+                  applyState(restorable(draftOffer));
                   setDraftOffer(null);
-                  return dropped;
                 }}
                 onDiscard={() => setDraftOffer(null)}
               />
               {(tab === 'picture' || (tab === 'header' && styleId === 'map')) && (
                 <>
-                  <TemplatesPanel templates={templates} onApply={applyState} onSave={saveTemplate} hasMarks={markEd.marks.length > 0} />
+                  <TemplatesPanel templates={templates} onApply={applyState} onSave={saveTemplate} />
             <div>
               <span className={label}>Size</span>
               {choices(ALL_SIZES.map((s) => [s.id, s.label, s.note]), sizeId, setSizeId)}

@@ -252,12 +252,13 @@ export default function TornadoSeason() {
             key={`${hazard}-${month}`}
             onClose={() => setPost(false)}
             info={{
-              title: h.title,
+              hazardId: hazard,
+              hazard: h,
               monthName: name,
+              monthIndex: month,
               month: shapes.months[month],
-              colors: h.colors,
-              fileBase: `${hazard}-risk-${name.toLowerCase()}`,
-              caption: captionFor(h, name, sel),
+              sel,
+              years: [FIRST, LAST],
             }}
           />
         </Suspense>
@@ -266,16 +267,3 @@ export default function TornadoSeason() {
   );
 }
 
-function captionFor(h, name, sel) {
-  const short = h.noun.split(' (')[0];
-  const top = sel.states.slice(0, 3).map(([st]) => stateName(st));
-  const most = top.length > 1 ? `${top.slice(0, -1).join(', ')} and ${top[top.length - 1]}` : top[0];
-  return (
-    `Where ${name} ${short} happen most, from ${LAST - FIRST + 1} years of NOAA storm records (${FIRST}-${LAST}). ` +
-    `An average of ${fmt(sel.perYear)} ${h.noun} a year in ${name}` +
-    (most ? `, most in ${most}.` : '.') +
-    `
-
-See every month: theweatherspectrum.com/tornado-season`
-  );
-}
